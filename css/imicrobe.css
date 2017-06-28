@@ -1,0 +1,4 @@
+body{padding-top:50px;}
+.content{padding:40px 15px;text-align:center;}
+html, body, .container, .tab-content, .tab-pane{height:100%;}
+#map-canvas{width:100%;height:480px;}
