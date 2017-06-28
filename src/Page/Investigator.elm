@@ -1,4 +1,4 @@
-module Page.About exposing (Model, Msg, init, update, view)
+module Page.Investigator exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -21,10 +21,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "About Page"
+            Task.succeed "Investigator"
 
         body =
-            Task.succeed "About page is the page where you can read all about the about page!"
+            Task.succeed "I will show you investigator"
 
         handleLoadError _ =
             -- If a resource task fail load error page

@@ -1,9 +1,10 @@
-module Page.Home exposing (view, update, Model, Msg, init)
+module Page.Home exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
-import View.Page as Page
+import Html.Attributes exposing (..)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Task exposing (Task)
+import View.Page as Page
 
 
 ---- MODEL ----
@@ -29,8 +30,8 @@ init =
             -- If a resource task fail load error page
             Error.pageLoadError Page.Home "The homepage is currently unavailable."
     in
-        Task.map2 Model title body
-            |> Task.mapError handleLoadError
+    Task.map2 Model title body
+        |> Task.mapError handleLoadError
 
 
 
@@ -54,7 +55,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h2 [] [ text model.pageTitle ]
-        , div [] [ text model.pageBody ]
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 [] [ text model.pageTitle ]
+            , div [] [ text model.pageBody ]
+            ]
         ]

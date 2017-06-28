@@ -1,16 +1,17 @@
 module Main exposing (..)
 
 import Html exposing (..)
-import Navigation exposing (Location)
 import Json.Decode as Decode exposing (Value)
-import Page.Error as Error exposing (PageLoadError)
-import Page.NotFound as NotFound
-import Page.Home as Home
+import Navigation exposing (Location)
 import Page.About as About
-import View.Page as Page exposing (ActivePage)
+import Page.Error as Error exposing (PageLoadError)
+import Page.Home as Home
+import Page.Investigator as Investigator
+import Page.NotFound as NotFound
 import Route exposing (..)
 import Task
 import Util exposing ((=>))
+import View.Page as Page exposing (ActivePage)
 
 
 ---- MODEL ----
@@ -27,6 +28,7 @@ type Page
     | Error PageLoadError
     | Home Home.Model
     | About About.Model
+    | Investigator Investigator.Model
 
 
 type PageState
@@ -40,10 +42,12 @@ type PageState
 
 type Msg
     = SetRoute (Maybe Route)
-    | HomeLoaded (Result PageLoadError Home.Model)
-    | HomeMsg Home.Msg
     | AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
+    | HomeLoaded (Result PageLoadError Home.Model)
+    | HomeMsg Home.Msg
+    | InvestigatorLoaded (Result PageLoadError About.Model)
+    | InvestigatorMsg Investigator.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -56,15 +60,18 @@ setRoute maybeRoute model =
         error =
             pageError model
     in
-        case maybeRoute of
-            Nothing ->
-                { model | pageState = Loaded NotFound } => Cmd.none
+    case maybeRoute of
+        Nothing ->
+            { model | pageState = Loaded NotFound } => Cmd.none
 
-            Just Route.Home ->
-                transition HomeLoaded (Home.init)
+        Just Route.Home ->
+            transition HomeLoaded Home.init
 
-            Just Route.About ->
-                transition AboutLoaded (About.init)
+        Just Route.About ->
+            transition AboutLoaded About.init
+
+        Just Route.Investigator ->
+            transition InvestigatorLoaded Investigator.init
 
 
 getPage : PageState -> Page
@@ -83,7 +90,7 @@ pageError model activePage errorMessage =
         error =
             Error.pageLoadError activePage errorMessage
     in
-        { model | pageState = Loaded (Error error) } => Cmd.none
+    { model | pageState = Loaded (Error error) } => Cmd.none
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,43 +106,49 @@ updatePage page msg model =
                 ( newModel, newCmd ) =
                     subUpdate subMsg subModel
             in
-                ( { model | pageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
+            ( { model | pageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
 
         error =
             pageError model
     in
-        case ( msg, page ) of
-            -- Update for page transitions
-            ( SetRoute route, _ ) ->
-                setRoute route model
+    case ( msg, page ) of
+        -- Update for page transitions
+        ( SetRoute route, _ ) ->
+            setRoute route model
 
-            ( HomeLoaded (Ok subModel), _ ) ->
-                { model | pageState = Loaded (Home subModel) } => Cmd.none
+        ( HomeLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Home subModel) } => Cmd.none
 
-            ( HomeLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Error error) } => Cmd.none
+        ( HomeLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
-            ( AboutLoaded (Ok subModel), _ ) ->
-                { model | pageState = Loaded (About subModel) } => Cmd.none
+        ( AboutLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (About subModel) } => Cmd.none
 
-            ( AboutLoaded (Err error), _ ) ->
-                { model | pageState = Loaded (Error error) } => Cmd.none
+        ( AboutLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
-            -- Update for page specfic msgs
-            ( HomeMsg subMsg, Home subModel ) ->
-                toPage Home HomeMsg (Home.update) subMsg subModel
+        ( InvestigatorLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Investigator subModel) } => Cmd.none
 
-            ( AboutMsg subMsg, About subModel ) ->
-                toPage About AboutMsg (About.update) subMsg subModel
+        ( InvestigatorLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
-            ( _, NotFound ) ->
-                -- Disregard incoming messages when we're on the
-                -- NotFound page.
-                model => Cmd.none
+        -- Update for page specfic msgs
+        ( HomeMsg subMsg, Home subModel ) ->
+            toPage Home HomeMsg Home.update subMsg subModel
 
-            ( _, _ ) ->
-                -- Disregard incoming messages that arrived for the wrong page
-                model => Cmd.none
+        ( AboutMsg subMsg, About subModel ) ->
+            toPage About AboutMsg About.update subMsg subModel
+
+        ( _, NotFound ) ->
+            -- Disregard incoming messages when we're on the
+            -- NotFound page.
+            model => Cmd.none
+
+        ( _, _ ) ->
+            -- Disregard incoming messages that arrived for the wrong page
+            model => Cmd.none
 
 
 
@@ -158,29 +171,34 @@ viewPage isLoading page =
         layout =
             Page.layout isLoading
     in
-        case page of
-            NotFound ->
-                layout Page.Other NotFound.view
+    case page of
+        NotFound ->
+            layout Page.Other NotFound.view
 
-            Blank ->
-                -- This is for the very intial page load, while we are loading
-                -- data via HTTP. We could also render a spinner here.
-                Html.text ""
-                    |> layout Page.Other
+        Blank ->
+            -- This is for the very intial page load, while we are loading
+            -- data via HTTP. We could also render a spinner here.
+            Html.text ""
+                |> layout Page.Other
 
-            Error subModel ->
-                Error.view subModel
-                    |> layout Page.Other
+        Error subModel ->
+            Error.view subModel
+                |> layout Page.Other
 
-            Home subModel ->
-                Home.view subModel
-                    |> layout Page.Home
-                    |> Html.map HomeMsg
+        Home subModel ->
+            Home.view subModel
+                |> layout Page.Home
+                |> Html.map HomeMsg
 
-            About subModel ->
-                About.view subModel
-                    |> layout Page.About
-                    |> Html.map AboutMsg
+        About subModel ->
+            About.view subModel
+                |> layout Page.About
+                |> Html.map AboutMsg
+
+        Investigator subModel ->
+            Investigator.view subModel
+                |> layout Page.Investigator
+                |> Html.map InvestigatorMsg
 
 
 

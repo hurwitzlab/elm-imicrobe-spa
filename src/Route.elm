@@ -1,9 +1,9 @@
-module Route exposing (Route(..), href, modifyUrl, fromLocation)
+module Route exposing (Route(..), fromLocation, href, modifyUrl)
 
-import UrlParser as Url exposing (parseHash, s, (</>), string, oneOf, Parser)
-import Navigation exposing (Location)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
+import Navigation exposing (Location)
+import UrlParser as Url exposing ((</>), Parser, oneOf, parseHash, s, string)
 
 
 -- ROUTING --
@@ -12,6 +12,7 @@ import Html.Attributes as Attr
 type Route
     = Home
     | About
+    | Investigator
 
 
 routeMather : Parser (Route -> a) a
@@ -19,6 +20,7 @@ routeMather =
     oneOf
         [ Url.map Home (s "")
         , Url.map About (s "about")
+        , Url.map Investigator (s "investigator")
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -40,11 +42,14 @@ routeToString page =
                 About ->
                     [ "about" ]
 
+                Investigator ->
+                    [ "investigator" ]
+
         --    When needing parameters on the form base/item/3
         --                    Item ->
         --                    [ "item", Item.itemToString item ]
     in
-        "#/" ++ (String.join "/" pagePath)
+    "#/" ++ String.join "/" pagePath
 
 
 
