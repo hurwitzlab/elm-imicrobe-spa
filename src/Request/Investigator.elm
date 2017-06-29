@@ -18,7 +18,8 @@ list =
 
         decoder =
             -- Decode.list Investigator
-            Decode.dict Decode.string
+            -- Decode.dict Decode.string
+            Decode.list (Decode.dict Decode.string)
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

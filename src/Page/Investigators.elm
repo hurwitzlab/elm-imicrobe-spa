@@ -1,4 +1,4 @@
-module Page.Investigator exposing (Model, Msg, init, update, view)
+module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Dict
 import Html exposing (..)
@@ -16,7 +16,9 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , pageBody : String
-    , investigators : Dict.Dict String String
+    , investigators : List (Dict.Dict String String)
+
+    -- , investigators : Dict.Dict String String
     }
 
 

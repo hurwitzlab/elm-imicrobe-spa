@@ -6,7 +6,7 @@ import Navigation exposing (Location)
 import Page.About as About
 import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
-import Page.Investigator as Investigator
+import Page.Investigators as Investigators
 import Page.NotFound as NotFound
 import Route exposing (..)
 import Task
@@ -28,7 +28,7 @@ type Page
     | Error PageLoadError
     | Home Home.Model
     | About About.Model
-    | Investigator Investigator.Model
+    | Investigators Investigators.Model
 
 
 type PageState
@@ -46,8 +46,8 @@ type Msg
     | AboutMsg About.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
-    | InvestigatorLoaded (Result PageLoadError About.Model)
-    | InvestigatorMsg Investigator.Msg
+    | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
+    | InvestigatorsMsg Investigators.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -70,8 +70,8 @@ setRoute maybeRoute model =
         Just Route.About ->
             transition AboutLoaded About.init
 
-        Just Route.Investigator ->
-            transition InvestigatorLoaded Investigator.init
+        Just Route.Investigators ->
+            transition InvestigatorsLoaded Investigators.init
 
 
 getPage : PageState -> Page
@@ -128,10 +128,10 @@ updatePage page msg model =
         ( AboutLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( InvestigatorLoaded (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Investigator subModel) } => Cmd.none
+        ( InvestigatorsLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Investigators subModel) } => Cmd.none
 
-        ( InvestigatorLoaded (Err error), _ ) ->
+        ( InvestigatorsLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         -- Update for page specfic msgs
@@ -195,10 +195,10 @@ viewPage isLoading page =
                 |> layout Page.About
                 |> Html.map AboutMsg
 
-        Investigator subModel ->
-            Investigator.view subModel
-                |> layout Page.Investigator
-                |> Html.map InvestigatorMsg
+        Investigators subModel ->
+            Investigators.view subModel
+                |> layout Page.Investigators
+                |> Html.map InvestigatorsMsg
 
 
 

@@ -12,7 +12,7 @@ import UrlParser as Url exposing ((</>), Parser, oneOf, parseHash, s, string)
 type Route
     = Home
     | About
-    | Investigator
+    | Investigators
 
 
 routeMather : Parser (Route -> a) a
@@ -20,7 +20,7 @@ routeMather =
     oneOf
         [ Url.map Home (s "")
         , Url.map About (s "about")
-        , Url.map Investigator (s "investigator")
+        , Url.map Investigators (s "investigators")
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -42,8 +42,8 @@ routeToString page =
                 About ->
                     [ "about" ]
 
-                Investigator ->
-                    [ "investigator" ]
+                Investigators ->
+                    [ "investigators" ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->
