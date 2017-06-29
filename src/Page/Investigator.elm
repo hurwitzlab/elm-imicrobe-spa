@@ -1,8 +1,11 @@
 module Page.Investigator exposing (Model, Msg, init, update, view)
 
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Request.Investigator
 import Task exposing (Task)
 import View.Page as Page
 
@@ -13,6 +16,8 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , pageBody : String
+
+    --    , investigators : Dict.Dict String String
     }
 
 
@@ -26,10 +31,15 @@ init =
         body =
             Task.succeed "I will show you investigator"
 
+        loadInvestigators =
+            Request.Investigator.list |> Http.toTask
+
         handleLoadError _ =
             -- If a resource task fail load error page
             Error.pageLoadError Page.Home "The about page is currently unavailable."
     in
+    -- Task.map3 Model title body (Task.succeed "")
+    -- Task.map3 Model title body loadInvestigators
     Task.map2 Model title body
         |> Task.mapError handleLoadError
 

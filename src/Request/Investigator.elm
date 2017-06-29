@@ -6,19 +6,19 @@ import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Json.Encode.Extra as EncodeExtra
-import Ports
-import Request.Helpers exposing (apiUrl)
-import Util exposing ((=>))
 
 
-list : Http.Request User
+-- list : Http.Request (List Investigator)
+
+
 list =
     let
         url =
             "https://www.imicrobe.us/investigator/list.json"
 
         decoder =
-            Decode.list Investigator
+            -- Decode.list Investigator
+            Decode.dict Decode.string
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)
