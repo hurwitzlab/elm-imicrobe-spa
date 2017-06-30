@@ -13,6 +13,7 @@ type Route
     = Home
     | About
     | Investigators
+    | Investigator Int
 
 
 routeMather : Parser (Route -> a) a
@@ -21,6 +22,7 @@ routeMather =
         [ Url.map Home (s "")
         , Url.map About (s "about")
         , Url.map Investigators (s "investigators")
+        , Url.map Investigator (s "investigator" </> Url.int)
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -41,6 +43,9 @@ routeToString page =
 
                 About ->
                     [ "about" ]
+
+                Investigator id ->
+                    [ "investigator", toString id ]
 
                 Investigators ->
                     [ "investigators" ]

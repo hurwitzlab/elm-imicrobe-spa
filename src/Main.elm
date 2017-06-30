@@ -6,6 +6,7 @@ import Navigation exposing (Location)
 import Page.About as About
 import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
+import Page.Investigator as Investigator
 import Page.Investigators as Investigators
 import Page.NotFound as NotFound
 import Route exposing (..)
@@ -28,6 +29,7 @@ type Page
     | Error PageLoadError
     | Home Home.Model
     | About About.Model
+    | Investigator Int Investigator.Model
     | Investigators Investigators.Model
 
 
@@ -46,7 +48,9 @@ type Msg
     | AboutMsg About.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
+    | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
+    | InvestigatorMsg Investigator.Msg
     | InvestigatorsMsg Investigators.Msg
 
 
@@ -69,6 +73,9 @@ setRoute maybeRoute model =
 
         Just Route.About ->
             transition AboutLoaded About.init
+
+        Just (Route.Investigator id) ->
+            transition (InvestigatorLoaded id) (Investigator.init id)
 
         Just Route.Investigators ->
             transition InvestigatorsLoaded Investigators.init
@@ -126,6 +133,12 @@ updatePage page msg model =
             { model | pageState = Loaded (About subModel) } => Cmd.none
 
         ( AboutLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( InvestigatorLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
+
+        ( InvestigatorLoaded id (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( InvestigatorsLoaded (Ok subModel), _ ) ->
@@ -194,6 +207,11 @@ viewPage isLoading page =
             About.view subModel
                 |> layout Page.About
                 |> Html.map AboutMsg
+
+        Investigator id subModel ->
+            Investigator.view id subModel
+                |> layout (Investigator id)
+                |> Html.map InvestigatorMsg
 
         Investigators subModel ->
             Investigators.view subModel

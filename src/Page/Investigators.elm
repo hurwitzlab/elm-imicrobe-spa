@@ -1,6 +1,7 @@
 module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Dict
+import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -15,10 +16,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , pageBody : String
     , investigators : List (Dict.Dict String String)
-
-    -- , investigators : Dict.Dict String String
     }
 
 
@@ -27,10 +25,7 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigator"
-
-        body =
-            Task.succeed "I will show you investigator"
+            Task.succeed "Investigators"
 
         loadInvestigators =
             Request.Investigator.list |> Http.toTask
@@ -39,7 +34,7 @@ init =
             -- If a resource task fail load error page
             Error.pageLoadError Page.Home (toString err)
     in
-    Task.map3 Model title body loadInvestigators
+    Task.map2 Model title loadInvestigators
         |> Task.mapError handleLoadError
 
 
@@ -67,7 +62,41 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ text model.pageBody ]
-            , div [] [ text (toString model.investigators) ]
+            , div [] [ viewInvestigators model.investigators ]
             ]
+        ]
+
+
+viewInvestigators invs =
+    case List.length invs of
+        0 ->
+            text "No investigators"
+
+        _ ->
+            table [ class "table" ]
+                [ thead []
+                    [ tr []
+                        [ th [] [ text "Name" ]
+                        , th [] [ text "Institution" ]
+                        ]
+                    ]
+                , tbody []
+                    (List.map rowInv invs)
+                ]
+
+
+rowInv inv =
+    let
+        id =
+            EDict.getWithDefault "0" "investigator_id" inv
+
+        name =
+            EDict.getWithDefault "NA" "investigator_name" inv
+
+        inst =
+            EDict.getWithDefault "NA" "institution" inv
+    in
+    tr []
+        [ td [] [ a [ href ("/investigators/" ++ id) ] [ text name ] ]
+        , td [] [ text inst ]
         ]

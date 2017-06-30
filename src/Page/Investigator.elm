@@ -15,29 +15,26 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , pageBody : String
-    , investigators : Dict.Dict String String
+    , investigator_id : Int
+    , investigator : Dict.Dict String String
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Int -> Task PageLoadError Model
+init id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Investigator"
 
-        body =
-            Task.succeed "I will show you investigator"
-
-        loadInvestigators =
-            Request.Investigator.list |> Http.toTask
+        loadInvestigator =
+            Request.Investigator.get id |> Http.toTask
 
         handleLoadError err =
             -- If a resource task fail load error page
             Error.pageLoadError Page.Home (toString err)
     in
-    Task.map3 Model title body loadInvestigators
+    Task.map3 Model title (Task.succeed id) loadInvestigator
         |> Task.mapError handleLoadError
 
 
@@ -65,7 +62,6 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ text model.pageBody ]
-            , div [] [ text (toString model.investigators) ]
+            , div [] [ text (toString model.investigator) ]
             ]
         ]

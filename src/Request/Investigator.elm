@@ -1,4 +1,4 @@
-module Request.Investigator exposing (list)
+module Request.Investigator exposing (get, list)
 
 import Data.Investigator as Investigator exposing (Investigator)
 import Http
@@ -17,8 +17,6 @@ list =
             "https://www.imicrobe.us/investigator/list.json"
 
         decoder =
-            -- Decode.list Investigator
-            -- Decode.dict Decode.string
             Decode.list (Decode.dict Decode.string)
     in
     HttpBuilder.get url
@@ -27,12 +25,17 @@ list =
 
 
 
-{--
-get : Int -> Http.Request Profile
-get username maybeToken =
-    apiUrl ("/profiles/" ++ User.usernameToString username)
-        |> HttpBuilder.get
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.field "profile" Profile.decoder))
-        |> withAuthorization maybeToken
+-- get : Int -> Http.Request Profile
+
+
+get id =
+    let
+        url =
+            "https://www.imicrobe.us/investigator/view" ++ toString id ++ ".json"
+
+        decoder =
+            Decode.dict Decode.string
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
---}

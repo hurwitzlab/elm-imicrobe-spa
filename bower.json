@@ -1,0 +1,22 @@
+{
+  "name": "imicrobe-spa",
+  "homepage": "https://github.com/hurwitzlab/elm-imicrobe-spa",
+  "authors": [
+    "Ken Youens-Clark <kyclark@gmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "js/bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "^3.3.7",
+    "datatables": "^1.10.15"
+  }
+}
