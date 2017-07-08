@@ -1,6 +1,8 @@
 module Page.Investigator exposing (Model, Msg, init, update, view)
 
+import Data.Investigator
 import Dict
+import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -11,12 +13,13 @@ import View.Page as Page
 
 
 ---- MODEL ----
+-- , investigator : Dict.Dict String String
 
 
 type alias Model =
     { pageTitle : String
     , investigator_id : Int
-    , investigator : Dict.Dict String String
+    , investigator : Data.Investigator.Investigator
     }
 
 
@@ -59,9 +62,54 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        inv =
+            model.investigator
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ text (toString model.investigator) ]
+            , table [ class "table" ]
+                [ tr []
+                    [ th [] [ text "Name" ]
+                    , td [] [ text inv.investigator_name ]
+                    ]
+                , tr []
+                    [ th [] [ text "Institution" ]
+                    , td [] [ text inv.institution ]
+                    ]
+                ]
             ]
         ]
+
+
+
+{--
+view : Model -> Html Msg
+view model =
+    let
+        inv =
+            model.investigator
+
+        name =
+            EDict.getWithDefault "NA" "investigator_name" inv
+
+        inst =
+            EDict.getWithDefault "NA" "institution" inv
+    in
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 [] [ text model.pageTitle ]
+            , table [ class "table" ]
+                [ tr []
+                    [ th [] [ text "Name" ]
+                    , td [] [ text name ]
+                    ]
+                , tr []
+                    [ th [] [ text "Institution" ]
+                    , td [] [ text inst ]
+                    ]
+                ]
+            ]
+        ]
+        --}
