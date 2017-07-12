@@ -1,0 +1,43 @@
+{
+  "name": "elm-imicrobe-spa",
+  "version": "1.0.0",
+  "description": "Simple SPA iMicrobe.  Structured to handle each page as a separate module in a similar fashion to a MVC app. Made to be the bare minimum of a SPA but with a structure that can scale well.",
+  "main": "dist/bundle.js",
+  "dependencies": {
+    "bootstrap": "^3.3.7",
+    "bootstrap-loader": "^2.1.0",
+    "css-loader": "^0.28.4",
+    "datatables": "^1.10.13",
+    "elm-webpack-loader": "^4.3.1",
+    "file-loader": "^0.11.2",
+    "jquery": "^3.2.1",
+    "style-loader": "^0.18.2",
+    "url-loader": "^0.5.9",
+    "webpack": "^3.1.0",
+    "webpack-dev-server": "^2.5.1"
+    "bootstrap-sass": "^3.3.7",
+    "imports-loader": "^0.7.1",
+    "less": "^2.7.2",
+    "less-loader": "^4.0.5",
+    "node-sass": "^4.5.3",
+    "resolve-url-loader": "^2.1.0",
+    "sass-loader": "^6.0.6",
+  },
+  "devDependencies": {
+  },
+  "scripts": {
+    "start": "webpack-dev-server --hot --inline",
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hurwitzlab/elm-imicrobe-spa.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hurwitzlab/elm-imicrobe-spa/issues"
+  },
+  "homepage": "https://github.com/hurwitzlab/elm-imicrobe-spa#readme"
+}
