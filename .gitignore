@@ -6,3 +6,5 @@ repl-temp-*
 dist/
 node_modules/
 *.swp
+js/
+elm.js
