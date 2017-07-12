@@ -4,6 +4,5 @@ elm-stuff/
 repl-temp-*
 
 dist/
-src/index.js
 node_modules/
 *.swp
