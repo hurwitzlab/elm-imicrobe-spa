@@ -16,6 +16,12 @@ type alias Investigator =
     }
 
 
+type alias Domain =
+    { domain_id : Int
+    , domain_name : String
+    }
+
+
 
 -- stringInt =
 --     JD.string |> JD.map String.toInt |> JD.andThen JDE.fromResult
@@ -32,7 +38,7 @@ type alias Project =
     , assembly_file : String
     , peptide_file : String
     , num_samples : String
-    , domains : List String
+    , domains : List Domain
     , investigators : List Investigator
     }
 
@@ -49,6 +55,13 @@ decoderInv =
         |> optional "institution" Decode.string "NA"
 
 
+decoderDomain : Decoder Domain
+decoderDomain =
+    decode Domain
+        |> required "domain_id" Decode.int
+        |> required "domain_name" Decode.string
+
+
 decoder : Decoder Project
 decoder =
     decode Project
@@ -62,7 +75,7 @@ decoder =
         |> optional "assembly_file" Decode.string "NA"
         |> optional "peptide_file" Decode.string "NA"
         |> optional "num_samples" Decode.string ""
-        |> optional "domains" (Decode.list Decode.string) []
+        |> optional "domains" (Decode.list decoderDomain) []
         |> optional "investigators" (Decode.list decoderInv) []
 
 

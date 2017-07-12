@@ -24,7 +24,8 @@ list =
             host ++ "/projects"
 
         decoder =
-            Decode.list (Decode.dict Decode.string)
+            -- Decode.list (Decode.dict Decode.string)
+            Decode.list Project.decoder
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

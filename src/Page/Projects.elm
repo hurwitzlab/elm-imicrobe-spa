@@ -1,5 +1,6 @@
 module Page.Projects exposing (Model, Msg, init, update, view)
 
+import Data.Project
 import Dict
 import Exts.Dict as EDict
 import Html exposing (..)
@@ -17,7 +18,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , projects : List (Dict.Dict String String)
+    , projects : List Data.Project.Project
     }
 
 
@@ -78,7 +79,7 @@ viewProjects projects =
                 [ thead []
                     [ tr []
                         [ th [] [ text "Name" ]
-                        , th [] [ text "Institution" ]
+                        , th [] [ text "Domains" ]
                         ]
                     ]
                 , tbody []
@@ -86,27 +87,26 @@ viewProjects projects =
                 ]
 
 
+viewDomain domain =
+    a [ href ("/domain" ++ domain.domain_name) ] [ text domain.domain_name ]
+
+
+viewDomains domains =
+    List.map viewDomain domains
+
+
 rowProject project =
     let
-        id_s =
-            EDict.getWithDefault "0" "project_id" project
+        invs =
+            project.investigators
 
-        id =
-            case String.toInt id_s of
-                Ok i ->
-                    i
-
-                _ ->
-                    0
-
-        name =
-            EDict.getWithDefault "NA" "project_name" project
-
-        inst =
-            EDict.getWithDefault "NA" "institution" project
+        domains =
+            List.intersperse (text ", ") (viewDomains project.domains)
     in
     tr []
-        -- [ td [] [ a [ Route.href (Route.P id) ] [ text name ] ]
-        [ td [] [ text name ]
-        , td [] [ text inst ]
+        [ td []
+            [ a [ Route.href (Route.Project project.project_id) ]
+                [ text project.project_name ]
+            ]
+        , td [] domains
         ]

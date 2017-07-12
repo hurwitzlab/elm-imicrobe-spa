@@ -35,7 +35,21 @@ init =
 
         handleLoadError err =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString err)
+            let
+                errMsg =
+                    case err of
+                        Http.BadStatus response ->
+                            case String.length response.body of
+                                0 ->
+                                    "Bad status"
+
+                                _ ->
+                                    response.body
+
+                        _ ->
+                            toString err
+            in
+            Error.pageLoadError Page.Home errMsg
     in
     Task.map2 Model title loadInvestigators
         |> Task.mapError handleLoadError

@@ -1,6 +1,7 @@
 module Page.Investigator exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
+import Debug
 import Dict
 import Exts.Dict as EDict
 import Html exposing (..)
@@ -13,7 +14,6 @@ import View.Page as Page
 
 
 ---- MODEL ----
--- , investigator : Dict.Dict String String
 
 
 type alias Model =
@@ -35,7 +35,21 @@ init id =
 
         handleLoadError err =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString err)
+            let
+                errMsg =
+                    case err of
+                        Http.BadStatus response ->
+                            case String.length response.body of
+                                0 ->
+                                    "Bad status"
+
+                                _ ->
+                                    response.body
+
+                        _ ->
+                            toString err
+            in
+            Error.pageLoadError Page.Home errMsg
     in
     Task.map3 Model title (Task.succeed id) loadInvestigator
         |> Task.mapError handleLoadError
@@ -62,54 +76,22 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        inv =
-            model.investigator
-    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , table [ class "table" ]
-                [ tr []
-                    [ th [] [ text "Name" ]
-                    , td [] [ text inv.investigator_name ]
-                    ]
-                , tr []
-                    [ th [] [ text "Institution" ]
-                    , td [] [ text inv.institution ]
-                    ]
-                ]
+            , viewInvestigator model.investigator
             ]
         ]
 
 
-
-{--
-view : Model -> Html Msg
-view model =
-    let
-        inv =
-            model.investigator
-
-        name =
-            EDict.getWithDefault "NA" "investigator_name" inv
-
-        inst =
-            EDict.getWithDefault "NA" "institution" inv
-    in
-    div [ class "container" ]
-        [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , table [ class "table" ]
-                [ tr []
-                    [ th [] [ text "Name" ]
-                    , td [] [ text name ]
-                    ]
-                , tr []
-                    [ th [] [ text "Institution" ]
-                    , td [] [ text inst ]
-                    ]
-                ]
+viewInvestigator inv =
+    table [ class "table" ]
+        [ tr []
+            [ th [] [ text "Name" ]
+            , td [] [ text inv.investigator_name ]
+            ]
+        , tr []
+            [ th [] [ text "Institution" ]
+            , td [] [ text inv.institution ]
             ]
         ]
-        --}

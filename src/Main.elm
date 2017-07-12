@@ -35,6 +35,10 @@ type Page
     | Projects Projects.Model
 
 
+
+--     | Project Int Projects.Model
+
+
 type PageState
     = Loaded Page
     | TransitioningFrom Page
@@ -56,6 +60,10 @@ type Msg
     | InvestigatorsMsg Investigators.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
+
+
+
+--    | ProjectLoaded Int (Result PageLoadError Project.Model)
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -85,6 +93,10 @@ setRoute maybeRoute model =
             transition InvestigatorsLoaded Investigators.init
 
         Just Route.Projects ->
+            transition ProjectsLoaded Projects.init
+
+        Just (Route.Project id) ->
+            -- transition (ProjectLoaded id) (Project.init id)
             transition ProjectsLoaded Projects.init
 
 
@@ -160,6 +172,13 @@ updatePage page msg model =
         ( ProjectsLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        {--
+        ( ProjectLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Project id subModel) } => Cmd.none
+
+        ( ProjectLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+            --}
         -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
             toPage Home HomeMsg Home.update subMsg subModel
@@ -238,6 +257,12 @@ viewPage isLoading page =
 
 
 
+{--
+        Project id subModel ->
+            Project.view subModel
+                |> layout Page.Project
+                |> Html.map ProjectMsg
+                --}
 ---- SUBSCRIPTIONS ----
 
 
