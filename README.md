@@ -7,6 +7,7 @@ This is basically a trimmed down version of the Elm [Real World](https://github.
 ## Get It Running
 
 ```
+elm package install
 npm install
 npm run build
 npm start
