@@ -4,9 +4,7 @@
     "repository": "https://github.com/simon-larsson/elm-template.git",
     "license": "BSD3",
     "source-directories": [
-        "src",
-		  "src/Page",
-          "src/View"
+        "src"
     ],
     "exposed-modules": [],
     "dependencies": {

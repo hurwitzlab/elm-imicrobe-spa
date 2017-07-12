@@ -6,10 +6,8 @@ This is basically a trimmed down version of the Elm [Real World](https://github.
 
 ## Get It Running
 
-**1.** Install `elm` and `elm-live`:
-
-> npm install -g elm elm-live
-
-**2.** Build and run:
-
-> elm-live --output=elm.js src/Main.elm --pushstate --open
+```
+npm install
+npm run build
+npm start
+```

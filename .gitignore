@@ -3,6 +3,6 @@ elm-stuff/
 # elm-repl generated files
 repl-temp-*
 
-elm.js
-js/bower_components
+dist/
+node_modules/
 *.swp
