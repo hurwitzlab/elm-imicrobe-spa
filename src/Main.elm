@@ -166,11 +166,17 @@ updatePage page msg model =
         ( InvestigatorsLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        ( InvestigatorsMsg subMsg, Investigators subModel ) ->
+            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
+
         ( ProjectsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
 
         ( ProjectsLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( ProjectsMsg subMsg, Projects subModel ) ->
+            toPage Projects ProjectsMsg Projects.update subMsg subModel
 
         {--
         ( ProjectLoaded id (Ok subModel), _ ) ->
@@ -179,6 +185,7 @@ updatePage page msg model =
         ( ProjectLoaded id (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
             --}
+
         -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
             toPage Home HomeMsg Home.update subMsg subModel
