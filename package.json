@@ -23,7 +23,8 @@
     "resolve-url-loader": "^2.1.0",
     "sass-loader": "^6.0.6"
   },
-  "devDependencies": {},
+  "devDependencies": {
+  },
   "scripts": {
     "start": "webpack-dev-server --hot --inline",
     "build": "webpack",
