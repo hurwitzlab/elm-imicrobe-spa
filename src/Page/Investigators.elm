@@ -1,25 +1,29 @@
 module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
+import Debug
 import Dict
 import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Investigator
 import Route
+import Table
 import Task exposing (Task)
 import View.Page as Page
 
 
 ---- MODEL ----
--- , investigators : List (Dict.Dict String String)
 
 
 type alias Model =
     { pageTitle : String
     , investigators : List Data.Investigator.Investigator
+    , tableState : Table.State
+    , query : String
     }
 
 
@@ -32,6 +36,12 @@ init =
 
         loadInvestigators =
             Request.Investigator.list |> Http.toTask
+
+        tblState =
+            Task.succeed (Table.initialSort "Name")
+
+        qry =
+            Task.succeed ""
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -51,7 +61,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map2 Model title loadInvestigators
+    Task.map4 Model title loadInvestigators tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -60,26 +70,63 @@ init =
 
 
 type Msg
-    = Todo
+    = SetQuery String
+    | SetTableState Table.State
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Todo ->
-            ( model, Cmd.none )
+        SetQuery newQuery ->
+            let
+                foo =
+                    Debug.log "newQuery" newQuery
+            in
+            ( { model | query = newQuery }
+            , Cmd.none
+            )
+
+        SetTableState newState ->
+            ( { model | tableState = newState }
+            , Cmd.none
+            )
+
+
+config : Table.Config Data.Investigator.Investigator Msg
+config =
+    Table.config
+        { toId = .investigator_name
+        , toMsg = SetTableState
+        , columns =
+            [ Table.stringColumn "Name" .investigator_name
+            , Table.stringColumn "Inst" .institution
+            ]
+        }
 
 
 
 -- VIEW --
+-- , div [] [ viewInvestigators model.investigators ]
 
 
 view : Model -> Html Msg
 view model =
+    let
+        query =
+            model.query
+
+        lowerQuery =
+            String.toLower query
+
+        acceptablePeople =
+            List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ viewInvestigators model.investigators ]
+            , text ("query = " ++ model.query)
+            , input [ placeholder "Search by Name", onInput SetQuery ] []
+            , Table.view config model.tableState acceptablePeople
             ]
         ]
 
@@ -107,31 +154,3 @@ rowInv inv =
         [ td [] [ a [ Route.href (Route.Investigator inv.investigator_id) ] [ text inv.investigator_name ] ]
         , td [] [ text inv.institution ]
         ]
-
-
-
-{--
-rowInv inv =
-    let
-        id_s =
-            EDict.getWithDefault "0" "investigator_id" inv
-
-        id =
-            case String.toInt id_s of
-                Ok i ->
-                    i
-
-                _ ->
-                    0
-
-        name =
-            EDict.getWithDefault "NA" "investigator_name" inv
-
-        inst =
-            EDict.getWithDefault "NA" "institution" inv
-    in
-    tr []
-        [ td [] [ a [ Route.href (Route.Investigator id) ] [ text name ] ]
-        , td [] [ text inst ]
-        ]
-        --}
