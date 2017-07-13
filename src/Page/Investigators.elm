@@ -1,7 +1,6 @@
 module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
-import Debug
 import Dict
 import Exts.Dict as EDict
 import Html exposing (..)
@@ -78,10 +77,6 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetQuery newQuery ->
-            let
-                foo =
-                    Debug.log "newQuery" newQuery
-            in
             ( { model | query = newQuery }
             , Cmd.none
             )
@@ -124,7 +119,6 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , text ("query = " ++ model.query)
             , input [ placeholder "Search by Name", onInput SetQuery ] []
             , Table.view config model.tableState acceptablePeople
             ]
