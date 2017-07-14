@@ -10,6 +10,7 @@ import Page.Investigator as Investigator
 import Page.Investigators as Investigators
 import Page.NotFound as NotFound
 import Page.Projects as Projects
+import Page.Samples as Samples
 import Route exposing (..)
 import Task
 import Util exposing ((=>))
@@ -33,6 +34,7 @@ type Page
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
     | Projects Projects.Model
+    | Samples Samples.Model
 
 
 
@@ -60,6 +62,8 @@ type Msg
     | InvestigatorsMsg Investigators.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
+    | SamplesLoaded (Result PageLoadError Samples.Model)
+    | SamplesMsg Samples.Msg
 
 
 
@@ -98,6 +102,12 @@ setRoute maybeRoute model =
         Just (Route.Project id) ->
             -- transition (ProjectLoaded id) (Project.init id)
             transition ProjectsLoaded Projects.init
+
+        Just Route.Samples ->
+            transition SamplesLoaded Samples.init
+
+        Just (Route.Sample id) ->
+            transition SamplesLoaded Samples.init
 
 
 getPage : PageState -> Page
@@ -178,13 +188,14 @@ updatePage page msg model =
         ( ProjectsMsg subMsg, Projects subModel ) ->
             toPage Projects ProjectsMsg Projects.update subMsg subModel
 
-        {--
-        ( ProjectLoaded id (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Project id subModel) } => Cmd.none
+        ( SamplesLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Samples subModel) } => Cmd.none
 
-        ( ProjectLoaded id (Err error), _ ) ->
+        ( SamplesLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
-            --}
+
+        ( SamplesMsg subMsg, Samples subModel ) ->
+            toPage Samples SamplesMsg Samples.update subMsg subModel
 
         -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
@@ -262,6 +273,10 @@ viewPage isLoading page =
                 |> layout Page.Projects
                 |> Html.map ProjectsMsg
 
+        Samples subModel ->
+            Samples.view subModel
+                |> layout Page.Samples
+                |> Html.map SamplesMsg
 
 
 {--

@@ -12,6 +12,7 @@ type ActivePage
     | Investigator
     | Investigators
     | Projects
+    | Samples
 
 
 {-| Take a page's Html and layout it with a header and footer.
@@ -58,7 +59,7 @@ viewHeader page isLoading =
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
                             [ li [] [ a [ Route.href Route.Investigators ] [ text "Investigators" ] ]
                             , li [] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
-                            , li [] [ a [] [ text "Samples" ] ]
+                            , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
                             ]
                         ]
                     , li []

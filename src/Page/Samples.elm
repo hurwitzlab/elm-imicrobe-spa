@@ -1,12 +1,12 @@
-module Page.Projects exposing (Model, Msg, init, update, view)
+module Page.Samples exposing (Model, Msg, init, update, view)
 
-import Data.Project
+import Data.Sample
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Project
+import Request.Sample
 import Route
 import Table
 import Task exposing (Task)
@@ -20,7 +20,7 @@ import List exposing (map)
 
 type alias Model =
     { pageTitle : String
-    , projects : List Data.Project.Project
+    , samples : List Data.Sample.Sample
     , tableState : Table.State
     , query : String
     }
@@ -31,10 +31,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Projects"
+            Task.succeed "Samples"
 
-        loadProjects =
-            Request.Project.list |> Http.toTask
+        loadSamples =
+            Request.Sample.list |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -60,7 +60,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadProjects tblState qry
+    Task.map4 Model title loadSamples tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -87,28 +87,17 @@ update msg model =
             )
 
 
-config : Table.Config Data.Project.Project Msg
+config : Table.Config Data.Sample.Sample Msg
 config =
     Table.config
-        { toId = .project_name
+        { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
-            [ Table.stringColumn "Name" .project_name
-            , domainColumn
+            [ Table.stringColumn "Project" .project_name
+            , Table.stringColumn "Sample" .sample_name
+            , Table.stringColumn "Type" .sample_type
             ]
         }
-
-domainColumn : Table.Column Data.Project.Project Msg
-domainColumn =
-  Table.customColumn
-    { name = "Domains"
-    , viewData = domainsToString << .domains
-    , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
-    }
-
-domainsToString : List Data.Project.Domain -> String
-domainsToString domains =
-    join ", " (List.map .domain_name domains)
 
 
 
@@ -124,56 +113,39 @@ view model =
         lowerQuery =
             String.toLower query
 
-        acceptableProjects =
-            List.filter (String.contains lowerQuery << String.toLower << .project_name) model.projects
+        acceptableSamples =
+            List.filter (String.contains lowerQuery << String.toLower << .sample_name) model.samples
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , input [ placeholder "Search by Name", onInput SetQuery ] []
-            , Table.view config model.tableState acceptableProjects
+            , Table.view config model.tableState acceptableSamples
             ]
         ]
 
 
-viewProjects projects =
-    case List.length projects of
+viewSamples samples =
+    case List.length samples of
         0 ->
-            text "No projects"
+            text "No samples"
 
         _ ->
             table [ class "table" ]
                 [ thead []
                     [ tr []
                         [ th [] [ text "Name" ]
-                        , th [] [ text "Domains" ]
                         ]
                     ]
                 , tbody []
-                    (List.map rowProject projects)
+                    (List.map rowSample samples)
                 ]
 
 
-viewDomain domain =
-    a [ href ("/domain" ++ domain.domain_name) ] [ text domain.domain_name ]
-
-
-viewDomains domains =
-    List.map viewDomain domains
-
-
-rowProject project =
-    let
-        invs =
-            project.investigators
-
-        domains =
-            List.intersperse (text ", ") (viewDomains project.domains)
-    in
+rowSample sample =
     tr []
         [ td []
-            [ a [ Route.href (Route.Project project.project_id) ]
-                [ text project.project_name ]
+            [ a [ Route.href (Route.Sample sample.sample_id) ]
+                [ text sample.sample_name ]
             ]
-        , td [] domains
         ]
