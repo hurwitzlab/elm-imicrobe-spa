@@ -93,7 +93,8 @@ config =
         { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
-            [ Table.stringColumn "Project" .project_name
+            [ Table.stringColumn "Domain" .domain_name
+            , Table.stringColumn "Project" .project_name
             , Table.stringColumn "Sample" .sample_name
             , Table.stringColumn "Type" .sample_type
             ]

@@ -11,6 +11,7 @@ type alias Sample =
     , project_name : String
     , sample_name : String
     , sample_type : String
+    , domain_name : String
     }
 
 
@@ -25,6 +26,7 @@ decoder =
         |> required "project_name" Decode.string
         |> required "sample_name" Decode.string
         |> optional "sample_type" Decode.string "NA"
+        |> optional "domain_name" Decode.string ""
 
 
 encode : Sample -> Value
@@ -34,4 +36,5 @@ encode sample =
         , "project_name" => Encode.string sample.project_name
         , "sample_name" => Encode.string sample.sample_name
         , "sample_type" => Encode.string sample.sample_type
+        , "domain_name" => Encode.string sample.domain_name
         ]
