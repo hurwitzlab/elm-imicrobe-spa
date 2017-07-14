@@ -1,14 +1,12 @@
-module Data.Project exposing (Project, decoder, encode)
+module Data.Project exposing (Project, Domain, decoder, encode)
 
-import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
-import Json.Encode.Extra as JDE
-import UrlParser
 import Util exposing ((=>))
 
 
+-- FIXME (mdb): should be imported from Data.Investigator
 type alias Investigator =
     { investigator_id : Int
     , investigator_name : String
