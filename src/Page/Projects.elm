@@ -1,16 +1,18 @@
 module Page.Projects exposing (Model, Msg, init, update, view)
 
 import Data.Project
-import Dict
-import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Route
+import Table
 import Task exposing (Task)
 import View.Page as Page
+import String exposing (join)
+import List exposing (map)
 
 
 ---- MODEL ----
@@ -19,6 +21,8 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , projects : List Data.Project.Project
+    , tableState : Table.State
+    , query : String
     }
 
 
@@ -32,11 +36,31 @@ init =
         loadProjects =
             Request.Project.list |> Http.toTask
 
+        tblState =
+            Task.succeed (Table.initialSort "Name")
+
+        qry =
+            Task.succeed ""
+
         handleLoadError err =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString err)
+            let
+                errMsg =
+                    case err of
+                        Http.BadStatus response ->
+                            case String.length response.body of
+                                0 ->
+                                    "Bad status"
+
+                                _ ->
+                                    response.body
+
+                        _ ->
+                            toString err
+            in
+            Error.pageLoadError Page.Home errMsg
     in
-    Task.map2 Model title loadProjects
+    Task.map4 Model title loadProjects tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -45,26 +69,69 @@ init =
 
 
 type Msg
-    = Todo
+    = SetQuery String
+    | SetTableState Table.State
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Todo ->
-            ( model, Cmd.none )
+        SetQuery newQuery ->
+            ( { model | query = newQuery }
+            , Cmd.none
+            )
+
+        SetTableState newState ->
+            ( { model | tableState = newState }
+            , Cmd.none
+            )
 
 
+config : Table.Config Data.Project.Project Msg
+config =
+    Table.config
+        { toId = .project_name
+        , toMsg = SetTableState
+        , columns =
+            [ Table.stringColumn "Name" .project_name
+            , domainColumn
+            ]
+        }
+
+domainColumn : Table.Column Data.Project.Project Msg
+domainColumn =
+  Table.customColumn
+    { name = "Domains"
+    , viewData = domainsToString << .domains
+    , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
+    }
+
+domainsToString : List Data.Project.Domain -> String
+domainsToString domains =
+    join ", " (List.map .domain_name domains)
+
+    
 
 -- VIEW --
 
 
 view : Model -> Html Msg
 view model =
+    let
+        query =
+            model.query
+
+        lowerQuery =
+            String.toLower query
+
+        acceptableProjects =
+            List.filter (String.contains lowerQuery << String.toLower << .project_name) model.projects
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ viewProjects model.projects ]
+            , input [ placeholder "Search by Name", onInput SetQuery ] []
+            , Table.view config model.tableState acceptableProjects
             ]
         ]
 
