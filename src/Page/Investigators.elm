@@ -1,8 +1,6 @@
 module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
-import Dict
-import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -90,18 +88,31 @@ update msg model =
 config : Table.Config Data.Investigator.Investigator Msg
 config =
     Table.config
-        { toId = .investigator_name
+        { toId = toString << .investigator_id
         , toMsg = SetTableState
         , columns =
-            [ Table.stringColumn "Name" .investigator_name
+            [ nameColumn
             , Table.stringColumn "Inst" .institution
             ]
         }
 
 
+nameColumn : Table.Column Data.Investigator.Investigator Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = nameLink
+        , sorter = Table.unsortable
+        }
+
+
+nameLink : Data.Investigator.Investigator -> Table.HtmlDetails Msg
+nameLink inv =
+    Table.HtmlDetails [] [ a [ Route.href (Route.Investigator inv.investigator_id) ] [ text inv.investigator_name ] ]
+
+
 
 -- VIEW --
--- , div [] [ viewInvestigators model.investigators ]
 
 
 view : Model -> Html Msg
@@ -125,6 +136,7 @@ view model =
         ]
 
 
+viewInvestigators : List Data.Investigator.Investigator -> Html msg
 viewInvestigators invs =
     case List.length invs of
         0 ->
@@ -143,6 +155,7 @@ viewInvestigators invs =
                 ]
 
 
+rowInv : Data.Investigator.Investigator -> Html msg
 rowInv inv =
     tr []
         [ td [] [ a [ Route.href (Route.Investigator inv.investigator_id) ] [ text inv.investigator_name ] ]

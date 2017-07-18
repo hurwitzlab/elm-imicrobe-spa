@@ -1,11 +1,12 @@
-module Page.Investigator exposing (Model, Msg, init, update, view)
+module Page.Sample exposing (Model, Msg, init, update, view)
 
-import Data.Investigator
+import Data.Sample
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Investigator
+import Request.Sample
+import Route
 import Task exposing (Task)
 import View.Page as Page
 
@@ -15,8 +16,8 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , investigator_id : Int
-    , investigator : Data.Investigator.Investigator
+    , sample_id : Int
+    , sample : Data.Sample.Sample
     }
 
 
@@ -25,10 +26,10 @@ init id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigator"
+            Task.succeed "Sample"
 
-        loadInvestigator =
-            Request.Investigator.get id |> Http.toTask
+        loadSample =
+            Request.Sample.get id |> Http.toTask
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -48,7 +49,7 @@ init id =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map3 Model title (Task.succeed id) loadInvestigator
+    Task.map3 Model title (Task.succeed id) loadSample
         |> Task.mapError handleLoadError
 
 
@@ -76,20 +77,30 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , viewInvestigator model.investigator
+            , viewSample model.sample
             ]
         ]
 
 
-viewInvestigator : Data.Investigator.Investigator -> Html msg
-viewInvestigator inv =
+viewSample : Data.Sample.Sample -> Html msg
+viewSample sample =
     table [ class "table" ]
         [ tr []
-            [ th [] [ text "Name" ]
-            , td [] [ text inv.investigator_name ]
+            [ th [] [ text "Project" ]
+            , td []
+                [ a [ Route.href (Route.Project sample.project_id) ] [ text sample.project_name ]
+                ]
             ]
         , tr []
-            [ th [] [ text "Institution" ]
-            , td [] [ text inv.institution ]
+            [ th [] [ text "Sample" ]
+            , td [] [ text sample.sample_name ]
+            ]
+        , tr []
+            [ th [] [ text "Code" ]
+            , td [] [ text sample.sample_acc ]
+            ]
+        , tr []
+            [ th [] [ text "Sample Type" ]
+            , td [] [ text sample.sample_type ]
             ]
         ]

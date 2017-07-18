@@ -6,11 +6,13 @@ import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 
 
+host : String
 host =
     -- "https://www.imicrobe.us
     "http://localhost:3006"
 
 
+list : Http.Request (List Sample)
 list =
     let
         url =
@@ -24,14 +26,8 @@ list =
         |> HttpBuilder.toRequest
 
 
+get : Int -> Http.Request Sample
 get id =
-    let
-        url =
-            host ++ "/samples/" ++ toString id
-
-        decoder =
-            Decode.dict Decode.string
-    in
-    HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+    HttpBuilder.get (host ++ "/samples/" ++ toString id)
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest

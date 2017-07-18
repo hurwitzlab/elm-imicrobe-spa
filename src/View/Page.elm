@@ -6,13 +6,16 @@ import Route exposing (Route)
 
 
 type ActivePage
-    = Other
+    = About
     | Home
-    | About
     | Investigator
     | Investigators
+    | Other
+    | Project
     | Projects
+    | Sample
     | Samples
+    | Search
 
 
 {-| Take a page's Html and layout it with a header and footer.
