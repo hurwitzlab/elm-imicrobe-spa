@@ -1,11 +1,11 @@
-module Page.Investigator exposing (Model, Msg, init, update, view)
+module Page.Profile exposing (Model, Msg, init, update, view)
 
-import Data.Investigator
+import Data.Profile
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Investigator
+import Request.Profile
 import Task exposing (Task)
 import View.Page as Page
 
@@ -15,20 +15,20 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , investigator_id : Int
-    , investigator : Data.Investigator.Investigator
+    , token : String
+    , profile : Data.Profile.Profile
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : String -> Task PageLoadError Model
+init token =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigator"
+            Task.succeed "Profile"
 
-        loadInvestigator =
-            Request.Investigator.get id |> Http.toTask
+        loadProfile =
+            Request.Profile.get token |> Http.toTask |> Task.map .result
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -48,7 +48,7 @@ init id =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map3 Model title (Task.succeed id) loadInvestigator
+    Task.map3 Model title (Task.succeed token) loadProfile
         |> Task.mapError handleLoadError
 
 
@@ -73,22 +73,19 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        [ div [ class "row" ]
+    let
+        profile = model.profile
+    in
+        div [ class "container" ]
             [ h2 [] [ text model.pageTitle ]
-            , viewInvestigator model.investigator
+            , table [ class "table" ]
+                [ tr []
+                    [ th [] [ text "Username" ]
+                    , td [] [ text profile.username ]
+                    ]
+                , tr []
+                    [ th [] [ text "Full name" ]
+                    , td [] [ text (profile.first_name ++ " " ++ profile.last_name) ]
+                    ]
+                ]
             ]
-        ]
-
-viewInvestigator : Data.Investigator.Investigator -> Html msg
-viewInvestigator inv =
-    table [ class "table" ]
-        [ tr []
-            [ th [] [ text "Name" ]
-            , td [] [ text inv.investigator_name ]
-            ]
-        , tr []
-            [ th [] [ text "Institution" ]
-            , td [] [ text inv.institution ]
-            ]
-        ]

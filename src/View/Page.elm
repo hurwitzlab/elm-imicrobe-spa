@@ -15,6 +15,7 @@ type ActivePage
     | Projects
     | Sample
     | Samples
+    | Profile
     | Search
 
 
@@ -72,6 +73,10 @@ viewHeader page isLoading =
                     , li []
                         [ a [ Route.href Route.About ]
                             [ text "About" ]
+                        ]
+                    , li []
+                        [ a [ Route.href Route.Login ]
+                            [ text "Login" ]
                         ]
                     ]
                 ]

@@ -13,11 +13,15 @@ import Page.Project as Project
 import Page.Projects as Projects
 import Page.Sample as Sample
 import Page.Samples as Samples
+import Page.Profile as Profile
 import Page.Search as Search
 import Route exposing (..)
 import Task
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
+import OAuth
+import OAuth.Implicit
+import Debug exposing (log)
 
 
 ---- MODEL ----
@@ -25,6 +29,13 @@ import View.Page as Page exposing (ActivePage)
 
 type alias Model =
     { pageState : PageState
+    , oauth :
+          { authEndpoint : String
+          , clientId : String
+          , redirectUri : String
+          }
+    , token : Maybe OAuth.Token
+    , error : Maybe String
     }
 
 
@@ -34,6 +45,7 @@ type Page
     | Error PageLoadError
     | Home Home.Model
     | About About.Model
+    | Profile String Profile.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
     | Project Int Project.Model
@@ -70,6 +82,9 @@ type Msg
     | SampleMsg Sample.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
+    | Authorize (Result PageLoadError Home.Model)
+    | ProfileLoaded String (Result PageLoadError Profile.Model)
+    | ProfileMsg Profile.Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
 
@@ -94,6 +109,9 @@ setRoute maybeRoute model =
         Just Route.About ->
             transition AboutLoaded About.init
 
+        Just Route.Login ->
+            transition Authorize Home.init
+
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
 
@@ -114,6 +132,9 @@ setRoute maybeRoute model =
 
         Just Route.Search ->
             transition SearchLoaded Search.init
+
+        Just (Route.Profile token) ->
+            transition (ProfileLoaded token) (Profile.init token)
 
 
 getPage : PageState -> Page
@@ -154,9 +175,26 @@ updatePage page msg model =
             pageError model
     in
     case ( msg, page ) of
-        -- Update for page transitions
         ( SetRoute route, _ ) ->
             setRoute route model
+
+        ( Authorize (Ok subModel), _) ->
+            model
+                ! [ OAuth.Implicit.authorize
+                        { clientId = model.oauth.clientId
+                        , redirectUri = model.oauth.redirectUri
+                        , responseType = OAuth.Token
+                        , scope = [ "PRODUCTION" ]
+                        , state = Just "000"
+                        , url = model.oauth.authEndpoint
+                        }
+                  ]
+
+        ( ProfileLoaded token (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
+
+        ( ProfileLoaded token (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( AboutLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (About subModel) } => Cmd.none
@@ -183,7 +221,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( InvestigatorsMsg subMsg, Investigators subModel ) ->
-            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
+            (toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel)
 
         ( ProjectsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
@@ -285,6 +323,11 @@ viewPage isLoading page =
                 |> layout Page.About
                 |> Html.map AboutMsg
 
+        Profile token subModel ->
+            Profile.view subModel
+                |> layout Page.Profile
+                |> Html.map ProfileMsg
+
         Investigator id subModel ->
             Investigator.view subModel
                 |> layout Page.Investigator
@@ -339,14 +382,53 @@ initialPage =
     Blank
 
 
-init : Value -> Location -> ( Model, Cmd Msg )
-init val location =
-    setRoute (Route.fromLocation location)
-        { pageState = Loaded initialPage
-        }
+type alias Flags =
+    { clientId : String
+    }
 
 
-main : Program Value Model Msg
+init : Flags -> Location -> ( Model, Cmd Msg )
+init flags location =
+    let
+        model =
+            { oauth =
+                { authEndpoint = "https://agave.iplantc.org/authorize"
+                , clientId = flags.clientId
+                , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
+                }
+            , error = Nothing
+            , token = Nothing
+            , pageState = Loaded initialPage
+            }
+
+        _ = Debug.log "flags " flags
+
+        -- Kludge for Agave not returning required "token_type=bearer" in redirect
+        location2 = { location | hash = (location.hash ++ "&token_type=bearer") }
+    in
+        case OAuth.Implicit.parse location2 of
+            Ok { token } ->
+                setRoute (Just (Route.Profile (toString token))) { model | token = Just token }
+
+            Err OAuth.Empty ->
+                let _ = Debug.log "OAuth.Empty" ""
+                in
+                    setRoute (Route.fromLocation location)
+                        model
+
+            Err (OAuth.OAuthErr err) ->
+                let _ = Debug.log "OAuth.OAuthErr" err
+                in
+                    { model | error = Just <| OAuth.showErrCode err.error }
+                        ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+
+            Err a ->
+                let _ = Debug.log "Error" ((toString a) ++ (toString location2))
+                in
+                    { model | error = Just "parsing error" } ! []
+
+
+main : Program Flags Model Msg
 main =
     Navigation.programWithFlags (Route.fromLocation >> SetRoute)
         { init = init
