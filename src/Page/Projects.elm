@@ -5,14 +5,14 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
+import List exposing (map)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Route
+import String exposing (join)
 import Table
 import Task exposing (Task)
 import View.Page as Page
-import String exposing (join)
-import List exposing (map)
 
 
 ---- MODEL ----
@@ -93,22 +93,41 @@ config =
         { toId = .project_name
         , toMsg = SetTableState
         , columns =
-            [ Table.stringColumn "Name" .project_name
+            [ nameColumn
             , domainColumn
             ]
         }
 
+
 domainColumn : Table.Column Data.Project.Project Msg
 domainColumn =
-  Table.customColumn
-    { name = "Domains"
-    , viewData = domainsToString << .domains
-    , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
-    }
+    Table.customColumn
+        { name = "Domains"
+        , viewData = domainsToString << .domains
+        , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
+        }
+
 
 domainsToString : List Data.Project.Domain -> String
 domainsToString domains =
     join ", " (List.map .domain_name domains)
+
+
+nameColumn : Table.Column Data.Project.Project Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = nameLink
+        , sorter = Table.unsortable
+        }
+
+
+nameLink : Data.Project.Project -> Table.HtmlDetails Msg
+nameLink project =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Project project.project_id) ]
+            [ text project.project_name ]
+        ]
 
 
 
@@ -136,6 +155,7 @@ view model =
         ]
 
 
+viewProjects : List Data.Project.Project -> Html msg
 viewProjects projects =
     case List.length projects of
         0 ->
@@ -154,14 +174,17 @@ viewProjects projects =
                 ]
 
 
+viewDomain : Data.Project.Domain -> Html msg
 viewDomain domain =
     a [ href ("/domain" ++ domain.domain_name) ] [ text domain.domain_name ]
 
 
+viewDomains : List Data.Project.Domain -> List (Html msg)
 viewDomains domains =
     List.map viewDomain domains
 
 
+rowProject : Data.Project.Project -> Html msg
 rowProject project =
     let
         invs =

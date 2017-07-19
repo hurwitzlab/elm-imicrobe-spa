@@ -5,14 +5,14 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
+import List exposing (map)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
+import String exposing (join)
 import Table
 import Task exposing (Task)
 import View.Page as Page
-import String exposing (join)
-import List exposing (map)
 
 
 ---- MODEL ----
@@ -93,9 +93,8 @@ config =
         { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
-            [ Table.stringColumn "Domain" .domain_name
-            , Table.stringColumn "Project" .project_name
-            , Table.stringColumn "Sample" .sample_name
+            [ nameColumn
+            , projectColumn
             , Table.stringColumn "Type" .sample_type
             ]
         }
@@ -126,27 +125,48 @@ view model =
         ]
 
 
-viewSamples samples =
-    case List.length samples of
-        0 ->
-            text "No samples"
-
-        _ ->
-            table [ class "table" ]
-                [ thead []
-                    [ tr []
-                        [ th [] [ text "Name" ]
-                        ]
-                    ]
-                , tbody []
-                    (List.map rowSample samples)
-                ]
+maxColumnWidth : Int
+maxColumnWidth =
+    40
 
 
-rowSample sample =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Sample sample.sample_id) ]
-                [ text sample.sample_name ]
-            ]
+truncate : String -> String
+truncate string =
+    if String.length string <= maxColumnWidth then
+        string
+    else
+        String.left (maxColumnWidth - 3) string ++ "..."
+
+
+nameColumn : Table.Column Data.Sample.Sample Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Sample"
+        , viewData = nameLink
+        , sorter = Table.increasingOrDecreasingBy .sample_name
+        }
+
+
+nameLink : Data.Sample.Sample -> Table.HtmlDetails Msg
+nameLink sample =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Sample sample.sample_id) ]
+            [ text <| truncate sample.sample_name ]
+        ]
+
+
+projectColumn : Table.Column Data.Sample.Sample Msg
+projectColumn =
+    Table.veryCustomColumn
+        { name = "Project"
+        , viewData = projectLink
+        , sorter = Table.increasingOrDecreasingBy .project_name
+        }
+
+
+projectLink : Data.Sample.Sample -> Table.HtmlDetails Msg
+projectLink sample =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Project sample.project_id) ]
+            [ text <| truncate sample.project_name ]
         ]

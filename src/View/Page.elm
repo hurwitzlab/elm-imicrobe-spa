@@ -6,14 +6,17 @@ import Route exposing (Route)
 
 
 type ActivePage
-    = Other
+    = About
     | Home
-    | About
     | Investigator
     | Investigators
+    | Other
+    | Project
     | Projects
+    | Sample
     | Samples
     | Profile
+    | Search
 
 
 {-| Take a page's Html and layout it with a header and footer.
@@ -47,7 +50,7 @@ viewHeader page isLoading =
                             ]
                         , ul
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                            [ li [] [ a [] [ text "General Search" ] ]
+                            [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
                             , li [] [ a [] [ text "Metadata Search" ] ]
                             ]
                         ]
@@ -75,13 +78,6 @@ viewHeader page isLoading =
                         [ a [ Route.href Route.Login ]
                             [ text "Login" ]
                         ]
-                    ]
-                , Html.form
-                    [ class "navbar-form navbar-right"
-                    , attribute "role" "search"
-                    , action "/search"
-                    ]
-                    [ input [ placeholder "Search" ] []
                     ]
                 ]
             ]

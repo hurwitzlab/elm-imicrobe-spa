@@ -1,4 +1,4 @@
-module Data.Project exposing (Project, Domain, decoder, encode)
+module Data.Project exposing (Domain, Investigator, Project, Publication, decoder, encode)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -7,6 +7,8 @@ import Util exposing ((=>))
 
 
 -- FIXME (mdb): should be imported from Data.Investigator
+
+
 type alias Investigator =
     { investigator_id : Int
     , investigator_name : String
@@ -20,9 +22,16 @@ type alias Domain =
     }
 
 
-
--- stringInt =
---     JD.string |> JD.map String.toInt |> JD.andThen JDE.fromResult
+type alias Publication =
+    { publication_id : Int
+    , title : String
+    , pub_code : String
+    , doi : String
+    , author : String
+    , pubmed_id : Int
+    , journal : String
+    , pub_date : String
+    }
 
 
 type alias Project =
@@ -38,6 +47,7 @@ type alias Project =
     , num_samples : String
     , domains : List Domain
     , investigators : List Investigator
+    , publications : List Publication
     }
 
 
@@ -60,6 +70,19 @@ decoderDomain =
         |> required "domain_name" Decode.string
 
 
+decoderPub : Decoder Publication
+decoderPub =
+    decode Publication
+        |> required "publication_id" Decode.int
+        |> required "title" Decode.string
+        |> optional "pub_code" Decode.string "NA"
+        |> optional "doi" Decode.string "NA"
+        |> optional "author" Decode.string "NA"
+        |> optional "pubmed_id" Decode.int 0
+        |> optional "journal" Decode.string "NA"
+        |> optional "pub_date" Decode.string "NA"
+
+
 decoder : Decoder Project
 decoder =
     decode Project
@@ -75,6 +98,7 @@ decoder =
         |> optional "num_samples" Decode.string ""
         |> optional "domains" (Decode.list decoderDomain) []
         |> optional "investigators" (Decode.list decoderInv) []
+        |> optional "publications" (Decode.list decoderPub) []
 
 
 encode : Project -> Value

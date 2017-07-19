@@ -9,9 +9,12 @@ import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
 import Page.NotFound as NotFound
+import Page.Project as Project
 import Page.Projects as Projects
+import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Profile as Profile
+import Page.Search as Search
 import Route exposing (..)
 import Task
 import Util exposing ((=>))
@@ -45,8 +48,11 @@ type Page
     | Profile String Profile.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
+    | Project Int Project.Model
     | Projects Projects.Model
     | Samples Samples.Model
+    | Sample Int Sample.Model
+    | Search Search.Model
 
 
 type PageState
@@ -65,16 +71,22 @@ type Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
-    | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorMsg Investigator.Msg
+    | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | ProjectLoaded Int (Result PageLoadError Project.Model)
+    | ProjectMsg Project.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
+    | SampleLoaded Int (Result PageLoadError Sample.Model)
+    | SampleMsg Sample.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
     | Authorize (Result PageLoadError Home.Model)
     | ProfileLoaded String (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
+    | SearchLoaded (Result PageLoadError Search.Model)
+    | SearchMsg Search.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -110,13 +122,16 @@ setRoute maybeRoute model =
             transition ProjectsLoaded Projects.init
 
         Just (Route.Project id) ->
-            transition ProjectsLoaded Projects.init
+            transition (ProjectLoaded id) (Project.init id)
 
         Just Route.Samples ->
             transition SamplesLoaded Samples.init
 
         Just (Route.Sample id) ->
-            transition SamplesLoaded Samples.init
+            transition (SampleLoaded id) (Sample.init id)
+
+        Just Route.Search ->
+            transition SearchLoaded Search.init
 
         Just (Route.Profile token) ->
             transition (ProfileLoaded token) (Profile.init token)
@@ -181,16 +196,16 @@ updatePage page msg model =
         ( ProfileLoaded token (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( HomeLoaded (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Home subModel) } => Cmd.none
-
-        ( HomeLoaded (Err error), _ ) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
-
         ( AboutLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (About subModel) } => Cmd.none
 
         ( AboutLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( HomeLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Home subModel) } => Cmd.none
+
+        ( HomeLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( InvestigatorLoaded id (Ok subModel), _ ) ->
@@ -217,6 +232,18 @@ updatePage page msg model =
         ( ProjectsMsg subMsg, Projects subModel ) ->
             toPage Projects ProjectsMsg Projects.update subMsg subModel
 
+        ( ProjectLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Project id subModel) } => Cmd.none
+
+        ( ProjectLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( SampleLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Sample id subModel) } => Cmd.none
+
+        ( SampleLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
         ( SamplesLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Samples subModel) } => Cmd.none
 
@@ -225,6 +252,15 @@ updatePage page msg model =
 
         ( SamplesMsg subMsg, Samples subModel ) ->
             toPage Samples SamplesMsg Samples.update subMsg subModel
+
+        ( SearchLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Search subModel) } => Cmd.none
+
+        ( SearchLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( SearchMsg subMsg, Search subModel ) ->
+            toPage Search SearchMsg Search.update subMsg subModel
 
         -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
@@ -311,6 +347,21 @@ viewPage isLoading page =
             Samples.view subModel
                 |> layout Page.Samples
                 |> Html.map SamplesMsg
+
+        Sample id subModel ->
+            Sample.view subModel
+                |> layout Page.Sample
+                |> Html.map SampleMsg
+
+        Project id subModel ->
+            Project.view subModel
+                |> layout Page.Project
+                |> Html.map ProjectMsg
+
+        Search subModel ->
+            Search.view subModel
+                |> layout Page.Search
+                |> Html.map SearchMsg
 
 
 
