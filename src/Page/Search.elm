@@ -1,10 +1,13 @@
 module Page.Search exposing (Model, Msg, init, update, view)
 
 import Data.Search
+import FormatNumber exposing (format)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import RemoteData exposing (..)
 import Request.Search
 import Route
 import Table
@@ -18,20 +21,18 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , query : String
-    , searchResults : List Data.Search.SearchResult
+    , searchResults : WebData (List Data.Search.SearchResult)
+    , searchResultsMessage : String
     , tableState : Table.State
     }
 
 
-init : String -> Task PageLoadError Model
-init query =
+init : Task PageLoadError Model
+init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Search Results"
-
-        loadSearchResults =
-            Request.Search.get query |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -54,7 +55,7 @@ init query =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title (Task.succeed query) loadSearchResults tblState
+    Task.map5 Model title (Task.succeed "") (Task.succeed NotAsked) (Task.succeed "") tblState
         |> Task.mapError handleLoadError
 
 
@@ -65,6 +66,8 @@ init query =
 type Msg
     = SetQuery String
     | SetTableState Table.State
+    | DoSearch
+    | UpdateSearchResults (WebData (List Data.Search.SearchResult))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -80,6 +83,46 @@ update msg model =
             , Cmd.none
             )
 
+        DoSearch ->
+            ( model, doSearch model )
+
+        UpdateSearchResults response ->
+            let
+                message =
+                    case response of
+                        RemoteData.Success data ->
+                            let
+                                numFound =
+                                    List.length data
+
+                                myLocale =
+                                    { decimals = 0
+                                    , thousandSeparator = ","
+                                    , decimalSeparator = "."
+                                    }
+                            in
+                            "Found "
+                                ++ format myLocale (toFloat numFound)
+                                ++ " for "
+                                ++ model.query
+
+                        _ ->
+                            ""
+            in
+            ( { model
+                | searchResults = response
+                , searchResultsMessage = message
+              }
+            , Cmd.none
+            )
+
+
+doSearch : Model -> Cmd Msg
+doSearch model =
+    Request.Search.get model.query
+        |> RemoteData.sendRequest
+        |> Cmd.map UpdateSearchResults
+
 
 
 -- VIEW --
@@ -87,12 +130,47 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        curQuery =
+            if String.length model.query > 0 then
+                model.query
+            else
+                "Nada"
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , Table.view config model.tableState model.searchResults
+            , div [] [ text ("query = " ++ curQuery) ]
+            , div []
+                [ input [ onInput SetQuery ] []
+                , button [ onClick DoSearch ] [ text "Search" ]
+                ]
+            , div [] (viewResults model)
             ]
         ]
+
+
+viewResults : Model -> List (Html Msg)
+viewResults model =
+    case model.searchResults of
+        RemoteData.Failure err ->
+            [ text ("Error: " ++ toString err) ]
+
+        RemoteData.Success data ->
+            let
+                table =
+                    if List.length data > 0 then
+                        Table.view config model.tableState data
+                    else
+                        text ""
+            in
+            [ text model.searchResultsMessage, table ]
+
+        RemoteData.Loading ->
+            [ text "Loading ..." ]
+
+        RemoteData.NotAsked ->
+            [ text "" ]
 
 
 config : Table.Config Data.Search.SearchResult Msg

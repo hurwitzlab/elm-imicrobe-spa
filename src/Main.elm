@@ -40,7 +40,7 @@ type Page
     | Projects Projects.Model
     | Samples Samples.Model
     | Sample Int Sample.Model
-    | Search String Search.Model
+    | Search Search.Model
 
 
 type PageState
@@ -70,7 +70,7 @@ type Msg
     | SampleMsg Sample.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
-    | SearchLoaded String (Result PageLoadError Search.Model)
+    | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
 
 
@@ -112,8 +112,8 @@ setRoute maybeRoute model =
         Just (Route.Sample id) ->
             transition (SampleLoaded id) (Sample.init id)
 
-        Just (Route.Search query) ->
-            transition (SearchLoaded query) (Search.init query)
+        Just Route.Search ->
+            transition SearchLoaded Search.init
 
 
 getPage : PageState -> Page
@@ -215,11 +215,14 @@ updatePage page msg model =
         ( SamplesMsg subMsg, Samples subModel ) ->
             toPage Samples SamplesMsg Samples.update subMsg subModel
 
-        ( SearchLoaded query (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Search query subModel) } => Cmd.none
+        ( SearchLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Search subModel) } => Cmd.none
 
-        ( SearchLoaded query (Err error), _ ) ->
+        ( SearchLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( SearchMsg subMsg, Search subModel ) ->
+            toPage Search SearchMsg Search.update subMsg subModel
 
         -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
@@ -312,7 +315,7 @@ viewPage isLoading page =
                 |> layout Page.Project
                 |> Html.map ProjectMsg
 
-        Search query subModel ->
+        Search subModel ->
             Search.view subModel
                 |> layout Page.Search
                 |> Html.map SearchMsg

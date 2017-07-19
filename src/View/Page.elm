@@ -49,7 +49,7 @@ viewHeader page isLoading =
                             ]
                         , ul
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                            [ li [] [ a [] [ text "General Search" ] ]
+                            [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
                             , li [] [ a [] [ text "Metadata Search" ] ]
                             ]
                         ]
@@ -73,13 +73,6 @@ viewHeader page isLoading =
                         [ a [ Route.href Route.About ]
                             [ text "About" ]
                         ]
-                    ]
-                , Html.form
-                    [ class "navbar-form navbar-right"
-                    , attribute "role" "search"
-                    , action "/search"
-                    ]
-                    [ input [ placeholder "Search" ] []
                     ]
                 ]
             ]
