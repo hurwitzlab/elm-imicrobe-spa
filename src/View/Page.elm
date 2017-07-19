@@ -13,6 +13,7 @@ type ActivePage
     | Investigators
     | Projects
     | Samples
+    | Profile
 
 
 {-| Take a page's Html and layout it with a header and footer.
@@ -69,6 +70,10 @@ viewHeader page isLoading =
                     , li []
                         [ a [ Route.href Route.About ]
                             [ text "About" ]
+                        ]
+                    , li []
+                        [ a [ Route.href Route.Login ]
+                            [ text "Login" ]
                         ]
                     ]
                 , Html.form
