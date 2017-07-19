@@ -1,9 +1,7 @@
 module Page.Investigator exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
-import Debug
 import Dict
-import Exts.Dict as EDict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -83,7 +81,7 @@ view model =
             ]
         ]
 
-
+viewInvestigator : Data.Investigator.Investigator -> Html msg
 viewInvestigator inv =
     table [ class "table" ]
         [ tr []
