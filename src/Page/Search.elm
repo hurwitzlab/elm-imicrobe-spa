@@ -4,15 +4,14 @@ import Data.Search
 import FormatNumber exposing (format)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
-import Http
+import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
+import List.Extra
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import RemoteData exposing (..)
 import Request.Search
 import Route
 import Table
 import Task exposing (Task)
-import View.Page as Page
 
 
 ---- MODEL ----
@@ -21,42 +20,29 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , query : String
+    , tableState : Table.State
     , searchResults : WebData (List Data.Search.SearchResult)
     , searchResultsMessage : String
-    , tableState : Table.State
+    , searchResultTypes : List String
+    , searchRestrictions : List String
+    }
+
+
+initialModel : Model
+initialModel =
+    { pageTitle = "Search Results"
+    , query = ""
+    , tableState = Table.initialSort "Name"
+    , searchResults = NotAsked
+    , searchResultsMessage = ""
+    , searchResultTypes = []
+    , searchRestrictions = []
     }
 
 
 init : Task PageLoadError Model
 init =
-    let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Search Results"
-
-        tblState =
-            Task.succeed (Table.initialSort "Name")
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
-    in
-    Task.map5 Model title (Task.succeed "") (Task.succeed NotAsked) (Task.succeed "") tblState
-        |> Task.mapError handleLoadError
+    Task.succeed initialModel
 
 
 
@@ -68,6 +54,7 @@ type Msg
     | SetTableState Table.State
     | DoSearch
     | UpdateSearchResults (WebData (List Data.Search.SearchResult))
+    | SelectOption String Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -86,9 +73,24 @@ update msg model =
         DoSearch ->
             ( model, doSearch model )
 
+        SelectOption value bool ->
+            let
+                curOptions =
+                    model.searchRestrictions
+
+                newOpts =
+                    case bool of
+                        True ->
+                            List.sort (value :: curOptions)
+
+                        False ->
+                            List.filter ((/=) value) curOptions
+            in
+            ( { model | searchRestrictions = newOpts }, Cmd.none )
+
         UpdateSearchResults response ->
             let
-                message =
+                ( message, types ) =
                     case response of
                         RemoteData.Success data ->
                             let
@@ -100,18 +102,27 @@ update msg model =
                                     , thousandSeparator = ","
                                     , decimalSeparator = "."
                                     }
+
+                                msg =
+                                    "Found "
+                                        ++ format myLocale (toFloat numFound)
+                                        ++ " for "
+                                        ++ model.query
+
+                                types =
+                                    List.map .table_name data
+                                        |> List.sort
+                                        |> List.Extra.unique
                             in
-                            "Found "
-                                ++ format myLocale (toFloat numFound)
-                                ++ " for "
-                                ++ model.query
+                            ( msg, types )
 
                         _ ->
-                            ""
+                            ( "", [] )
             in
             ( { model
                 | searchResults = response
                 , searchResultsMessage = message
+                , searchResultTypes = types
               }
             , Cmd.none
             )
@@ -131,46 +142,76 @@ doSearch model =
 view : Model -> Html Msg
 view model =
     let
-        curQuery =
-            if String.length model.query > 0 then
-                model.query
-            else
-                "Nada"
+        restrict =
+            case List.length model.searchResultTypes of
+                0 ->
+                    text ""
+
+                _ ->
+                    fieldset []
+                        (text "Show: "
+                            :: List.map mkCheckbox model.searchResultTypes
+                        )
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , div [] [ text ("query = " ++ curQuery) ]
-            , div []
-                [ input [ onInput SetQuery ] []
-                , button [ onClick DoSearch ] [ text "Search" ]
+            [ div [ style [ ( "text-align", "center" ) ] ]
+                [ h2 [] [ text model.pageTitle ]
+                , div []
+                    [ Html.form
+                        [ onSubmit DoSearch ]
+                        [ input [ onInput SetQuery ] []
+                        , button [ onClick DoSearch, class "btn btn-primary" ]
+                            [ text "Search" ]
+                        , text model.searchResultsMessage
+                        , restrict
+                        ]
+                    ]
                 ]
-            , div [] (viewResults model)
+            , div [] [ resultsTable model ]
             ]
         ]
 
 
-viewResults : Model -> List (Html Msg)
-viewResults model =
+mkCheckbox : String -> Html Msg
+mkCheckbox val =
+    label []
+        [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
+        , text val
+        ]
+
+
+resultsTable : Model -> Html Msg
+resultsTable model =
     case model.searchResults of
         RemoteData.Failure err ->
-            [ text ("Error: " ++ toString err) ]
+            text ("Error: " ++ toString err)
 
         RemoteData.Success data ->
             let
-                table =
-                    if List.length data > 0 then
-                        Table.view config model.tableState data
-                    else
-                        text ""
+                filtered =
+                    case List.length model.searchRestrictions of
+                        0 ->
+                            data
+
+                        _ ->
+                            List.filter
+                                (\v ->
+                                    List.member v.table_name
+                                        model.searchRestrictions
+                                )
+                                data
             in
-            [ text model.searchResultsMessage, table ]
+            if List.length filtered > 0 then
+                Table.view config model.tableState filtered
+            else
+                text ""
 
         RemoteData.Loading ->
-            [ text "Loading ..." ]
+            text "Loading ..."
 
         RemoteData.NotAsked ->
-            [ text "" ]
+            text ""
 
 
 config : Table.Config Data.Search.SearchResult Msg
@@ -210,6 +251,14 @@ nameLink result =
 
                 _ ->
                     Route.Home
+
+        name =
+            case result.name of
+                "" ->
+                    "NA"
+
+                _ ->
+                    result.name
     in
     Table.HtmlDetails []
-        [ a [ Route.href route ] [ text result.name ] ]
+        [ a [ Route.href route ] [ text name ] ]

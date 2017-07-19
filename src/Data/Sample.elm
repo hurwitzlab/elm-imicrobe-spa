@@ -20,8 +20,10 @@ type alias Sample =
     , sample_type : String
     , sample_description : String
     , comments : String
-    , taxon_id : Int
+    , taxon_id : String
     , url : String
+    , latitude : Float
+    , longitude : Float
     , project_id : Int
     , project_name : String
     }
@@ -40,8 +42,10 @@ decoder =
         |> optional "sample_type" Decode.string "NA"
         |> optional "sample_description" Decode.string ""
         |> optional "comments" Decode.string ""
-        |> optional "taxon_id" Decode.int 0
+        |> optional "taxon_id" Decode.string ""
         |> optional "url" Decode.string "NA"
+        |> optional "latitude" Decode.float 0.0
+        |> optional "longitude" Decode.float 0.0
         |> required "project_id" Decode.int
         |> required "project_name" Decode.string
 
