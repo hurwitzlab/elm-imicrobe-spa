@@ -382,19 +382,26 @@ initialPage =
     Blank
 
 
-init : Value -> Location -> ( Model, Cmd Msg )
-init val location =
+type alias Flags =
+    { clientId : String
+    }
+
+
+init : Flags -> Location -> ( Model, Cmd Msg )
+init flags location =
     let
         model =
             { oauth =
                 { authEndpoint = "https://agave.iplantc.org/authorize"
-                , clientId = "FIXME"
+                , clientId = flags.clientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
             , error = Nothing
             , token = Nothing
             , pageState = Loaded initialPage
             }
+
+        _ = Debug.log "flags " flags
 
         -- Kludge for Agave not returning required "token_type=bearer" in redirect
         location2 = { location | hash = (location.hash ++ "&token_type=bearer") }
@@ -421,7 +428,7 @@ init val location =
                     { model | error = Just "parsing error" } ! []
 
 
-main : Program Value Model Msg
+main : Program Flags Model Msg
 main =
     Navigation.programWithFlags (Route.fromLocation >> SetRoute)
         { init = init
