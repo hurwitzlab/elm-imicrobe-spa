@@ -26,11 +26,20 @@ type alias Sample =
     , longitude : Float
     , project_id : Int
     , project_name : String
+    , investigators : List Investigator
     }
 
 
 
 -- SERIALIZATION --
+
+
+decoderInv : Decoder Investigator
+decoderInv =
+    decode Investigator
+        |> required "investigator_id" Decode.int
+        |> required "investigator_name" Decode.string
+        |> optional "institution" Decode.string "NA"
 
 
 decoder : Decoder Sample
@@ -48,6 +57,7 @@ decoder =
         |> optional "longitude" Decode.float 0.0
         |> required "project_id" Decode.int
         |> required "project_name" Decode.string
+        |> optional "investigators" (Decode.list decoderInv) []
 
 
 

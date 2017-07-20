@@ -3,9 +3,10 @@ module Page.Samples exposing (Model, Msg, init, update, view)
 import Data.Sample
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onCheck, onInput)
 import Http
 import List exposing (map)
+import List.Extra
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
@@ -23,6 +24,7 @@ type alias Model =
     , samples : List Data.Sample.Sample
     , tableState : Table.State
     , query : String
+    , sampleTypeRestriction : List String
     }
 
 
@@ -60,7 +62,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadSamples tblState qry
+    Task.map5 Model title loadSamples tblState qry (Task.succeed [])
         |> Task.mapError handleLoadError
 
 
@@ -70,6 +72,7 @@ init =
 
 type Msg
     = SetQuery String
+    | SelectOption String Bool
     | SetTableState Table.State
 
 
@@ -86,6 +89,21 @@ update msg model =
             , Cmd.none
             )
 
+        SelectOption value bool ->
+            let
+                curOptions =
+                    model.sampleTypeRestriction
+
+                newOpts =
+                    case bool of
+                        True ->
+                            List.sort (value :: curOptions)
+
+                        False ->
+                            List.filter ((/=) value) curOptions
+            in
+            ( { model | sampleTypeRestriction = newOpts }, Cmd.none )
+
 
 config : Table.Config Data.Sample.Sample Msg
 config =
@@ -93,8 +111,8 @@ config =
         { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
-            [ nameColumn
-            , projectColumn
+            [ projectColumn
+            , nameColumn
             , Table.stringColumn "Type" .sample_type
             ]
         }
@@ -113,15 +131,66 @@ view model =
         lowerQuery =
             String.toLower query
 
+        catter sample =
+            String.concat
+                (List.intersperse " "
+                    [ sample.sample_name
+                    , sample.project_name
+                    , sample.sample_type
+                    ]
+                )
+                |> String.toLower
+
+        filteredSamples =
+            List.filter
+                (\sample -> String.contains lowerQuery (catter sample))
+                model.samples
+
         acceptableSamples =
-            List.filter (String.contains lowerQuery << String.toLower << .sample_name) model.samples
+            case List.length model.sampleTypeRestriction of
+                0 ->
+                    filteredSamples
+
+                _ ->
+                    List.filter
+                        (\v ->
+                            List.member v.sample_type
+                                model.sampleTypeRestriction
+                        )
+                        filteredSamples
+
+        sampleTypes =
+            List.map (\x -> x.sample_type) model.samples
+                |> List.filter ((/=) "")
+                |> List.sort
+                |> List.Extra.unique
+
+        restrict =
+            case List.length sampleTypes of
+                0 ->
+                    text ""
+
+                _ ->
+                    fieldset []
+                        (text "Limit: "
+                            :: List.map mkCheckbox sampleTypes
+                        )
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , input [ placeholder "Search by Name", onInput SetQuery ] []
+            , restrict
             , Table.view config model.tableState acceptableSamples
             ]
+        ]
+
+
+mkCheckbox : String -> Html Msg
+mkCheckbox val =
+    label []
+        [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
+        , text val
         ]
 
 
