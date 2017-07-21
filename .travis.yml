@@ -1,0 +1,26 @@
+language: c
+sudo: required
+dist: trusty
+
+before_install:
+  - pwd
+  - cd /tmp
+  - sudo curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+  - sudo apt install -y nodejs
+  - sudo npm uninstall --save node-uuid  # this module is deprecated and
+  - sudo npm install --save uuid         # causes other installs to fail
+  - sudo npm install -g elm
+install:
+  - pwd
+  - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
+  - ls -l
+  - elm package install
+  - npm install
+  - npm run build
+script:
+  - pwd
+  - ls -l
+notifications:
+  email:
+    on_success: always
+    on_failure: always
