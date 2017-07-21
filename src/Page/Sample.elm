@@ -84,6 +84,13 @@ view model =
 
 viewSample : Data.Sample.Sample -> Html msg
 viewSample sample =
+    let
+        numFiles =
+            List.length sample.files
+
+        numOntologies =
+            List.length sample.ontologies
+    in
     table [ class "table" ]
         [ tr []
             [ th [] [ text "Project" ]
@@ -103,4 +110,53 @@ viewSample sample =
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
             ]
+        , tr []
+            [ th [] [ text <| "Files (" ++ toString numFiles ++ ")" ]
+            , td [] [ viewFiles sample.files ]
+            ]
+        , tr []
+            [ th [] [ text <| "Ontologies (" ++ toString numOntologies ++ ")" ]
+            , td [] [ viewOntologies sample.ontologies ]
+            ]
         ]
+
+
+viewFiles : List Data.Sample.File -> Html msg
+viewFiles files =
+    case List.length files of
+        0 ->
+            text "NA"
+
+        _ ->
+            ul [] (List.map viewFile files)
+
+
+viewFile : Data.Sample.File -> Html msg
+viewFile file =
+    li [] [ text file.file ]
+
+
+viewOntologies : List Data.Sample.Ontology -> Html msg
+viewOntologies ontologies =
+    case List.length ontologies of
+        0 ->
+            text "NA"
+
+        _ ->
+            ul [] (List.map viewOntology ontologies)
+
+
+viewOntology : Data.Sample.Ontology -> Html msg
+viewOntology ont =
+    let
+        display =
+            ont.ontology_acc
+                ++ (case ont.label of
+                        "" ->
+                            ""
+
+                        _ ->
+                            " (" ++ ont.label ++ ")"
+                   )
+    in
+    li [] [ text display ]

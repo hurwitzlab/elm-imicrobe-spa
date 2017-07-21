@@ -82,22 +82,6 @@ view model =
         ]
 
 
-
-{--
-    , project_name : String
-    , project_code : String
-    , project_type : String
-    , description : String
-    , read_file : String
-    , meta_file : String
-    , assembly_file : String
-    , peptide_file : String
-    , num_samples : String
-    , domains : List Domain
-    , investigators : List Investigator
-    --}
-
-
 viewProject : Data.Project.Project -> Html msg
 viewProject project =
     let
@@ -133,6 +117,9 @@ viewProject project =
 
                 _ ->
                     "Publications (" ++ toString numPubs ++ ")"
+
+        numSamples =
+            List.length project.samples
     in
     table [ class "table" ]
         [ tr []
@@ -158,6 +145,10 @@ viewProject project =
         , tr []
             [ th [] [ text pubsText ]
             , td [] (viewPublications project.publications)
+            ]
+        , tr []
+            [ th [] [ text <| "Samples (" ++ toString numSamples ++ ")" ]
+            , td [] [ viewSamples project.samples ]
             ]
         ]
 
@@ -222,3 +213,21 @@ viewPublications pubs =
             List.intersperse
                 (text ", ")
                 (List.map viewPublication pubs)
+
+
+viewSamples : List Data.Project.Sample -> Html msg
+viewSamples samples =
+    case List.length samples of
+        0 ->
+            text "NA"
+
+        _ ->
+            ul [] (List.map viewSample samples)
+
+
+viewSample : Data.Project.Sample -> Html msg
+viewSample sample =
+    li []
+        [ a [ Route.href (Route.Sample sample.sample_id) ]
+            [ text sample.sample_name ]
+        ]

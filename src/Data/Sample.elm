@@ -1,4 +1,4 @@
-module Data.Sample exposing (Investigator, Sample, decoder)
+module Data.Sample exposing (File, Investigator, Ontology, Sample, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -10,6 +10,24 @@ type alias Investigator =
     { investigator_id : Int
     , investigator_name : String
     , institution : String
+    }
+
+
+type alias File =
+    { sample_file_id : Int
+    , file : String
+    , num_seqs : Int
+    , num_bp : Int
+    , avg_len : Int
+    , sample_file_type_id : Int
+    , file_type : String
+    }
+
+
+type alias Ontology =
+    { ontology_acc : String
+    , label : String
+    , ontology_type : String
     }
 
 
@@ -27,6 +45,8 @@ type alias Sample =
     , project_id : Int
     , project_name : String
     , investigators : List Investigator
+    , files : List File
+    , ontologies : List Ontology
     }
 
 
@@ -40,6 +60,26 @@ decoderInv =
         |> required "investigator_id" Decode.int
         |> required "investigator_name" Decode.string
         |> optional "institution" Decode.string "NA"
+
+
+decoderFile : Decoder File
+decoderFile =
+    decode File
+        |> required "sample_file_id" Decode.int
+        |> required "file" Decode.string
+        |> optional "num_seqs" Decode.int 0
+        |> optional "num_bp" Decode.int 0
+        |> optional "avg_len" Decode.int 0
+        |> optional "sample_file_type" Decode.int 0
+        |> optional "file_type" Decode.string ""
+
+
+decoderOnt : Decoder Ontology
+decoderOnt =
+    decode Ontology
+        |> required "ontology_acc" Decode.string
+        |> optional "label" Decode.string "NA"
+        |> optional "ontology_type" Decode.string "NA"
 
 
 decoder : Decoder Sample
@@ -58,6 +98,8 @@ decoder =
         |> required "project_id" Decode.int
         |> required "project_name" Decode.string
         |> optional "investigators" (Decode.list decoderInv) []
+        |> optional "files" (Decode.list decoderFile) []
+        |> optional "ontologies" (Decode.list decoderOnt) []
 
 
 

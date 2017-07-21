@@ -11,11 +11,12 @@ type ActivePage
     | Investigator
     | Investigators
     | Other
+    | Profile
     | Project
     | Projects
     | Sample
     | Samples
-    | Profile
+    | MetaSearch
     | Search
 
 
@@ -51,7 +52,7 @@ viewHeader page isLoading =
                         , ul
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
                             [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
-                            , li [] [ a [] [ text "Metadata Search" ] ]
+                            , li [] [ a [ Route.href Route.MetaSearch ] [ text "Sample Search" ] ]
                             ]
                         ]
                     , li [ class "dropdown" ]

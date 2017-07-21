@@ -1,6 +1,7 @@
 module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
+import Formatting as Fmt exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onInput)
@@ -179,9 +180,12 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
-            , restrict
-            , Table.view config model.tableState acceptableSamples
+            , div [ style [ ( "text-align", "center" ) ] ]
+                [ input [ placeholder "Search by Name", onInput SetQuery ] []
+                , text ("Showing " ++ toString (List.length acceptableSamples))
+                , restrict
+                ]
+            , div [] [ Table.view config model.tableState acceptableSamples ]
             ]
         ]
 
