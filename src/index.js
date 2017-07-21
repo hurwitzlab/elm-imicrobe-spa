@@ -15,6 +15,7 @@ var app = Elm.Main.embed(mountNode, config);
 
 // Initial Google Maps and define Elm ports
 var GoogleMapsLoader = require("google-maps");
+GoogleMapsLoader.KEY = config.googleApiKey;
 var Google;
 GoogleMapsLoader.load(function(google) {
     Google = google;
