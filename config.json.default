@@ -1,3 +1,4 @@
 {
-    "clientId": "Agave API client ID"
+    "oauthClientId": "Agave API client ID",
+    "googleApiKey": "Google Maps API key"
 }

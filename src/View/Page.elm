@@ -17,6 +17,7 @@ type ActivePage
     | Samples
     | Profile
     | Search
+    | Map
 
 
 {-| Take a page's Html and layout it with a header and footer.
