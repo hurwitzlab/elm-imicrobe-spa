@@ -6,6 +6,7 @@ import Html.Attributes exposing (..)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Project
+import Route
 import Task exposing (Task)
 import View.Page as Page
 
@@ -163,7 +164,8 @@ viewProject project =
 
 viewInvestigator : Data.Project.Investigator -> Html msg
 viewInvestigator investigator =
-    text investigator.investigator_name
+    a [ Route.href (Route.Investigator investigator.investigator_id) ]
+        [ text investigator.investigator_name ]
 
 
 viewInvestigators : List Data.Project.Investigator -> List (Html msg)
