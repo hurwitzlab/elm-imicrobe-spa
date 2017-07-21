@@ -14,7 +14,7 @@ install:
   - pwd
   - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
   - ls -l
-  - elm package install
+  - elm package install -y
   - npm install
   - npm run build
 script:
