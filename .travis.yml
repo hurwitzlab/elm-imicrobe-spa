@@ -1,26 +1,24 @@
 language: c
 sudo: required
 dist: trusty
-
 before_install:
-  - pwd
-  - cd /tmp
-  - sudo curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
-  - sudo apt install -y nodejs
-  - sudo npm uninstall --save node-uuid  # this module is deprecated and
-  - sudo npm install --save uuid         # causes other installs to fail
-  - sudo npm install -g elm
+- pwd
+- cd /tmp
+- sudo curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+- sudo apt install -y nodejs
+- sudo npm uninstall --save node-uuid
+- sudo npm install --save uuid
+- sudo npm install -g elm
 install:
-  - pwd
-  - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
-  - cp config.json.default config.json
-  - elm package install -y
-  - npm install
-  - npm run build
+- pwd
+- cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
+- cp config.json.default config.json
+- elm package install -y
+- npm install
+- npm run build
 script:
-  - pwd
-  - ls -l
+- pwd
+- ls -l
 notifications:
-  email:
-    on_success: always
-    on_failure: always
+  slack:
+    secure: p2+DUt/0zVGq7MdWHcNhPz6jG8cRvJY/UL5ePHD1oFseBjEEQsZGYzBdFRA8hqx/Z3J6G8TyZHY2HbE/ki9ybN0ExDdFSR7XnlxxBjQP8Pk32qNmOEzZUzHAMWfz9rKln133nv0pqLLtMBSzLzZameMQPgVpoYjfdPogCZjUUttyrUSv6eyM5dWxcsChky0DsgEvXEY1TI+M25su7fTaQmhmkZnO5A3hNwmDZ6oyWrWn9/qa5gKo9YtWydVmRJZlwIFomD+VjUqepwFmS7J9AQpF8ilNYUv6wWkSKhw9HemcXnS2HCJ5OXk53Ghfj1gQUTJZdoZ9pITU+0GUBMDQisag2GWIWR6nz4fZr9n4JPzvQbFphKJgNQQ3VcT3SmwBkePSrPeTHvEPbcCfHibNN1QV62AteJWUvNvfgE5qHXriiPba/U4xmAI7el9ioWXgeC+EHGag01+zdVgbIzKb0cncIeL6EZ8H4pWD6Tny7YGbVM1x5upkx95OUJyFESooeBaDN8+jnp+ontIMDBuD2AGkRadd+YTRl3SDQYNeA4uh31eg64uKvGhBoUu2sdW9m33W0qHTBfv8b/sXVnPe5vHFhkL8uZIDaoMgiw9kU0nu8ZB1w2Zyy7/rrcgy8eelcWRpCqkgUCHB47KbWMv7/CD0PzOWyoEdHkRQN1Q291Y=
