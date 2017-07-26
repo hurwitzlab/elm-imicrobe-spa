@@ -2,7 +2,6 @@ module Main exposing (..)
 
 import Debug exposing (log)
 import Html exposing (..)
-import Json.Decode as Decode exposing (Value)
 import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
@@ -11,6 +10,7 @@ import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
+import Page.Map as Map
 import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
 import Page.Profile as Profile
@@ -55,6 +55,7 @@ type Page
     | Sample Int Sample.Model
     | Search Search.Model
     | MetaSearch MetaSearch.Model
+    | Map String String Map.Model
 
 
 type PageState
@@ -91,6 +92,8 @@ type Msg
     | SamplesMsg Samples.Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
+    | MapLoaded String String (Result PageLoadError Map.Model)
+    | MapMsg Map.Msg
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -142,6 +145,9 @@ setRoute maybeRoute model =
 
         Just Route.Search ->
             transition SearchLoaded Search.init
+
+        Just (Route.Map lat lng) ->
+            transition (MapLoaded lat lng) (Map.init lat lng)
 
 
 getPage : PageState -> Page
@@ -278,12 +284,20 @@ updatePage page msg model =
         ( SearchMsg subMsg, Search subModel ) ->
             toPage Search SearchMsg Search.update subMsg subModel
 
-        -- Update for page specfic msgs
         ( HomeMsg subMsg, Home subModel ) ->
             toPage Home HomeMsg Home.update subMsg subModel
 
         ( AboutMsg subMsg, About subModel ) ->
             toPage About AboutMsg About.update subMsg subModel
+
+        ( MapLoaded lat lng (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
+
+        ( MapLoaded lat lng (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( MapMsg subMsg, Map lat lng subModel ) ->
+            toPage (Map lat lng) MapMsg Map.update subMsg subModel
 
         ( _, NotFound ) ->
             -- Disregard incoming messages when we're on the
@@ -384,6 +398,11 @@ viewPage isLoading page =
                 |> layout Page.Search
                 |> Html.map SearchMsg
 
+        Map lat lng subModel ->
+            Map.view subModel
+                |> layout Page.Map
+                |> Html.map MapMsg
+
 
 
 ---- SUBSCRIPTIONS ----
@@ -404,7 +423,7 @@ initialPage =
 
 
 type alias Flags =
-    { clientId : String
+    { oauthClientId : String
     }
 
 
@@ -414,7 +433,7 @@ init flags location =
         model =
             { oauth =
                 { authEndpoint = "https://agave.iplantc.org/authorize"
-                , clientId = flags.clientId
+                , clientId = flags.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
             , error = Nothing

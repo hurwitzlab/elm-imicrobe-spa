@@ -3,7 +3,7 @@ module Route exposing (Route(..), fromLocation, href, modifyUrl)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Navigation exposing (Location)
-import UrlParser as Url exposing ((</>), Parser, oneOf, parseHash, s, string)
+import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, string)
 
 
 -- ROUTING --
@@ -22,6 +22,7 @@ type Route
     | Samples
     | MetaSearch
     | Search
+    | Map String String
 
 
 routeMather : Parser (Route -> a) a
@@ -39,6 +40,7 @@ routeMather =
         , Url.map Samples (s "samples")
         , Url.map MetaSearch (s "metasearch")
         , Url.map Search (s "search")
+        , Url.map Map (s "map" </> Url.string </> Url.string)
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -89,6 +91,9 @@ routeToString page =
 
                 Search ->
                     [ "search" ]
+
+                Map lat lng ->
+                    [ "map", lat, lng ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->
