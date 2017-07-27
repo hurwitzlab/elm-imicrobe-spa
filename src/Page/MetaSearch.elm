@@ -599,9 +599,27 @@ mkResultRow fieldList result =
                         "left"
             in
             td [ style [ ( "text-align", align ) ] ] [ text (getVal fldName) ]
+
+        nameCol =
+            let
+                name =
+                    getVal "specimen__sample_name"
+
+                sampleLink =
+                    case String.toInt (getVal "specimen__sample_id") of
+                        Ok sampleId ->
+                            a [ Route.href (Route.Sample sampleId) ]
+                                [ text name ]
+
+                        Err _ ->
+                            text name
+            in
+            td [ style [ ( "text-align", "left" ) ] ] [ sampleLink ]
+
+        otherCols =
+            List.map mkTd fieldList
     in
-    tr []
-        (List.map mkTd (( "specimen__sample_name", "string" ) :: fieldList))
+    tr [] (nameCol :: otherCols)
 
 
 mkRestrictedParams :

@@ -86,7 +86,7 @@ viewSample : Data.Sample.Sample -> Html msg
 viewSample sample =
     let
         numFiles =
-            List.length sample.files
+            List.length sample.sample_files
 
         numOntologies =
             List.length sample.ontologies
@@ -95,7 +95,7 @@ viewSample sample =
         [ tr []
             [ th [] [ text "Project" ]
             , td []
-                [ a [ Route.href (Route.Project sample.project_id) ] [ text sample.project_name ]
+                [ a [ Route.href (Route.Project sample.project_id) ] [ text sample.project.project_name ]
                 ]
             ]
         , tr []
@@ -112,7 +112,7 @@ viewSample sample =
             ]
         , tr []
             [ th [] [ text <| "Files (" ++ toString numFiles ++ ")" ]
-            , td [] [ viewFiles sample.files ]
+            , td [] [ viewFiles sample.sample_files ]
             ]
         , tr []
             [ th [] [ text <| "Ontologies (" ++ toString numOntologies ++ ")" ]
@@ -121,7 +121,7 @@ viewSample sample =
         ]
 
 
-viewFiles : List Data.Sample.File -> Html msg
+viewFiles : List Data.Sample.SampleFile -> Html msg
 viewFiles files =
     case List.length files of
         0 ->
@@ -131,7 +131,7 @@ viewFiles files =
             ul [] (List.map viewFile files)
 
 
-viewFile : Data.Sample.File -> Html msg
+viewFile : Data.Sample.SampleFile -> Html msg
 viewFile file =
     li [] [ text file.file ]
 
