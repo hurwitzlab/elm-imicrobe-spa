@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (..)
 import Navigation exposing (Location)
@@ -393,6 +393,16 @@ subscriptions model =
 
 
 
+---- PORTS ----
+
+
+port saveAuthToken : String -> Cmd msg
+
+
+--port getAuthToken : (String -> msg) -> Sub msg
+
+
+
 ---- PROGRAM ----
 
 
@@ -427,13 +437,16 @@ init flags location =
     in
         case OAuth.Implicit.parse location2 of
             Ok { token } ->
-                setRoute (Just (Route.Profile (toString token))) { model | token = Just token }
+                let
+                    saveToken = saveAuthToken (toString token)
+                in
+                    Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
+                        (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
 
             Err OAuth.Empty ->
                 let _ = Debug.log "OAuth.Empty" ""
                 in
-                    setRoute (Route.fromLocation location)
-                        model
+                    setRoute (Route.fromLocation location) model
 
             Err (OAuth.OAuthErr err) ->
                 let _ = Debug.log "OAuth.OAuthErr" err
