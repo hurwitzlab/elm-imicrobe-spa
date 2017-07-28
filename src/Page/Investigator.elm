@@ -75,11 +75,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "container" ]
-        [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , text (toString model.investigator)
-            , viewInvestigator model.investigator
-            ]
+        [ viewInvestigator model.investigator
         ]
 
 
@@ -92,31 +88,35 @@ viewInvestigator inv =
         numSamples =
             List.length inv.samples
     in
-    table [ class "table" ]
-        [ tr []
-            [ th [] [ text "Name" ]
-            , td [] [ text inv.investigator_name ]
+      div []
+        [ div []
+            [ h2 [] [ text "Investigator" ]
+            , table [ class "table" ]
+                [ tr []
+                    [ th [] [ text "Name" ]
+                    , td [] [ text inv.investigator_name ]
+                    ]
+                , tr []
+                    [ th [] [ text "Institution" ]
+                    , td [] [ text inv.institution ]
+                    ]
+                ]
             ]
-        , tr []
-            [ th [] [ text "Institution" ]
-            , td [] [ text inv.institution ]
+        , div []
+            [ h2 [] [ text "Projects" ]
+            , viewProjects inv.projects
             ]
-        , tr []
-            [ th [] [ text <| "Projects (" ++ toString numProjects ++ ")" ]
-            , td [] [ viewProjects inv.projects ]
-            ]
-        , tr []
-            [ th [] [ text <| "Samples (" ++ toString numSamples ++ ")" ]
-            , td [] [ viewSamples inv.samples ]
+        , div []
+            [ h2 [] [ text "Samples" ]
+            , viewSamples inv.samples
             ]
         ]
-
 
 viewProjects : List Data.Investigator.Project -> Html msg
 viewProjects projects =
     case List.length projects of
         0 ->
-            text ""
+            text "None"
 
         _ ->
             ul [] (List.map viewProject projects)
@@ -134,7 +134,7 @@ viewSamples : List Data.Investigator.Sample -> Html msg
 viewSamples samples =
     case List.length samples of
         0 ->
-            text ""
+            text "None"
 
         _ ->
             ul [] (List.map viewSample samples)
