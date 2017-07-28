@@ -11,7 +11,7 @@ import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
 import String exposing (join)
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
 
@@ -107,7 +107,7 @@ update msg model =
 
 config : Table.Config Data.Sample.Sample Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
@@ -115,7 +115,15 @@ config =
             , nameColumn
             , Table.stringColumn "Type" .sample_type
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+  [ attribute "class" "table"
+  ]
 
 
 

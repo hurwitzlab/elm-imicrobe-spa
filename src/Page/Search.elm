@@ -10,7 +10,7 @@ import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import RemoteData exposing (..)
 import Request.Search
 import Route
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 
 
@@ -216,14 +216,22 @@ resultsTable model =
 
 config : Table.Config Data.Search.SearchResult Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .id
         , toMsg = SetTableState
         , columns =
             [ Table.stringColumn "Type" .table_name
             , nameColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+  [ attribute "class" "table"
+  ]
 
 
 nameColumn : Table.Column Data.Search.SearchResult Msg
