@@ -1,27 +1,28 @@
 port module Main exposing (..)
 
+import Debug exposing (log)
 import Html exposing (..)
 import Navigation exposing (Location)
+import OAuth
+import OAuth.Implicit
 import Page.About as About
 import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
+import Page.Map as Map
+import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
+import Page.Profile as Profile
 import Page.Project as Project
 import Page.Projects as Projects
 import Page.Sample as Sample
 import Page.Samples as Samples
-import Page.Profile as Profile
 import Page.Search as Search
-import Page.Map as Map
 import Route exposing (..)
 import Task
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
-import OAuth
-import OAuth.Implicit
-import Debug exposing (log)
 
 
 ---- MODEL ----
@@ -30,10 +31,10 @@ import Debug exposing (log)
 type alias Model =
     { pageState : PageState
     , oauth :
-          { authEndpoint : String
-          , clientId : String
-          , redirectUri : String
-          }
+        { authEndpoint : String
+        , clientId : String
+        , redirectUri : String
+        }
     , token : Maybe OAuth.Token
     , error : Maybe String
     }
@@ -53,6 +54,7 @@ type Page
     | Samples Samples.Model
     | Sample Int Sample.Model
     | Search Search.Model
+    | MetaSearch MetaSearch.Model
     | Map String String Map.Model
 
 
@@ -69,23 +71,25 @@ type Msg
     = SetRoute (Maybe Route)
     | AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
+    | Authorize (Result PageLoadError Home.Model)
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | ProfileLoaded String (Result PageLoadError Profile.Model)
+    | ProfileMsg Profile.Msg
     | ProjectLoaded Int (Result PageLoadError Project.Model)
     | ProjectMsg Project.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
     | SampleLoaded Int (Result PageLoadError Sample.Model)
     | SampleMsg Sample.Msg
+    | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
+    | MetaSearchMsg MetaSearch.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
-    | Authorize (Result PageLoadError Home.Model)
-    | ProfileLoaded String (Result PageLoadError Profile.Model)
-    | ProfileMsg Profile.Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
@@ -106,14 +110,11 @@ setRoute maybeRoute model =
         Nothing ->
             { model | pageState = Loaded NotFound } => Cmd.none
 
-        Just Route.Home ->
-            transition HomeLoaded Home.init
-
         Just Route.About ->
             transition AboutLoaded About.init
 
-        Just Route.Login ->
-            transition Authorize Home.init
+        Just Route.Home ->
+            transition HomeLoaded Home.init
 
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
@@ -121,23 +122,29 @@ setRoute maybeRoute model =
         Just Route.Investigators ->
             transition InvestigatorsLoaded Investigators.init
 
-        Just Route.Projects ->
-            transition ProjectsLoaded Projects.init
+        Just Route.Login ->
+            transition Authorize Home.init
+
+        Just (Route.Profile token) ->
+            transition (ProfileLoaded token) (Profile.init token)
 
         Just (Route.Project id) ->
             transition (ProjectLoaded id) (Project.init id)
 
-        Just Route.Samples ->
-            transition SamplesLoaded Samples.init
+        Just Route.Projects ->
+            transition ProjectsLoaded Projects.init
 
         Just (Route.Sample id) ->
             transition (SampleLoaded id) (Sample.init id)
 
+        Just Route.Samples ->
+            transition SamplesLoaded Samples.init
+
+        Just Route.MetaSearch ->
+            transition MetaSearchLoaded MetaSearch.init
+
         Just Route.Search ->
             transition SearchLoaded Search.init
-
-        Just (Route.Profile token) ->
-            transition (ProfileLoaded token) (Profile.init token)
 
         Just (Route.Map lat lng) ->
             transition (MapLoaded lat lng) (Map.init lat lng)
@@ -184,7 +191,7 @@ updatePage page msg model =
         ( SetRoute route, _ ) ->
             setRoute route model
 
-        ( Authorize (Ok subModel), _) ->
+        ( Authorize (Ok subModel), _ ) ->
             model
                 ! [ OAuth.Implicit.authorize
                         { clientId = model.oauth.clientId
@@ -195,12 +202,6 @@ updatePage page msg model =
                         , url = model.oauth.authEndpoint
                         }
                   ]
-
-        ( ProfileLoaded token (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
-
-        ( ProfileLoaded token (Err error), _ ) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( AboutLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (About subModel) } => Cmd.none
@@ -227,7 +228,22 @@ updatePage page msg model =
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( InvestigatorsMsg subMsg, Investigators subModel ) ->
-            (toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel)
+            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
+
+        ( ProfileLoaded token (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
+
+        ( ProfileLoaded token (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( MetaSearchLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
+
+        ( MetaSearchLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
+            toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
 
         ( ProjectsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
@@ -327,20 +343,15 @@ viewPage isLoading page =
             Error.view subModel
                 |> layout Page.Other
 
-        Home subModel ->
-            Home.view subModel
-                |> layout Page.Home
-                |> Html.map HomeMsg
-
         About subModel ->
             About.view subModel
                 |> layout Page.About
                 |> Html.map AboutMsg
 
-        Profile token subModel ->
-            Profile.view subModel
-                |> layout Page.Profile
-                |> Html.map ProfileMsg
+        Home subModel ->
+            Home.view subModel
+                |> layout Page.Home
+                |> Html.map HomeMsg
 
         Investigator id subModel ->
             Investigator.view subModel
@@ -352,10 +363,25 @@ viewPage isLoading page =
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
 
+        MetaSearch subModel ->
+            MetaSearch.view subModel
+                |> layout Page.MetaSearch
+                |> Html.map MetaSearchMsg
+
         Projects subModel ->
             Projects.view subModel
                 |> layout Page.Projects
                 |> Html.map ProjectsMsg
+
+        Profile token subModel ->
+            Profile.view subModel
+                |> layout Page.Profile
+                |> Html.map ProfileMsg
+
+        Project id subModel ->
+            Project.view subModel
+                |> layout Page.Project
+                |> Html.map ProjectMsg
 
         Samples subModel ->
             Samples.view subModel
@@ -366,11 +392,6 @@ viewPage isLoading page =
             Sample.view subModel
                 |> layout Page.Sample
                 |> Html.map SampleMsg
-
-        Project id subModel ->
-            Project.view subModel
-                |> layout Page.Project
-                |> Html.map ProjectMsg
 
         Search subModel ->
             Search.view subModel
@@ -430,10 +451,12 @@ init flags location =
             , pageState = Loaded initialPage
             }
 
-        _ = Debug.log "flags " flags
+        _ =
+            Debug.log "flags " flags
 
         -- Kludge for Agave not returning required "token_type=bearer" in redirect
-        location2 = { location | hash = (location.hash ++ "&token_type=bearer") }
+        location2 =
+            { location | hash = location.hash ++ "&token_type=bearer" }
     in
         case OAuth.Implicit.parse location2 of
             Ok { token } ->

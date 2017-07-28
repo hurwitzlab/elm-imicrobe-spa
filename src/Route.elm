@@ -12,14 +12,15 @@ import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, str
 type Route
     = Home
     | About
+    | Investigator Int
+    | Investigators
     | Login
     | Profile String
-    | Investigators
-    | Investigator Int
-    | Projects
     | Project Int
-    | Samples
+    | Projects
     | Sample Int
+    | Samples
+    | MetaSearch
     | Search
     | Map String String
 
@@ -27,16 +28,17 @@ type Route
 routeMather : Parser (Route -> a) a
 routeMather =
     oneOf
-        [ Url.map Home (s "")
-        , Url.map About (s "about")
+        [ Url.map About (s "about")
+        , Url.map Home (s "")
+        , Url.map Investigator (s "investigators" </> Url.int)
+        , Url.map Investigators (s "investigators")
         , Url.map Login (s "login")
         , Url.map Profile (s "profile" </> Url.string)
-        , Url.map Investigators (s "investigators")
-        , Url.map Investigator (s "investigators" </> Url.int)
-        , Url.map Projects (s "projects")
         , Url.map Project (s "projects" </> Url.int)
-        , Url.map Samples (s "samples")
+        , Url.map Projects (s "projects")
         , Url.map Sample (s "samples" </> Url.int)
+        , Url.map Samples (s "samples")
+        , Url.map MetaSearch (s "metasearch")
         , Url.map Search (s "search")
         , Url.map Map (s "map" </> Url.string </> Url.string)
 
@@ -54,17 +56,11 @@ routeToString page =
     let
         pagePath =
             case page of
-                Home ->
-                    []
-
                 About ->
                     [ "about" ]
 
-                Login ->
-                    [ "login" ]
-
-                Profile token ->
-                    [ "profile", token ]
+                Home ->
+                    []
 
                 Investigator id ->
                     [ "investigators", toString id ]
@@ -72,17 +68,26 @@ routeToString page =
                 Investigators ->
                     [ "investigators" ]
 
-                Projects ->
-                    [ "projects" ]
+                Login ->
+                    [ "login" ]
+
+                Profile token ->
+                    [ "profile", token ]
 
                 Project id ->
                     [ "projects", toString id ]
 
-                Samples ->
-                    [ "samples" ]
+                Projects ->
+                    [ "projects" ]
 
                 Sample id ->
                     [ "samples", toString id ]
+
+                Samples ->
+                    [ "samples" ]
+
+                MetaSearch ->
+                    [ "metasearch" ]
 
                 Search ->
                     [ "search" ]

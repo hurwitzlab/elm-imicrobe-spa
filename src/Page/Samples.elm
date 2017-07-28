@@ -135,7 +135,7 @@ view model =
             String.concat
                 (List.intersperse " "
                     [ sample.sample_name
-                    , sample.project_name
+                    , sample.project.project_name
                     , sample.sample_type
                     ]
                 )
@@ -179,9 +179,12 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
-            , restrict
-            , Table.view config model.tableState acceptableSamples
+            , div [ style [ ( "text-align", "center" ) ] ]
+                [ input [ placeholder "Search by Name", onInput SetQuery ] []
+                , text ("Showing " ++ toString (List.length acceptableSamples))
+                , restrict
+                ]
+            , div [] [ Table.view config model.tableState acceptableSamples ]
             ]
         ]
 
@@ -229,7 +232,7 @@ projectColumn =
     Table.veryCustomColumn
         { name = "Project"
         , viewData = projectLink
-        , sorter = Table.increasingOrDecreasingBy .project_name
+        , sorter = Table.increasingOrDecreasingBy (.project >> .project_name >> String.toLower)
         }
 
 
@@ -237,5 +240,5 @@ projectLink : Data.Sample.Sample -> Table.HtmlDetails Msg
 projectLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project sample.project_id) ]
-            [ text <| truncate sample.project_name ]
+            [ text <| truncate sample.project.project_name ]
         ]
