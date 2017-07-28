@@ -1,6 +1,8 @@
 module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onInput)
@@ -122,8 +124,8 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-  [ attribute "class" "table"
-  ]
+    [ attribute "class" "table"
+    ]
 
 
 
@@ -183,14 +185,24 @@ view model =
                         (text "Limit: "
                             :: List.map mkCheckbox sampleTypes
                         )
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                num =
+                    List.length acceptableSamples |> toFloat |> format myLocale
+            in
+            text ("Showing " ++ num)
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , div [ style [ ( "text-align", "center" ) ] ]
                 [ input [ placeholder "Search by Name", onInput SetQuery ] []
-                , text ("Showing " ++ toString (List.length acceptableSamples))
                 , restrict
+                , numShowing
                 ]
             , div [] [ Table.view config model.tableState acceptableSamples ]
             ]
@@ -223,7 +235,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .sample_name
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << .sample_name)
         }
 
 

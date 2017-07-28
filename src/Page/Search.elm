@@ -22,7 +22,7 @@ type alias Model =
     , query : String
     , tableState : Table.State
     , searchResults : WebData (List Data.Search.SearchResult)
-    , searchResultsMessage : String
+    , searchResultsMessage : Html Msg
     , searchResultTypes : List String
     , searchRestrictions : List String
     }
@@ -34,7 +34,7 @@ initialModel =
     , query = ""
     , tableState = Table.initialSort "Name"
     , searchResults = NotAsked
-    , searchResultsMessage = ""
+    , searchResultsMessage = text ""
     , searchResultTypes = []
     , searchRestrictions = []
     }
@@ -104,10 +104,14 @@ update msg model =
                                     }
 
                                 msg =
-                                    "Found "
-                                        ++ format myLocale (toFloat numFound)
-                                        ++ " for "
-                                        ++ model.query
+                                    span []
+                                        [ text
+                                            ("Found "
+                                                ++ format myLocale (toFloat numFound)
+                                                ++ " for "
+                                            )
+                                        , em [] [ text model.query ]
+                                        ]
 
                                 types =
                                     List.map .table_name data
@@ -117,7 +121,7 @@ update msg model =
                             ( msg, types )
 
                         _ ->
-                            ( "", [] )
+                            ( text "", [] )
             in
             ( { model
                 | searchResults = response
@@ -157,13 +161,17 @@ view model =
         [ div [ class "row" ]
             [ div [ style [ ( "text-align", "center" ) ] ]
                 [ h2 [] [ text model.pageTitle ]
-                , div []
+                , div [ class "form-inline" ]
                     [ Html.form
                         [ onSubmit DoSearch ]
-                        [ input [ onInput SetQuery ] []
-                        , button [ onClick DoSearch, class "btn btn-primary" ]
+                        [ input
+                            [ placeholder "Search for", class "form-control", size 30, onInput SetQuery ]
+                            []
+                        , button
+                            [ onClick DoSearch, class "btn btn-primary" ]
                             [ text "Search" ]
-                        , text model.searchResultsMessage
+                        , br [] []
+                        , model.searchResultsMessage
                         , restrict
                         ]
                     ]
@@ -230,8 +238,8 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-  [ attribute "class" "table"
-  ]
+    [ attribute "class" "table"
+    ]
 
 
 nameColumn : Table.Column Data.Search.SearchResult Msg
