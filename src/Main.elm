@@ -6,6 +6,8 @@ import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
 import Page.About as About
+import Page.Domain as Domain
+import Page.Domains as Domains
 import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
@@ -15,7 +17,10 @@ import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
 import Page.Profile as Profile
 import Page.Project as Project
+import Page.ProjectGroup as ProjectGroup
+import Page.ProjectGroups as ProjectGroups
 import Page.Projects as Projects
+import Page.Publications as Publications
 import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
@@ -45,12 +50,17 @@ type Page
     | NotFound
     | Error PageLoadError
     | Home Home.Model
+    | Domains Domains.Model
+    | Domain Int Domain.Model
     | About About.Model
     | Profile String Profile.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
+    | Publications Publications.Model
     | Project Int Project.Model
     | Projects Projects.Model
+    | ProjectGroup Int ProjectGroup.Model
+    | ProjectGroups ProjectGroups.Model
     | Samples Samples.Model
     | Sample Int Sample.Model
     | Search Search.Model
@@ -74,16 +84,26 @@ type Msg
     | Authorize (Result PageLoadError Home.Model)
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
+    | DomainLoaded Int (Result PageLoadError Domain.Model)
+    | DomainMsg Domain.Msg
+    | DomainsLoaded (Result PageLoadError Domains.Model)
+    | DomainsMsg Domains.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | PublicationsLoaded (Result PageLoadError Publications.Model)
+    | PublicationsMsg Publications.Msg
     | ProfileLoaded String (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectLoaded Int (Result PageLoadError Project.Model)
     | ProjectMsg Project.Msg
     | ProjectsLoaded (Result PageLoadError Projects.Model)
     | ProjectsMsg Projects.Msg
+    | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
+    | ProjectGroupMsg ProjectGroup.Msg
+    | ProjectGroupsMsg ProjectGroups.Msg
+    | ProjectGroupsLoaded (Result PageLoadError ProjectGroups.Model)
     | SampleLoaded Int (Result PageLoadError Sample.Model)
     | SampleMsg Sample.Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
@@ -116,6 +136,12 @@ setRoute maybeRoute model =
         Just Route.Home ->
             transition HomeLoaded Home.init
 
+        Just Route.Domains ->
+            transition DomainsLoaded Domains.init
+
+        Just (Route.Domain id) ->
+            transition (DomainLoaded id) (Domain.init id)
+
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
 
@@ -125,6 +151,9 @@ setRoute maybeRoute model =
         Just Route.Login ->
             transition Authorize Home.init
 
+        Just Route.Publications ->
+            transition PublicationsLoaded Publications.init
+
         Just (Route.Profile token) ->
             transition (ProfileLoaded token) (Profile.init token)
 
@@ -133,6 +162,12 @@ setRoute maybeRoute model =
 
         Just Route.Projects ->
             transition ProjectsLoaded Projects.init
+
+        Just (Route.ProjectGroup id) ->
+            transition (ProjectGroupLoaded id) (ProjectGroup.init id)
+
+        Just Route.ProjectGroups ->
+            transition ProjectGroupsLoaded ProjectGroups.init
 
         Just (Route.Sample id) ->
             transition (SampleLoaded id) (Sample.init id)
@@ -209,6 +244,21 @@ updatePage page msg model =
         ( AboutLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        ( DomainsLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Domains subModel) } => Cmd.none
+
+        ( DomainsLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( DomainsMsg subMsg, Domains subModel ) ->
+            toPage Domains DomainsMsg Domains.update subMsg subModel
+
+        ( DomainLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Domain id subModel) } => Cmd.none
+
+        ( DomainLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
         ( HomeLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Home subModel) } => Cmd.none
 
@@ -245,6 +295,15 @@ updatePage page msg model =
         ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
             toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
 
+        ( PublicationsLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Publications subModel) } => Cmd.none
+
+        ( PublicationsLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( PublicationsMsg subMsg, Publications subModel ) ->
+            toPage Publications PublicationsMsg Publications.update subMsg subModel
+
         ( ProjectsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
 
@@ -259,6 +318,21 @@ updatePage page msg model =
 
         ( ProjectLoaded id (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( ProjectGroupLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
+
+        ( ProjectGroupLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( ProjectGroupsLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (ProjectGroups subModel) } => Cmd.none
+
+        ( ProjectGroupsLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( ProjectGroupsMsg subMsg, ProjectGroups subModel ) ->
+            toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
 
         ( SampleLoaded id (Ok subModel), _ ) ->
             { model | pageState = Loaded (Sample id subModel) } => Cmd.none
@@ -348,6 +422,16 @@ viewPage isLoading page =
                 |> layout Page.About
                 |> Html.map AboutMsg
 
+        Domains subModel ->
+            Domains.view subModel
+                |> layout Page.Domains
+                |> Html.map DomainsMsg
+
+        Domain id subModel ->
+            Domain.view subModel
+                |> layout Page.Domain
+                |> Html.map DomainMsg
+
         Home subModel ->
             Home.view subModel
                 |> layout Page.Home
@@ -368,10 +452,25 @@ viewPage isLoading page =
                 |> layout Page.MetaSearch
                 |> Html.map MetaSearchMsg
 
+        Publications subModel ->
+            Publications.view subModel
+                |> layout Page.Publications
+                |> Html.map PublicationsMsg
+
         Projects subModel ->
             Projects.view subModel
                 |> layout Page.Projects
                 |> Html.map ProjectsMsg
+
+        ProjectGroups subModel ->
+            ProjectGroups.view subModel
+                |> layout Page.ProjectGroups
+                |> Html.map ProjectGroupsMsg
+
+        ProjectGroup id subModel ->
+            ProjectGroup.view subModel
+                |> layout Page.ProjectGroup
+                |> Html.map ProjectGroupMsg
 
         Profile token subModel ->
             Profile.view subModel

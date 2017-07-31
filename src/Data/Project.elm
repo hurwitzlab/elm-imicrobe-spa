@@ -1,4 +1,4 @@
-module Data.Project exposing (Domain, Investigator, Project, Publication, Sample, decoder, encode)
+module Data.Project exposing (Domain, Investigator, Project, ProjectGroup, Publication, Sample, decoder, encode)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -34,6 +34,21 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
+    , project_groups : List ProjectGroup
+    }
+
+
+type alias ProjectGroup =
+    { project_group_id : Int
+    , group_name : String
+    , project_to_project_group : ProjectToGroup
+    }
+
+
+type alias ProjectToGroup =
+    { project_to_project_group_id : Int
+    , project_id : Int
+    , project_group_id : Int
     }
 
 
@@ -84,6 +99,15 @@ decoder =
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
+        |> optional "project_groups" (Decode.list decoderProjectGroup) []
+
+
+decoderProjectGroup : Decoder ProjectGroup
+decoderProjectGroup =
+    decode ProjectGroup
+        |> required "project_group_id" Decode.int
+        |> required "group_name" Decode.string
+        |> required "project_to_project_group" decoderProjectToGroup
 
 
 decoderInv : Decoder Investigator
@@ -99,6 +123,14 @@ decoderDomain =
     decode Domain
         |> required "domain_id" Decode.int
         |> required "domain_name" Decode.string
+
+
+decoderProjectToGroup : Decoder ProjectToGroup
+decoderProjectToGroup =
+    decode ProjectToGroup
+        |> required "project_to_project_group_id" Decode.int
+        |> required "project_id" Decode.int
+        |> required "project_group_id" Decode.int
 
 
 decoderPub : Decoder Publication

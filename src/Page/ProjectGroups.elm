@@ -1,12 +1,12 @@
-module Page.Investigators exposing (Model, Msg, init, update, view)
+module Page.ProjectGroups exposing (Model, Msg, init, update, view)
 
-import Data.Investigator
+import Data.ProjectGroup
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Investigator
+import Request.ProjectGroup
 import Route
 import Table
 import Task exposing (Task)
@@ -18,7 +18,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , investigators : List Data.Investigator.Investigator
+    , projectGroups : List Data.ProjectGroup.ProjectGroup
     , tableState : Table.State
     , query : String
     }
@@ -29,10 +29,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigators"
+            Task.succeed "Project Groups"
 
-        loadInvestigators =
-            Request.Investigator.list |> Http.toTask
+        loadProjectGroups =
+            Request.ProjectGroup.list |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -58,7 +58,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadInvestigators tblState qry
+    Task.map4 Model title loadProjectGroups tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -85,19 +85,18 @@ update msg model =
             )
 
 
-config : Table.Config Data.Investigator.Investigator Msg
+config : Table.Config Data.ProjectGroup.ProjectGroup Msg
 config =
     Table.config
-        { toId = toString << .investigator_id
+        { toId = toString << .project_group_id
         , toMsg = SetTableState
         , columns =
             [ nameColumn
-            , Table.stringColumn "Inst" .institution
             ]
         }
 
 
-nameColumn : Table.Column Data.Investigator.Investigator Msg
+nameColumn : Table.Column Data.ProjectGroup.ProjectGroup Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
@@ -106,11 +105,11 @@ nameColumn =
         }
 
 
-nameLink : Data.Investigator.Investigator -> Table.HtmlDetails Msg
-nameLink inv =
+nameLink : Data.ProjectGroup.ProjectGroup -> Table.HtmlDetails Msg
+nameLink group =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Investigator inv.investigator_id) ]
-            [ text inv.investigator_name ]
+        [ a [ Route.href (Route.ProjectGroup group.project_group_id) ]
+            [ text group.group_name ]
         ]
 
 
@@ -128,7 +127,9 @@ view model =
             String.toLower query
 
         acceptablePeople =
-            List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
+            List.filter
+                (String.contains lowerQuery << String.toLower << .group_name)
+                model.projectGroups
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -136,31 +137,4 @@ view model =
             , input [ placeholder "Search by Name", onInput SetQuery ] []
             , Table.view config model.tableState acceptablePeople
             ]
-        ]
-
-
-viewInvestigators : List Data.Investigator.Investigator -> Html msg
-viewInvestigators invs =
-    case List.length invs of
-        0 ->
-            text "No investigators"
-
-        _ ->
-            table [ class "table" ]
-                [ thead []
-                    [ tr []
-                        [ th [] [ text "Name" ]
-                        , th [] [ text "Institution" ]
-                        ]
-                    ]
-                , tbody []
-                    (List.map rowInv invs)
-                ]
-
-
-rowInv : Data.Investigator.Investigator -> Html msg
-rowInv inv =
-    tr []
-        [ td [] [ a [ Route.href (Route.Investigator inv.investigator_id) ] [ text inv.investigator_name ] ]
-        , td [] [ text inv.institution ]
         ]

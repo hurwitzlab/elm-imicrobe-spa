@@ -7,13 +7,18 @@ import Route exposing (Route)
 
 type ActivePage
     = About
+    | Domains
+    | Domain
     | Home
     | Investigator
     | Investigators
     | Other
+    | Publications
     | Profile
     | Project
     | Projects
+    | ProjectGroups
+    | ProjectGroup
     | Sample
     | Samples
     | MetaSearch
@@ -64,7 +69,10 @@ viewHeader page isLoading =
                         , ul
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
                             [ li [] [ a [ Route.href Route.Investigators ] [ text "Investigators" ] ]
+                            , li [] [ a [ Route.href Route.Domains ] [ text "Domains" ] ]
                             , li [] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+                            , li [] [ a [ Route.href Route.ProjectGroups ] [ text "Project Groups" ] ]
+                            , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
                             , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
                             ]
                         ]
