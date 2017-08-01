@@ -127,7 +127,7 @@ decoder =
         |> required "sample_id" Decode.int
         |> required "project_id" Decode.int
         |> optional "combined_assembly_id" Decode.int 0
-        |> required "sample_acc" Decode.string
+        |> optional "sample_acc" Decode.string "NA"
         |> required "sample_name" Decode.string
         |> optional "sample_type" Decode.string "NA"
         |> optional "sample_description" Decode.string ""

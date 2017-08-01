@@ -1,6 +1,8 @@
 module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onInput)
@@ -11,7 +13,7 @@ import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
 import String exposing (join)
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing (truncate)
 import View.Page as Page
@@ -108,7 +110,7 @@ update msg model =
 
 config : Table.Config Data.Sample.Sample Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
         , columns =
@@ -116,7 +118,15 @@ config =
             , nameColumn
             , Table.stringColumn "Type" .sample_type
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table"
+    ]
 
 
 
@@ -176,14 +186,24 @@ view model =
                         (text "Limit: "
                             :: List.map mkCheckbox sampleTypes
                         )
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                num =
+                    List.length acceptableSamples |> toFloat |> format myLocale
+            in
+            text ("Showing " ++ num)
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , div [ style [ ( "text-align", "center" ) ] ]
                 [ input [ placeholder "Search by Name", onInput SetQuery ] []
-                , text ("Showing " ++ toString (List.length acceptableSamples))
                 , restrict
+                , numShowing
                 ]
             , div [] [ Table.view config model.tableState acceptableSamples ]
             ]
@@ -203,7 +223,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .sample_name
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << .sample_name)
         }
 
 

@@ -5,12 +5,13 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
+import Json.Encode as Encode
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Project
 import Route
 import String exposing (join)
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
 
@@ -89,14 +90,22 @@ update msg model =
 
 config : Table.Config Data.Project.Project Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = .project_name
         , toMsg = SetTableState
         , columns =
             [ nameColumn
             , domainColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+  [ attribute "class" "table"
+  ]
 
 
 domainColumn : Table.Column Data.Project.Project Msg
@@ -155,23 +164,23 @@ view model =
         ]
 
 
-viewProjects : List Data.Project.Project -> Html msg
-viewProjects projects =
-    case List.length projects of
-        0 ->
-            text "No projects"
-
-        _ ->
-            table [ class "table" ]
-                [ thead []
-                    [ tr []
-                        [ th [] [ text "Name" ]
-                        , th [] [ text "Domains" ]
-                        ]
-                    ]
-                , tbody []
-                    (List.map rowProject projects)
-                ]
+--viewProjects : List Data.Project.Project -> Html msg
+--viewProjects projects =
+--    case List.length projects of
+--        0 ->
+--            text "No projects"
+--
+--        _ ->
+--            table [ class "table" ]
+--                [ thead []
+--                    [ tr []
+--                        [ th [] [ text "Name" ]
+--                        , th [] [ text "Domains" ]
+--                        ]
+--                    ]
+--                , tbody []
+--                    (List.map rowProject projects)
+--                ]
 
 
 viewDomain : Data.Project.Domain -> Html msg

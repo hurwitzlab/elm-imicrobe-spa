@@ -38,3 +38,15 @@ app.ports.setCenter.subscribe(function(model) {
     var myLatlng = new Google.maps.LatLng(model.center.lat, model.center.lng);
     model.gmap.setCenter(myLatlng);
 });
+
+// Define ports for saving/retrieving auth token
+app.ports.saveAuthToken.subscribe(function(token) {
+    console.log("saveAuthToken: ", token);
+    localStorage.setItem("token", token);
+});
+
+//app.ports.getAuthToken.subscribe(function(token) {
+//    var token = localStorage.getItem("token");
+//    console.log("getAuthToken: ", token);
+//    app.ports.receiveToken.send(token);
+//});

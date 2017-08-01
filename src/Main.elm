@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Debug exposing (log)
 import Html exposing (..)
@@ -588,6 +588,16 @@ subscriptions model =
 
 
 
+---- PORTS ----
+
+
+port saveAuthToken : String -> Cmd msg
+
+
+--port getAuthToken : (String -> msg) -> Sub msg
+
+
+
 ---- PROGRAM ----
 
 
@@ -622,32 +632,29 @@ init flags location =
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
     in
-    case OAuth.Implicit.parse location2 of
-        Ok { token } ->
-            setRoute (Just (Route.Profile (toString token))) { model | token = Just token }
+        case OAuth.Implicit.parse location2 of
+            Ok { token } ->
+                let
+                    saveToken = saveAuthToken (toString token)
+                in
+                    Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
+                        (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
 
-        Err OAuth.Empty ->
-            let
-                _ =
-                    Debug.log "OAuth.Empty" ""
-            in
-            setRoute (Route.fromLocation location)
-                model
+            Err OAuth.Empty ->
+                let _ = Debug.log "OAuth.Empty" ""
+                in
+                    setRoute (Route.fromLocation location) model
 
-        Err (OAuth.OAuthErr err) ->
-            let
-                _ =
-                    Debug.log "OAuth.OAuthErr" err
-            in
-            { model | error = Just <| OAuth.showErrCode err.error }
-                ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+            Err (OAuth.OAuthErr err) ->
+                let _ = Debug.log "OAuth.OAuthErr" err
+                in
+                    { model | error = Just <| OAuth.showErrCode err.error }
+                        ! [ Navigation.modifyUrl model.oauth.redirectUri ]
 
-        Err a ->
-            let
-                _ =
-                    Debug.log "Error" (toString a ++ toString location2)
-            in
-            { model | error = Just "parsing error" } ! []
+            Err a ->
+                let _ = Debug.log "Error" ((toString a) ++ (toString location2))
+                in
+                    { model | error = Just "parsing error" } ! []
 
 
 main : Program Flags Model Msg

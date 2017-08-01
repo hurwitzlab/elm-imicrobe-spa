@@ -8,7 +8,7 @@ import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Investigator
 import Route
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
 
@@ -87,14 +87,22 @@ update msg model =
 
 config : Table.Config Data.Investigator.Investigator Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .investigator_id
         , toMsg = SetTableState
         , columns =
             [ nameColumn
             , Table.stringColumn "Inst" .institution
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+  [ attribute "class" "table"
+  ]
 
 
 nameColumn : Table.Column Data.Investigator.Investigator Msg
