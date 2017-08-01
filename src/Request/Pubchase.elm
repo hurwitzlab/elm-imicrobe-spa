@@ -1,20 +1,20 @@
-module Request.Search exposing (get)
+module Request.Pubchase exposing (list)
 
-import Data.Search as Search exposing (SearchResult)
+import Data.Pubchase as Pubchase exposing (Article)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import Util exposing (apiHost)
 
 
-get : String -> Http.Request (List SearchResult)
-get query =
+list : Http.Request (List Article)
+list =
     let
         url =
-            apiHost ++ "/search/" ++ query
+            apiHost ++ "/pubchase"
 
         decoder =
-            Decode.list Search.decoder
+            Decode.list Pubchase.decoder
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

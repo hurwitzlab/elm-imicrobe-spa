@@ -6,6 +6,8 @@ import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
 import Page.About as About
+import Page.App as App
+import Page.Apps as Apps
 import Page.Domain as Domain
 import Page.Domains as Domains
 import Page.Error as Error exposing (PageLoadError)
@@ -20,6 +22,8 @@ import Page.Project as Project
 import Page.ProjectGroup as ProjectGroup
 import Page.ProjectGroups as ProjectGroups
 import Page.Projects as Projects
+import Page.Pubchase as Pubchase
+import Page.Publication as Publication
 import Page.Publications as Publications
 import Page.Sample as Sample
 import Page.Samples as Samples
@@ -46,26 +50,30 @@ type alias Model =
 
 
 type Page
-    = Blank
-    | NotFound
+    = About About.Model
+    | Blank
+    | Apps Apps.Model
+    | App Int App.Model
+    | Domain Int Domain.Model
+    | Domains Domains.Model
     | Error PageLoadError
     | Home Home.Model
-    | Domains Domains.Model
-    | Domain Int Domain.Model
-    | About About.Model
-    | Profile String Profile.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
-    | Publications Publications.Model
+    | Map String String Map.Model
+    | MetaSearch MetaSearch.Model
+    | NotFound
+    | Profile String Profile.Model
     | Project Int Project.Model
-    | Projects Projects.Model
     | ProjectGroup Int ProjectGroup.Model
     | ProjectGroups ProjectGroups.Model
-    | Samples Samples.Model
+    | Projects Projects.Model
+    | Pubchase Pubchase.Model
+    | Publication Int Publication.Model
+    | Publications Publications.Model
     | Sample Int Sample.Model
+    | Samples Samples.Model
     | Search Search.Model
-    | MetaSearch MetaSearch.Model
-    | Map String String Map.Model
 
 
 type PageState
@@ -81,6 +89,10 @@ type Msg
     = SetRoute (Maybe Route)
     | AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
+    | AppsLoaded (Result PageLoadError Apps.Model)
+    | AppsMsg Apps.Msg
+    | AppLoaded Int (Result PageLoadError App.Model)
+    | AppMsg App.Msg
     | Authorize (Result PageLoadError Home.Model)
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
@@ -92,6 +104,10 @@ type Msg
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | PubchaseLoaded (Result PageLoadError Pubchase.Model)
+    | PubchaseMsg Pubchase.Msg
+    | PublicationLoaded Int (Result PageLoadError Publication.Model)
+    | PublicationMsg Publication.Msg
     | PublicationsLoaded (Result PageLoadError Publications.Model)
     | PublicationsMsg Publications.Msg
     | ProfileLoaded String (Result PageLoadError Profile.Model)
@@ -133,6 +149,12 @@ setRoute maybeRoute model =
         Just Route.About ->
             transition AboutLoaded About.init
 
+        Just (Route.App id) ->
+            transition (AppLoaded id) (App.init id)
+
+        Just Route.Apps ->
+            transition AppsLoaded Apps.init
+
         Just Route.Home ->
             transition HomeLoaded Home.init
 
@@ -151,8 +173,14 @@ setRoute maybeRoute model =
         Just Route.Login ->
             transition Authorize Home.init
 
+        Just Route.Pubchase ->
+            transition PubchaseLoaded Pubchase.init
+
         Just Route.Publications ->
             transition PublicationsLoaded Publications.init
+
+        Just (Route.Publication id) ->
+            transition (PublicationLoaded id) (Publication.init id)
 
         Just (Route.Profile token) ->
             transition (ProfileLoaded token) (Profile.init token)
@@ -244,6 +272,18 @@ updatePage page msg model =
         ( AboutLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        ( AppLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (App id subModel) } => Cmd.none
+
+        ( AppLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( AppsLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Apps subModel) } => Cmd.none
+
+        ( AppsLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
         ( DomainsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Domains subModel) } => Cmd.none
 
@@ -280,12 +320,6 @@ updatePage page msg model =
         ( InvestigatorsMsg subMsg, Investigators subModel ) ->
             toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
 
-        ( ProfileLoaded token (Ok subModel), _ ) ->
-            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
-
-        ( ProfileLoaded token (Err error), _ ) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
-
         ( MetaSearchLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
 
@@ -295,6 +329,21 @@ updatePage page msg model =
         ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
             toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
 
+        ( PubchaseLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Pubchase subModel) } => Cmd.none
+
+        ( PubchaseLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( PubchaseMsg subMsg, Pubchase subModel ) ->
+            toPage Pubchase PubchaseMsg Pubchase.update subMsg subModel
+
+        ( PublicationLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Publication id subModel) } => Cmd.none
+
+        ( PublicationLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
         ( PublicationsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Publications subModel) } => Cmd.none
 
@@ -303,6 +352,12 @@ updatePage page msg model =
 
         ( PublicationsMsg subMsg, Publications subModel ) ->
             toPage Publications PublicationsMsg Publications.update subMsg subModel
+
+        ( ProfileLoaded token (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
+
+        ( ProfileLoaded token (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
         ( ProjectsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
@@ -413,14 +468,20 @@ viewPage isLoading page =
             Html.text ""
                 |> layout Page.Other
 
-        Error subModel ->
-            Error.view subModel
-                |> layout Page.Other
-
         About subModel ->
             About.view subModel
                 |> layout Page.About
                 |> Html.map AboutMsg
+
+        App id subModel ->
+            App.view subModel
+                |> layout Page.App
+                |> Html.map AppMsg
+
+        Apps subModel ->
+            Apps.view subModel
+                |> layout Page.Apps
+                |> Html.map AppsMsg
 
         Domains subModel ->
             Domains.view subModel
@@ -431,6 +492,10 @@ viewPage isLoading page =
             Domain.view subModel
                 |> layout Page.Domain
                 |> Html.map DomainMsg
+
+        Error subModel ->
+            Error.view subModel
+                |> layout Page.Other
 
         Home subModel ->
             Home.view subModel
@@ -447,30 +512,25 @@ viewPage isLoading page =
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
 
+        Map lat lng subModel ->
+            Map.view subModel
+                |> layout Page.Map
+                |> Html.map MapMsg
+
         MetaSearch subModel ->
             MetaSearch.view subModel
                 |> layout Page.MetaSearch
                 |> Html.map MetaSearchMsg
 
+        Publication id subModel ->
+            Publication.view subModel
+                |> layout Page.Publication
+                |> Html.map PublicationMsg
+
         Publications subModel ->
             Publications.view subModel
                 |> layout Page.Publications
                 |> Html.map PublicationsMsg
-
-        Projects subModel ->
-            Projects.view subModel
-                |> layout Page.Projects
-                |> Html.map ProjectsMsg
-
-        ProjectGroups subModel ->
-            ProjectGroups.view subModel
-                |> layout Page.ProjectGroups
-                |> Html.map ProjectGroupsMsg
-
-        ProjectGroup id subModel ->
-            ProjectGroup.view subModel
-                |> layout Page.ProjectGroup
-                |> Html.map ProjectGroupMsg
 
         Profile token subModel ->
             Profile.view subModel
@@ -482,25 +542,40 @@ viewPage isLoading page =
                 |> layout Page.Project
                 |> Html.map ProjectMsg
 
-        Samples subModel ->
-            Samples.view subModel
-                |> layout Page.Samples
-                |> Html.map SamplesMsg
+        Projects subModel ->
+            Projects.view subModel
+                |> layout Page.Projects
+                |> Html.map ProjectsMsg
+
+        ProjectGroup id subModel ->
+            ProjectGroup.view subModel
+                |> layout Page.ProjectGroup
+                |> Html.map ProjectGroupMsg
+
+        ProjectGroups subModel ->
+            ProjectGroups.view subModel
+                |> layout Page.ProjectGroups
+                |> Html.map ProjectGroupsMsg
+
+        Pubchase subModel ->
+            Pubchase.view subModel
+                |> layout Page.Pubchase
+                |> Html.map PubchaseMsg
 
         Sample id subModel ->
             Sample.view subModel
                 |> layout Page.Sample
                 |> Html.map SampleMsg
 
+        Samples subModel ->
+            Samples.view subModel
+                |> layout Page.Samples
+                |> Html.map SamplesMsg
+
         Search subModel ->
             Search.view subModel
                 |> layout Page.Search
                 |> Html.map SearchMsg
-
-        Map lat lng subModel ->
-            Map.view subModel
-                |> layout Page.Map
-                |> Html.map MapMsg
 
 
 

@@ -13,6 +13,7 @@ import Route
 import String exposing (join)
 import Table
 import Task exposing (Task)
+import Util exposing (truncate)
 import View.Page as Page
 
 
@@ -197,19 +198,6 @@ mkCheckbox val =
         ]
 
 
-maxColumnWidth : Int
-maxColumnWidth =
-    40
-
-
-truncate : String -> String
-truncate string =
-    if String.length string <= maxColumnWidth then
-        string
-    else
-        String.left (maxColumnWidth - 3) string ++ "..."
-
-
 nameColumn : Table.Column Data.Sample.Sample Msg
 nameColumn =
     Table.veryCustomColumn
@@ -223,7 +211,7 @@ nameLink : Data.Sample.Sample -> Table.HtmlDetails Msg
 nameLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Sample sample.sample_id) ]
-            [ text <| truncate sample.sample_name ]
+            [ text <| Util.truncate sample.sample_name ]
         ]
 
 
@@ -240,5 +228,5 @@ projectLink : Data.Sample.Sample -> Table.HtmlDetails Msg
 projectLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project sample.project_id) ]
-            [ text <| truncate sample.project.project_name ]
+            [ text <| Util.truncate sample.project.project_name ]
         ]

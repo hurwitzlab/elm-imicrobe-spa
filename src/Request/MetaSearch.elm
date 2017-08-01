@@ -5,18 +5,14 @@ import Dict
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-
-
-host : String
-host =
-    "http://localhost:3006"
+import Util exposing (apiHost)
 
 
 get : String -> Http.Request (List SearchResult)
 get query =
     let
         url =
-            host ++ "/search/" ++ query
+            apiHost ++ "/search/" ++ query
 
         decoder =
             Decode.list MetaSearch.decoder
@@ -30,7 +26,7 @@ getParams : Http.Request (Dict.Dict String String)
 getParams =
     let
         url =
-            host ++ "/search_params"
+            apiHost ++ "/search_params"
 
         decoder =
             Decode.dict Decode.string

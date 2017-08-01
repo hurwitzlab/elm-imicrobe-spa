@@ -1,4 +1,4 @@
-module Data.Publication exposing (Publication, decoder)
+module Data.Publication exposing (Project, Publication, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -15,7 +15,7 @@ type alias Publication =
     , title : String
     , pubmed_id : Int
     , pub_date : String
-    , project : Project
+    , project : Maybe Project
     }
 
 
@@ -47,7 +47,7 @@ decoder =
         |> required "title" Decode.string
         |> optional "pubmed_id" Decode.int 0
         |> optional "pub_date" Decode.string "NA"
-        |> required "project" decoderProject
+        |> optional "project" (Decode.nullable decoderProject) Nothing
 
 
 

@@ -7,12 +7,16 @@ import Route exposing (Route)
 
 type ActivePage
     = About
+    | App
+    | Apps
     | Domains
     | Domain
     | Home
     | Investigator
     | Investigators
     | Other
+    | Pubchase
+    | Publication
     | Publications
     | Profile
     | Project
@@ -74,6 +78,8 @@ viewHeader page isLoading =
                             , li [] [ a [ Route.href Route.ProjectGroups ] [ text "Project Groups" ] ]
                             , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
                             , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
+                            , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
+                            , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             ]
                         ]
                     , li []

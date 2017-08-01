@@ -1,15 +1,15 @@
-module Page.Publications exposing (Model, Msg, init, update, view)
+module Page.Pubchase exposing (Model, Msg, init, update, view)
 
-import Data.Publication
+import Data.Pubchase
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Publication
-import Route
+import Request.Pubchase
 import Table
 import Task exposing (Task)
+import Util exposing (truncate)
 import View.Page as Page
 
 
@@ -18,7 +18,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , publications : List Data.Publication.Publication
+    , articles : List Data.Pubchase.Article
     , tableState : Table.State
     , query : String
     }
@@ -29,10 +29,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Publications"
+            Task.succeed "Recommended Reading"
 
-        loadPublications =
-            Request.Publication.list |> Http.toTask
+        loadArticles =
+            Request.Pubchase.list |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -58,7 +58,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadPublications tblState qry
+    Task.map4 Model title loadArticles tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -85,82 +85,66 @@ update msg model =
             )
 
 
-config : Table.Config Data.Publication.Publication Msg
+config : Table.Config Data.Pubchase.Article Msg
 config =
     Table.config
-        { toId = toString << .publication_id
+        { toId = toString << .pubchase_id
         , toMsg = SetTableState
         , columns =
-            [ nameColumn
+            [ titleColumn
             , authorColumn
-            , projectColumn
+            , journalColumn
             ]
         }
 
 
-authorColumn : Table.Column Data.Publication.Publication Msg
-authorColumn =
+titleColumn : Table.Column Data.Pubchase.Article Msg
+titleColumn =
     Table.veryCustomColumn
-        { name = "Name"
-        , viewData = authorLink
-        , sorter = Table.increasingOrDecreasingBy .author
-        }
-
-
-authorLink : Data.Publication.Publication -> Table.HtmlDetails msg
-authorLink pub =
-    Table.HtmlDetails [] [ text pub.author ]
-
-
-nameColumn : Table.Column Data.Publication.Publication Msg
-nameColumn =
-    Table.veryCustomColumn
-        { name = "Name"
-        , viewData = nameLink
+        { name = "Title"
+        , viewData = titleLink
         , sorter = Table.increasingOrDecreasingBy .title
         }
 
 
-nameLink : Data.Publication.Publication -> Table.HtmlDetails Msg
-nameLink publication =
+titleLink : Data.Pubchase.Article -> Table.HtmlDetails Msg
+titleLink article =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Publication publication.publication_id) ]
-            [ text publication.title ]
+        [ a
+            [ href <|
+                "http://www.pubchase.com/article/"
+                    ++ toString article.article_id
+            ]
+            [ text article.title ]
         ]
 
 
-projectName : Data.Publication.Publication -> String
-projectName pub =
-    case pub.project of
-        Nothing ->
-            "NA"
-
-        Just project ->
-            project.project_name
-
-
-projectColumn : Table.Column Data.Publication.Publication Msg
-projectColumn =
+authorColumn : Table.Column Data.Pubchase.Article Msg
+authorColumn =
     Table.veryCustomColumn
-        { name = "Projects"
-        , viewData = projectLink
-        , sorter = Table.increasingOrDecreasingBy projectName
+        { name = "Authors"
+        , viewData = authorLink
+        , sorter = Table.increasingOrDecreasingBy .authors
         }
 
 
-projectLink : Data.Publication.Publication -> Table.HtmlDetails Msg
-projectLink pub =
-    let
-        link =
-            case pub.project of
-                Nothing ->
-                    text "NA"
+authorLink : Data.Pubchase.Article -> Table.HtmlDetails msg
+authorLink article =
+    Table.HtmlDetails [] [ text <| Util.truncate article.authors ]
 
-                Just project ->
-                    a [ Route.href (Route.Project project.project_id) ]
-                        [ text project.project_name ]
-    in
-    Table.HtmlDetails [] [ link ]
+
+journalColumn : Table.Column Data.Pubchase.Article Msg
+journalColumn =
+    Table.veryCustomColumn
+        { name = "Journal"
+        , viewData = journalText
+        , sorter = Table.increasingOrDecreasingBy .journal_title
+        }
+
+
+journalText : Data.Pubchase.Article -> Table.HtmlDetails msg
+journalText article =
+    Table.HtmlDetails [] [ text <| Util.truncate article.journal_title ]
 
 
 
@@ -170,26 +154,23 @@ projectLink pub =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
-        catter pub =
+        catter article =
             String.concat
                 (List.intersperse " "
-                    [ pub.title
-                    , pub.author
-                    , projectName pub
+                    [ article.title
+                    , article.authors
+                    , article.journal_title
                     ]
                 )
                 |> String.toLower
 
         acceptablePeople =
             List.filter
-                (\pub -> String.contains lowerQuery (catter pub))
-                model.publications
+                (\article -> String.contains lowerQuery (catter article))
+                model.articles
     in
     div [ class "container" ]
         [ div [ class "row" ]

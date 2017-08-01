@@ -253,7 +253,10 @@ viewPubs pubs =
 pubRow : Data.Project.Publication -> Html msg
 pubRow pub =
     tr []
-        [ td [] [ text pub.title ]
+        [ td []
+            [ a [ Route.href (Route.Publication pub.publication_id) ]
+                [ text pub.title ]
+            ]
         ]
 
 

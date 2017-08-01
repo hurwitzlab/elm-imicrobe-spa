@@ -1,4 +1,24 @@
-module Util exposing ((=>))
+module Util exposing ((=>), apiHost, truncate)
+
+
+apiHost : String
+apiHost =
+    "http://localhost:3006"
+
+
+maxColumnWidth : Int
+maxColumnWidth =
+    40
+
+
+truncate : String -> String
+truncate string =
+    if String.length string <= maxColumnWidth then
+        string
+    else
+        String.left (maxColumnWidth - 3) string ++ "..."
+
+
 
 -- toTuple
 

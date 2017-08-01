@@ -6,21 +6,14 @@ import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Json.Encode.Extra as EncodeExtra
+import Util exposing (apiHost)
 
 
-host : String
-host =
-    "http://localhost:3006"
-
-
-
--- list : Http.Request (List ProjectGroup)
-
-
+list : Http.Request (List ProjectGroup)
 list =
     let
         url =
-            host ++ "/project_groups"
+            apiHost ++ "/project_groups"
 
         decoder =
             Decode.list ProjectGroup.decoder
@@ -33,7 +26,7 @@ list =
 get id =
     let
         url =
-            host ++ "/project_groups/" ++ toString id
+            apiHost ++ "/project_groups/" ++ toString id
 
         decoder =
             ProjectGroup.decoder

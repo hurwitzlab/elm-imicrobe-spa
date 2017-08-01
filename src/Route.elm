@@ -12,17 +12,21 @@ import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, str
 type Route
     = Home
     | About
+    | Apps
+    | App Int
     | Domains
     | Domain Int
     | Investigator Int
     | Investigators
     | Login
+    | Publication Int
     | Publications
     | Profile String
     | Project Int
     | Projects
     | ProjectGroups
     | ProjectGroup Int
+    | Pubchase
     | Sample Int
     | Samples
     | MetaSearch
@@ -34,12 +38,16 @@ routeMather : Parser (Route -> a) a
 routeMather =
     oneOf
         [ Url.map About (s "about")
+        , Url.map Apps (s "apps")
+        , Url.map App (s "apps" </> Url.int)
         , Url.map Home (s "")
         , Url.map Domains (s "domains")
         , Url.map Domain (s "domains" </> Url.int)
         , Url.map Investigator (s "investigators" </> Url.int)
         , Url.map Investigators (s "investigators")
         , Url.map Login (s "login")
+        , Url.map Pubchase (s "pubchase")
+        , Url.map Publication (s "publications" </> Url.int)
         , Url.map Publications (s "publications")
         , Url.map Profile (s "profile" </> Url.string)
         , Url.map Project (s "projects" </> Url.int)
@@ -69,6 +77,12 @@ routeToString page =
                 About ->
                     [ "about" ]
 
+                Apps ->
+                    [ "apps" ]
+
+                App id ->
+                    [ "apps", toString id ]
+
                 Home ->
                     []
 
@@ -86,6 +100,18 @@ routeToString page =
 
                 Login ->
                     [ "login" ]
+
+                Map lat lng ->
+                    [ "map", lat, lng ]
+
+                MetaSearch ->
+                    [ "metasearch" ]
+
+                Pubchase ->
+                    [ "pubchase" ]
+
+                Publication id ->
+                    [ "publications", toString id ]
 
                 Publications ->
                     [ "publications" ]
@@ -111,14 +137,8 @@ routeToString page =
                 Samples ->
                     [ "samples" ]
 
-                MetaSearch ->
-                    [ "metasearch" ]
-
                 Search ->
                     [ "search" ]
-
-                Map lat lng ->
-                    [ "map", lat, lng ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->

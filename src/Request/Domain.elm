@@ -4,18 +4,14 @@ import Data.Domain as Domain exposing (Domain)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-
-
-host : String
-host =
-    "http://localhost:3006"
+import Util exposing (apiHost)
 
 
 list : Http.Request (List Domain)
 list =
     let
         url =
-            host ++ "/domains"
+            apiHost ++ "/domains"
 
         decoder =
             Decode.list Domain.decoder
@@ -29,7 +25,7 @@ get : Int -> Http.Request Domain
 get id =
     let
         url =
-            host ++ "/domains/" ++ toString id
+            apiHost ++ "/domains/" ++ toString id
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson Domain.decoder)

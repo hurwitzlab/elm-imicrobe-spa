@@ -1,28 +1,28 @@
-module Request.Sample exposing (get, list)
+module Request.App exposing (get, list)
 
-import Data.Sample as Sample exposing (Sample)
+import Data.App as App exposing (App)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import Util exposing (apiHost)
 
 
-list : Http.Request (List Sample)
+list : Http.Request (List App)
 list =
     let
         url =
-            apiHost ++ "/samples"
+            apiHost ++ "/apps"
 
         decoder =
-            Decode.list Sample.decoder
+            Decode.list App.decoder
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
 
-get : Int -> Http.Request Sample
+get : Int -> Http.Request App
 get id =
-    HttpBuilder.get (apiHost ++ "/samples/" ++ toString id)
-        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+    HttpBuilder.get (apiHost ++ "/apps/" ++ toString id)
+        |> HttpBuilder.withExpect (Http.expectJson App.decoder)
         |> HttpBuilder.toRequest
