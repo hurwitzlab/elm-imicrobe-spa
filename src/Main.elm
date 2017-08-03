@@ -149,73 +149,70 @@ setRoute maybeRoute model =
             { model | pageState = Loaded NotFound } => Cmd.none
 
         Just Route.About ->
-            transition AboutLoaded (About.init model.session)
+            transition AboutLoaded About.init
 
         Just (Route.App id) ->
-            transition (AppLoaded id) (App.init model.session id)
+            transition (AppLoaded id) (App.init id)
 
         Just Route.Apps ->
-            transition AppsLoaded (Apps.init model.session)
+            transition AppsLoaded Apps.init
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
 
         Just Route.Domains ->
-            transition DomainsLoaded (Domains.init model.session)
+            transition DomainsLoaded Domains.init
 
         Just (Route.Domain id) ->
-            transition (DomainLoaded id) (Domain.init model.session id)
+            transition (DomainLoaded id) (Domain.init id)
 
         Just (Route.Investigator id) ->
-            transition (InvestigatorLoaded id)
-                (Investigator.init model.session id)
+            transition (InvestigatorLoaded id) (Investigator.init id)
 
         Just Route.Investigators ->
-            transition InvestigatorsLoaded (Investigators.init model.session)
+            transition InvestigatorsLoaded Investigators.init
 
         Just Route.Login ->
             transition Authorize (Home.init model.session)
 
         Just Route.Pubchase ->
-            transition PubchaseLoaded (Pubchase.init model.session)
+            transition PubchaseLoaded Pubchase.init
 
         Just Route.Publications ->
-            transition PublicationsLoaded (Publications.init model.session)
+            transition PublicationsLoaded Publications.init
 
         Just (Route.Publication id) ->
-            transition (PublicationLoaded id)
-                (Publication.init model.session id)
+            transition (PublicationLoaded id) (Publication.init id)
 
         Just (Route.Profile token) ->
-            transition (ProfileLoaded token) (Profile.init model.session token)
+            transition (ProfileLoaded token) (Profile.init token)
 
         Just (Route.Project id) ->
-            transition (ProjectLoaded id) (Project.init model.session id)
+            transition (ProjectLoaded id) (Project.init id)
 
         Just Route.Projects ->
-            transition ProjectsLoaded (Projects.init model.session)
+            transition ProjectsLoaded Projects.init
 
         Just (Route.ProjectGroup id) ->
-            transition (ProjectGroupLoaded id)
-                (ProjectGroup.init model.session id)
+            transition (ProjectGroupLoaded id) (ProjectGroup.init id)
 
         Just Route.ProjectGroups ->
-            transition ProjectGroupsLoaded (ProjectGroups.init model.session)
+            transition ProjectGroupsLoaded ProjectGroups.init
 
         Just (Route.Sample id) ->
-            transition (SampleLoaded id) (Sample.init model.session id)
+            transition (SampleLoaded id) (Sample.init id)
 
         Just Route.Samples ->
-            transition SamplesLoaded (Samples.init model.session)
+            transition SamplesLoaded Samples.init
 
         Just Route.MetaSearch ->
-            transition MetaSearchLoaded (MetaSearch.init model.session)
+            transition MetaSearchLoaded MetaSearch.init
 
         Just Route.Search ->
-            transition SearchLoaded (Search.init model.session)
+            transition SearchLoaded Search.init
 
         Just (Route.Map lat lng) ->
-            transition (MapLoaded lat lng) (Map.init model.session lat lng)
+            transition (MapLoaded lat lng) (Map.init lat lng)
 
 
 getPage : PageState -> Page
@@ -245,6 +242,9 @@ update msg model =
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
+        session =
+            model.session
+
         toPage toModel toMsg subUpdate subMsg subModel =
             let
                 ( newModel, newCmd ) =
@@ -465,7 +465,7 @@ viewPage session isLoading page =
     in
     case page of
         NotFound ->
-            layout Page.Other NotFound.view session
+            layout Page.Other NotFound.view
 
         Blank ->
             -- This is for the very intial page load, while we are loading
@@ -474,32 +474,32 @@ viewPage session isLoading page =
                 |> layout Page.Other
 
         About subModel ->
-            About.view session subModel
+            About.view subModel
                 |> layout Page.About
                 |> Html.map AboutMsg
 
         App id subModel ->
-            App.view session subModel
+            App.view subModel
                 |> layout Page.App
                 |> Html.map AppMsg
 
         Apps subModel ->
-            Apps.view session subModel
+            Apps.view subModel
                 |> layout Page.Apps
                 |> Html.map AppsMsg
 
         Domains subModel ->
-            Domains.view session subModel
+            Domains.view subModel
                 |> layout Page.Domains
                 |> Html.map DomainsMsg
 
         Domain id subModel ->
-            Domain.view session subModel
+            Domain.view subModel
                 |> layout Page.Domain
                 |> Html.map DomainMsg
 
         Error subModel ->
-            Error.view session subModel
+            Error.view subModel
                 |> layout Page.Other
 
         Home subModel ->
@@ -508,77 +508,77 @@ viewPage session isLoading page =
                 |> Html.map HomeMsg
 
         Investigator id subModel ->
-            Investigator.view session subModel
+            Investigator.view subModel
                 |> layout Page.Investigator
                 |> Html.map InvestigatorMsg
 
         Investigators subModel ->
-            Investigators.view session subModel
+            Investigators.view subModel
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
 
         Map lat lng subModel ->
-            Map.view session subModel
+            Map.view subModel
                 |> layout Page.Map
                 |> Html.map MapMsg
 
         MetaSearch subModel ->
-            MetaSearch.view session subModel
+            MetaSearch.view subModel
                 |> layout Page.MetaSearch
                 |> Html.map MetaSearchMsg
 
         Publication id subModel ->
-            Publication.view session subModel
+            Publication.view subModel
                 |> layout Page.Publication
                 |> Html.map PublicationMsg
 
         Publications subModel ->
-            Publications.view session subModel
+            Publications.view subModel
                 |> layout Page.Publications
                 |> Html.map PublicationsMsg
 
         Profile token subModel ->
-            Profile.view session subModel
+            Profile.view subModel
                 |> layout Page.Profile
                 |> Html.map ProfileMsg
 
         Project id subModel ->
-            Project.view session subModel
+            Project.view subModel
                 |> layout Page.Project
                 |> Html.map ProjectMsg
 
         Projects subModel ->
-            Projects.view session subModel
+            Projects.view subModel
                 |> layout Page.Projects
                 |> Html.map ProjectsMsg
 
         ProjectGroup id subModel ->
-            ProjectGroup.view session subModel
+            ProjectGroup.view subModel
                 |> layout Page.ProjectGroup
                 |> Html.map ProjectGroupMsg
 
         ProjectGroups subModel ->
-            ProjectGroups.view session subModel
+            ProjectGroups.view subModel
                 |> layout Page.ProjectGroups
                 |> Html.map ProjectGroupsMsg
 
         Pubchase subModel ->
-            Pubchase.view session subModel
+            Pubchase.view subModel
                 |> layout Page.Pubchase
                 |> Html.map PubchaseMsg
 
         Sample id subModel ->
-            Sample.view session subModel
+            Sample.view subModel
                 |> layout Page.Sample
                 |> Html.map SampleMsg
 
         Samples subModel ->
-            Samples.view session subModel
+            Samples.view subModel
                 |> layout Page.Samples
                 |> Html.map SamplesMsg
 
         Search subModel ->
-            Search.view session subModel
+            Search.view subModel
                 |> layout Page.Search
                 |> Html.map SearchMsg
 
@@ -626,7 +626,7 @@ init flags location =
                 , clientId = flags.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
-            , session = { cart = Nothing }
+            , session = { cart = Just "The Thing!" }
             , error = Nothing
             , token = Nothing
             , pageState = Loaded initialPage

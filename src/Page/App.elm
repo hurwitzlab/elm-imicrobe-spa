@@ -22,8 +22,8 @@ type alias Model =
     }
 
 
-init : Session -> Int -> Task PageLoadError Model
-init session id =
+init : Int -> Task PageLoadError Model
+init id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -62,8 +62,8 @@ type Msg
     = Todo
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
         Todo ->
             ( model, Cmd.none )
@@ -73,8 +73,8 @@ update session msg model =
 -- VIEW --
 
 
-view : Session -> Model -> Html Msg
-view session model =
+view : Model -> Html Msg
+view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]

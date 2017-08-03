@@ -26,8 +26,8 @@ type alias Model =
     }
 
 
-init : Session -> Task PageLoadError Model
-init session =
+init : Task PageLoadError Model
+init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -73,8 +73,8 @@ type Msg
     | SetTableState Table.State
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
         SetQuery newQuery ->
             ( { model | query = newQuery }
@@ -119,8 +119,8 @@ nameLink app =
 -- VIEW --
 
 
-view : Session -> Model -> Html Msg
-view session model =
+view : Model -> Html Msg
+view model =
     let
         lowerQuery =
             String.toLower model.query

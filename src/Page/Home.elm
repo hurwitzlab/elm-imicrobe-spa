@@ -43,8 +43,8 @@ type Msg
     = Todo
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
         Todo ->
             ( model, Cmd.none )
@@ -60,5 +60,6 @@ view session model =
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , div [] [ text model.pageBody ]
+            , div [] [ text (toString session) ]
             ]
         ]
