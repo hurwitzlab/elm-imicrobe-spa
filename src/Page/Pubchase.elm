@@ -1,6 +1,7 @@
 module Page.Pubchase exposing (Model, Msg, init, update, view)
 
 import Data.Pubchase
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)

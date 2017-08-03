@@ -1,6 +1,7 @@
 module Page.Investigators exposing (Model, Msg, init, update, view)
 
 import Data.Investigator
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -101,8 +102,8 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-  [ attribute "class" "table"
-  ]
+    [ attribute "class" "table"
+    ]
 
 
 nameColumn : Table.Column Data.Investigator.Investigator Msg

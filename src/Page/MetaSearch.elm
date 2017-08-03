@@ -1,6 +1,7 @@
 module Page.MetaSearch exposing (Model, Msg, init, update, view)
 
 import Data.MetaSearch
+import Data.Session as Session exposing (Session)
 import Dict
 import Exts.Dict as EDict
 import Html exposing (..)

@@ -1,6 +1,7 @@
 module Page.Projects exposing (Model, Msg, init, update, view)
 
 import Data.Project
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -104,8 +105,8 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-  [ attribute "class" "table"
-  ]
+    [ attribute "class" "table"
+    ]
 
 
 domainColumn : Table.Column Data.Project.Project Msg
@@ -162,6 +163,7 @@ view model =
             , Table.view config model.tableState acceptableProjects
             ]
         ]
+
 
 
 --viewProjects : List Data.Project.Project -> Html msg

@@ -1,6 +1,7 @@
 module Page.Sample exposing (Model, Msg, init, update, view)
 
 import Data.Sample
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http

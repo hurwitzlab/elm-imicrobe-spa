@@ -6,6 +6,7 @@ for example a Page Not Found error.
 
 --import Data.Session as Session exposing (Session)
 
+import Data.Session as Session exposing (Session)
 import Html exposing (Html, div, h1, img, main_, p, text)
 import Html.Attributes exposing (alt, class, id, tabindex)
 import View.Page as Page exposing (ActivePage)

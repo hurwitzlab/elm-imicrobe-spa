@@ -1,6 +1,7 @@
 module Page.Profile exposing (Model, Msg, init, update, view)
 
 import Data.Profile
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -74,18 +75,19 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        profile = model.profile
+        profile =
+            model.profile
     in
-        div [ class "container" ]
-            [ h2 [] [ text model.pageTitle ]
-            , table [ class "table" ]
-                [ tr []
-                    [ th [] [ text "Username" ]
-                    , td [] [ text profile.username ]
-                    ]
-                , tr []
-                    [ th [] [ text "Full name" ]
-                    , td [] [ text (profile.first_name ++ " " ++ profile.last_name) ]
-                    ]
+    div [ class "container" ]
+        [ h2 [] [ text model.pageTitle ]
+        , table [ class "table" ]
+            [ tr []
+                [ th [] [ text "Username" ]
+                , td [] [ text profile.username ]
+                ]
+            , tr []
+                [ th [] [ text "Full name" ]
+                , td [] [ text (profile.first_name ++ " " ++ profile.last_name) ]
                 ]
             ]
+        ]

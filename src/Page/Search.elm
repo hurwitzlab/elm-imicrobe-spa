@@ -1,6 +1,7 @@
 module Page.Search exposing (Model, Msg, init, update, view)
 
 import Data.Search
+import Data.Session as Session exposing (Session)
 import FormatNumber exposing (format)
 import Html exposing (..)
 import Html.Attributes exposing (..)

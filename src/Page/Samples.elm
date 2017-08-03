@@ -1,6 +1,7 @@
 module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
+import Data.Session as Session exposing (Session)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)

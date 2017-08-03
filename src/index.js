@@ -45,6 +45,11 @@ app.ports.saveAuthToken.subscribe(function(token) {
     localStorage.setItem("token", token);
 });
 
+app.ports.saveCart.subscribe(function(data) {
+    console.log("saveCart: ", data);
+    localStorage.setItem("cart", data);
+});
+
 //app.ports.getAuthToken.subscribe(function(token) {
 //    var token = localStorage.getItem("token");
 //    console.log("getAuthToken: ", token);

@@ -1,6 +1,7 @@
 module Page.App exposing (Model, Msg, init, update, view)
 
 import Data.App
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -21,8 +22,8 @@ type alias Model =
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : Session -> Int -> Task PageLoadError Model
+init session id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -61,8 +62,8 @@ type Msg
     = Todo
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
         Todo ->
             ( model, Cmd.none )
@@ -72,8 +73,8 @@ update msg model =
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Session -> Model -> Html Msg
+view session model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]

@@ -1,6 +1,7 @@
 module Page.Apps exposing (Model, Msg, init, update, view)
 
 import Data.App
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -25,8 +26,8 @@ type alias Model =
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -72,8 +73,8 @@ type Msg
     | SetTableState Table.State
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
         SetQuery newQuery ->
             ( { model | query = newQuery }
@@ -118,8 +119,8 @@ nameLink app =
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Session -> Model -> Html Msg
+view session model =
     let
         lowerQuery =
             String.toLower model.query

@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import Data.Session exposing (Session)
 import Debug exposing (log)
 import Html exposing (..)
 import Navigation exposing (Location)
@@ -39,6 +40,7 @@ import View.Page as Page exposing (ActivePage)
 
 type alias Model =
     { pageState : PageState
+    , session : Session
     , oauth :
         { authEndpoint : String
         , clientId : String
@@ -147,70 +149,73 @@ setRoute maybeRoute model =
             { model | pageState = Loaded NotFound } => Cmd.none
 
         Just Route.About ->
-            transition AboutLoaded About.init
+            transition AboutLoaded (About.init model.session)
 
         Just (Route.App id) ->
-            transition (AppLoaded id) (App.init id)
+            transition (AppLoaded id) (App.init model.session id)
 
         Just Route.Apps ->
-            transition AppsLoaded Apps.init
+            transition AppsLoaded (Apps.init model.session)
 
         Just Route.Home ->
-            transition HomeLoaded Home.init
+            transition HomeLoaded (Home.init model.session)
 
         Just Route.Domains ->
-            transition DomainsLoaded Domains.init
+            transition DomainsLoaded (Domains.init model.session)
 
         Just (Route.Domain id) ->
-            transition (DomainLoaded id) (Domain.init id)
+            transition (DomainLoaded id) (Domain.init model.session id)
 
         Just (Route.Investigator id) ->
-            transition (InvestigatorLoaded id) (Investigator.init id)
+            transition (InvestigatorLoaded id)
+                (Investigator.init model.session id)
 
         Just Route.Investigators ->
-            transition InvestigatorsLoaded Investigators.init
+            transition InvestigatorsLoaded (Investigators.init model.session)
 
         Just Route.Login ->
-            transition Authorize Home.init
+            transition Authorize (Home.init model.session)
 
         Just Route.Pubchase ->
-            transition PubchaseLoaded Pubchase.init
+            transition PubchaseLoaded (Pubchase.init model.session)
 
         Just Route.Publications ->
-            transition PublicationsLoaded Publications.init
+            transition PublicationsLoaded (Publications.init model.session)
 
         Just (Route.Publication id) ->
-            transition (PublicationLoaded id) (Publication.init id)
+            transition (PublicationLoaded id)
+                (Publication.init model.session id)
 
         Just (Route.Profile token) ->
-            transition (ProfileLoaded token) (Profile.init token)
+            transition (ProfileLoaded token) (Profile.init model.session token)
 
         Just (Route.Project id) ->
-            transition (ProjectLoaded id) (Project.init id)
+            transition (ProjectLoaded id) (Project.init model.session id)
 
         Just Route.Projects ->
-            transition ProjectsLoaded Projects.init
+            transition ProjectsLoaded (Projects.init model.session)
 
         Just (Route.ProjectGroup id) ->
-            transition (ProjectGroupLoaded id) (ProjectGroup.init id)
+            transition (ProjectGroupLoaded id)
+                (ProjectGroup.init model.session id)
 
         Just Route.ProjectGroups ->
-            transition ProjectGroupsLoaded ProjectGroups.init
+            transition ProjectGroupsLoaded (ProjectGroups.init model.session)
 
         Just (Route.Sample id) ->
-            transition (SampleLoaded id) (Sample.init id)
+            transition (SampleLoaded id) (Sample.init model.session id)
 
         Just Route.Samples ->
-            transition SamplesLoaded Samples.init
+            transition SamplesLoaded (Samples.init model.session)
 
         Just Route.MetaSearch ->
-            transition MetaSearchLoaded MetaSearch.init
+            transition MetaSearchLoaded (MetaSearch.init model.session)
 
         Just Route.Search ->
-            transition SearchLoaded Search.init
+            transition SearchLoaded (Search.init model.session)
 
         Just (Route.Map lat lng) ->
-            transition (MapLoaded lat lng) (Map.init lat lng)
+            transition (MapLoaded lat lng) (Map.init model.session lat lng)
 
 
 getPage : PageState -> Page
@@ -446,21 +451,21 @@ view : Model -> Html Msg
 view model =
     case model.pageState of
         Loaded page ->
-            viewPage False page
+            viewPage model.session False page
 
         TransitioningFrom page ->
-            viewPage True page
+            viewPage model.session True page
 
 
-viewPage : Bool -> Page -> Html Msg
-viewPage isLoading page =
+viewPage : Session -> Bool -> Page -> Html Msg
+viewPage session isLoading page =
     let
         layout =
             Page.layout isLoading
     in
     case page of
         NotFound ->
-            layout Page.Other NotFound.view
+            layout Page.Other NotFound.view session
 
         Blank ->
             -- This is for the very intial page load, while we are loading
@@ -469,111 +474,111 @@ viewPage isLoading page =
                 |> layout Page.Other
 
         About subModel ->
-            About.view subModel
+            About.view session subModel
                 |> layout Page.About
                 |> Html.map AboutMsg
 
         App id subModel ->
-            App.view subModel
+            App.view session subModel
                 |> layout Page.App
                 |> Html.map AppMsg
 
         Apps subModel ->
-            Apps.view subModel
+            Apps.view session subModel
                 |> layout Page.Apps
                 |> Html.map AppsMsg
 
         Domains subModel ->
-            Domains.view subModel
+            Domains.view session subModel
                 |> layout Page.Domains
                 |> Html.map DomainsMsg
 
         Domain id subModel ->
-            Domain.view subModel
+            Domain.view session subModel
                 |> layout Page.Domain
                 |> Html.map DomainMsg
 
         Error subModel ->
-            Error.view subModel
+            Error.view session subModel
                 |> layout Page.Other
 
         Home subModel ->
-            Home.view subModel
+            Home.view session subModel
                 |> layout Page.Home
                 |> Html.map HomeMsg
 
         Investigator id subModel ->
-            Investigator.view subModel
+            Investigator.view session subModel
                 |> layout Page.Investigator
                 |> Html.map InvestigatorMsg
 
         Investigators subModel ->
-            Investigators.view subModel
+            Investigators.view session subModel
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
 
         Map lat lng subModel ->
-            Map.view subModel
+            Map.view session subModel
                 |> layout Page.Map
                 |> Html.map MapMsg
 
         MetaSearch subModel ->
-            MetaSearch.view subModel
+            MetaSearch.view session subModel
                 |> layout Page.MetaSearch
                 |> Html.map MetaSearchMsg
 
         Publication id subModel ->
-            Publication.view subModel
+            Publication.view session subModel
                 |> layout Page.Publication
                 |> Html.map PublicationMsg
 
         Publications subModel ->
-            Publications.view subModel
+            Publications.view session subModel
                 |> layout Page.Publications
                 |> Html.map PublicationsMsg
 
         Profile token subModel ->
-            Profile.view subModel
+            Profile.view session subModel
                 |> layout Page.Profile
                 |> Html.map ProfileMsg
 
         Project id subModel ->
-            Project.view subModel
+            Project.view session subModel
                 |> layout Page.Project
                 |> Html.map ProjectMsg
 
         Projects subModel ->
-            Projects.view subModel
+            Projects.view session subModel
                 |> layout Page.Projects
                 |> Html.map ProjectsMsg
 
         ProjectGroup id subModel ->
-            ProjectGroup.view subModel
+            ProjectGroup.view session subModel
                 |> layout Page.ProjectGroup
                 |> Html.map ProjectGroupMsg
 
         ProjectGroups subModel ->
-            ProjectGroups.view subModel
+            ProjectGroups.view session subModel
                 |> layout Page.ProjectGroups
                 |> Html.map ProjectGroupsMsg
 
         Pubchase subModel ->
-            Pubchase.view subModel
+            Pubchase.view session subModel
                 |> layout Page.Pubchase
                 |> Html.map PubchaseMsg
 
         Sample id subModel ->
-            Sample.view subModel
+            Sample.view session subModel
                 |> layout Page.Sample
                 |> Html.map SampleMsg
 
         Samples subModel ->
-            Samples.view subModel
+            Samples.view session subModel
                 |> layout Page.Samples
                 |> Html.map SamplesMsg
 
         Search subModel ->
-            Search.view subModel
+            Search.view session subModel
                 |> layout Page.Search
                 |> Html.map SearchMsg
 
@@ -594,10 +599,11 @@ subscriptions model =
 port saveAuthToken : String -> Cmd msg
 
 
+port saveCart : String -> Cmd msg
+
+
+
 --port getAuthToken : (String -> msg) -> Sub msg
-
-
-
 ---- PROGRAM ----
 
 
@@ -620,6 +626,7 @@ init flags location =
                 , clientId = flags.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
+            , session = { cart = Nothing }
             , error = Nothing
             , token = Nothing
             , pageState = Loaded initialPage
@@ -632,29 +639,36 @@ init flags location =
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
     in
-        case OAuth.Implicit.parse location2 of
-            Ok { token } ->
-                let
-                    saveToken = saveAuthToken (toString token)
-                in
-                    Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
-                        (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
+    case OAuth.Implicit.parse location2 of
+        Ok { token } ->
+            let
+                saveToken =
+                    saveAuthToken (toString token)
+            in
+            Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
+                (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
 
-            Err OAuth.Empty ->
-                let _ = Debug.log "OAuth.Empty" ""
-                in
-                    setRoute (Route.fromLocation location) model
+        Err OAuth.Empty ->
+            let
+                _ =
+                    Debug.log "OAuth.Empty" ""
+            in
+            setRoute (Route.fromLocation location) model
 
-            Err (OAuth.OAuthErr err) ->
-                let _ = Debug.log "OAuth.OAuthErr" err
-                in
-                    { model | error = Just <| OAuth.showErrCode err.error }
-                        ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+        Err (OAuth.OAuthErr err) ->
+            let
+                _ =
+                    Debug.log "OAuth.OAuthErr" err
+            in
+            { model | error = Just <| OAuth.showErrCode err.error }
+                ! [ Navigation.modifyUrl model.oauth.redirectUri ]
 
-            Err a ->
-                let _ = Debug.log "Error" ((toString a) ++ (toString location2))
-                in
-                    { model | error = Just "parsing error" } ! []
+        Err a ->
+            let
+                _ =
+                    Debug.log "Error" (toString a ++ toString location2)
+            in
+            { model | error = Just "parsing error" } ! []
 
 
 main : Program Flags Model Msg
