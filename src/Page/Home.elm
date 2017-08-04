@@ -42,19 +42,29 @@ init session =
 
 
 type Msg
-    = SetCart String
+    = AddCart Int
+    | RemoveCart Int
+    | VoidCart
 
 
 type ExternalMsg
     = NoOp
-    | AddToCart String
+    | AddToCart Int
+    | EmptyCart
+    | RemoveFromCart Int
 
 
 update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update msg model =
     case msg of
-        SetCart val ->
-            model => Cmd.none => AddToCart val
+        AddCart id ->
+            model => Cmd.none => AddToCart id
+
+        VoidCart ->
+            model => Cmd.none => EmptyCart
+
+        RemoveCart id ->
+            model => Cmd.none => RemoveFromCart id
 
 
 
@@ -70,7 +80,8 @@ view session model =
         mkTr item =
             tr []
                 [ td [] [ text <| toString item ]
-                , button [ onClick (SetCart (toString item)) ] [ text "Add" ]
+                , button [ onClick (AddCart item) ] [ text "Add" ]
+                , button [ onClick (RemoveCart item) ] [ text "Delete" ]
                 ]
     in
     div [ class "container" ]
@@ -78,6 +89,7 @@ view session model =
             [ h2 [] [ text model.pageTitle ]
             , div [] [ text model.pageBody ]
             , div [] [ mkTable ]
+            , div [] [ button [ onClick VoidCart ] [ text "Empty" ] ]
             , div [] [ text (toString session) ]
             ]
         ]

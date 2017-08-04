@@ -89,51 +89,53 @@ type PageState
 
 
 type Msg
-    = SetRoute (Maybe Route)
-    | AddToCart String
-    | AboutLoaded (Result PageLoadError About.Model)
+    = AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
-    | AppsLoaded (Result PageLoadError Apps.Model)
-    | AppsMsg Apps.Msg
+    | AddToCart Int
     | AppLoaded Int (Result PageLoadError App.Model)
     | AppMsg App.Msg
+    | AppsLoaded (Result PageLoadError Apps.Model)
+    | AppsMsg Apps.Msg
     | Authorize (Result PageLoadError Home.Model)
-    | HomeLoaded (Result PageLoadError Home.Model)
-    | HomeMsg Home.Msg
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
     | DomainsMsg Domains.Msg
+    | EmptyCart
+    | HomeLoaded (Result PageLoadError Home.Model)
+    | HomeMsg Home.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | MapLoaded String String (Result PageLoadError Map.Model)
+    | MapMsg Map.Msg
+    | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
+    | MetaSearchMsg MetaSearch.Msg
+    | ProfileLoaded String (Result PageLoadError Profile.Model)
+    | ProfileMsg Profile.Msg
+    | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
+    | ProjectGroupMsg ProjectGroup.Msg
+    | ProjectGroupsLoaded (Result PageLoadError ProjectGroups.Model)
+    | ProjectGroupsMsg ProjectGroups.Msg
+    | ProjectLoaded Int (Result PageLoadError Project.Model)
+    | ProjectMsg Project.Msg
+    | ProjectsLoaded (Result PageLoadError Projects.Model)
+    | ProjectsMsg Projects.Msg
     | PubchaseLoaded (Result PageLoadError Pubchase.Model)
     | PubchaseMsg Pubchase.Msg
     | PublicationLoaded Int (Result PageLoadError Publication.Model)
     | PublicationMsg Publication.Msg
     | PublicationsLoaded (Result PageLoadError Publications.Model)
     | PublicationsMsg Publications.Msg
-    | ProfileLoaded String (Result PageLoadError Profile.Model)
-    | ProfileMsg Profile.Msg
-    | ProjectLoaded Int (Result PageLoadError Project.Model)
-    | ProjectMsg Project.Msg
-    | ProjectsLoaded (Result PageLoadError Projects.Model)
-    | ProjectsMsg Projects.Msg
-    | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
-    | ProjectGroupMsg ProjectGroup.Msg
-    | ProjectGroupsMsg ProjectGroups.Msg
-    | ProjectGroupsLoaded (Result PageLoadError ProjectGroups.Model)
+    | RemoveFromCart Int
     | SampleLoaded Int (Result PageLoadError Sample.Model)
     | SampleMsg Sample.Msg
-    | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
-    | MetaSearchMsg MetaSearch.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
-    | MapLoaded String String (Result PageLoadError Map.Model)
-    | MapMsg Map.Msg
+    | SetRoute (Maybe Route)
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -263,16 +265,8 @@ updatePage page msg model =
 
         ( AddToCart id, _ ) ->
             let
-                cart =
-                    model.session.cart
-
                 newCart =
-                    case String.toInt id of
-                        Ok n ->
-                            Set.insert n cart
-
-                        Err _ ->
-                            cart
+                    Set.insert id model.session.cart
             in
             ( { model | session = { cart = newCart } }, Cmd.none )
 
@@ -320,6 +314,9 @@ updatePage page msg model =
 
         ( DomainLoaded id (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( EmptyCart, _ ) ->
+            ( { model | session = { cart = Set.empty } }, Cmd.none )
 
         ( HomeLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Home subModel) } => Cmd.none
@@ -411,6 +408,13 @@ updatePage page msg model =
         ( ProjectGroupsMsg subMsg, ProjectGroups subModel ) ->
             toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
 
+        ( RemoveFromCart id, _ ) ->
+            let
+                newCart =
+                    Set.remove id model.session.cart
+            in
+            ( { model | session = { cart = newCart } }, Cmd.none )
+
         ( SampleLoaded id (Ok subModel), _ ) ->
             { model | pageState = Loaded (Sample id subModel) } => Cmd.none
 
@@ -449,18 +453,20 @@ updatePage page msg model =
                         Home.NoOp ->
                             model
 
-                        Home.AddToCart val ->
+                        Home.AddToCart id ->
                             let
-                                cart =
-                                    model.session.cart
-
                                 newCart =
-                                    case String.toInt val of
-                                        Ok n ->
-                                            Set.insert n cart
+                                    Set.insert id model.session.cart
+                            in
+                            { model | session = { cart = newCart } }
 
-                                        Err _ ->
-                                            cart
+                        Home.EmptyCart ->
+                            { model | session = { cart = Set.empty } }
+
+                        Home.RemoveFromCart id ->
+                            let
+                                newCart =
+                                    Set.remove id model.session.cart
                             in
                             { model | session = { cart = newCart } }
             in
