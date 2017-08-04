@@ -30,6 +30,7 @@ import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
 import Route exposing (..)
+import Set
 import Task
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
@@ -89,6 +90,7 @@ type PageState
 
 type Msg
     = SetRoute (Maybe Route)
+    | AddToCart String
     | AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
     | AppsLoaded (Result PageLoadError Apps.Model)
@@ -259,6 +261,21 @@ updatePage page msg model =
         ( SetRoute route, _ ) ->
             setRoute route model
 
+        ( AddToCart id, _ ) ->
+            let
+                cart =
+                    model.session.cart
+
+                newCart =
+                    case String.toInt id of
+                        Ok n ->
+                            Set.insert n cart
+
+                        Err _ ->
+                            cart
+            in
+            ( { model | session = { cart = newCart } }, Cmd.none )
+
         ( Authorize (Ok subModel), _ ) ->
             model
                 ! [ OAuth.Implicit.authorize
@@ -418,8 +435,37 @@ updatePage page msg model =
         ( SearchMsg subMsg, Search subModel ) ->
             toPage Search SearchMsg Search.update subMsg subModel
 
+        {--
         ( HomeMsg subMsg, Home subModel ) ->
             toPage Home HomeMsg Home.update subMsg subModel
+            --}
+        ( HomeMsg subMsg, Home subModel ) ->
+            let
+                ( ( pageModel, cmd ), msgFromPage ) =
+                    Home.update subMsg subModel
+
+                newModel =
+                    case msgFromPage of
+                        Home.NoOp ->
+                            model
+
+                        Home.AddToCart val ->
+                            let
+                                cart =
+                                    model.session.cart
+
+                                newCart =
+                                    case String.toInt val of
+                                        Ok n ->
+                                            Set.insert n cart
+
+                                        Err _ ->
+                                            cart
+                            in
+                            { model | session = { cart = newCart } }
+            in
+            { newModel | pageState = Loaded (Home pageModel) }
+                => Cmd.map HomeMsg cmd
 
         ( AboutMsg subMsg, About subModel ) ->
             toPage About AboutMsg About.update subMsg subModel
@@ -626,7 +672,7 @@ init flags location =
                 , clientId = flags.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
-            , session = { cart = Just "The Thing!" }
+            , session = { cart = Set.empty }
             , error = Nothing
             , token = Nothing
             , pageState = Loaded initialPage

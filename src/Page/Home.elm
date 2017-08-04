@@ -1,10 +1,12 @@
-module Page.Home exposing (Model, Msg, init, update, view)
+module Page.Home exposing (ExternalMsg(..), Model, Msg, init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Task exposing (Task)
+import Util exposing ((=>))
 import View.Page as Page
 
 
@@ -40,14 +42,19 @@ init session =
 
 
 type Msg
-    = Todo
+    = SetCart String
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+type ExternalMsg
+    = NoOp
+    | AddToCart String
+
+
+update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update msg model =
     case msg of
-        Todo ->
-            ( model, Cmd.none )
+        SetCart val ->
+            model => Cmd.none => AddToCart val
 
 
 
@@ -56,10 +63,21 @@ update msg model =
 
 view : Session -> Model -> Html Msg
 view session model =
+    let
+        mkTable =
+            table [] (List.map mkTr [ 1, 2, 3 ])
+
+        mkTr item =
+            tr []
+                [ td [] [ text <| toString item ]
+                , button [ onClick (SetCart (toString item)) ] [ text "Add" ]
+                ]
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , div [] [ text model.pageBody ]
+            , div [] [ mkTable ]
             , div [] [ text (toString session) ]
             ]
         ]

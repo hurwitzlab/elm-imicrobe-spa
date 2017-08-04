@@ -1,6 +1,8 @@
 module Data.Session exposing (Session)
 
+import Set
+
 
 type alias Session =
-    { cart : Maybe String
+    { cart : Set.Set Int
     }
