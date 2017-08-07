@@ -8,3 +8,4 @@ node_modules/
 *.swp
 js/
 elm.js
+config.json
