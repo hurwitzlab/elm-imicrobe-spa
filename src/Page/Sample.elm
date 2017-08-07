@@ -79,6 +79,8 @@ view model =
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
             , viewSample model.sample
+            , viewFiles model.sample.sample_files
+            , viewOntologies model.sample.ontologies
             ]
         ]
 
@@ -111,40 +113,84 @@ viewSample sample =
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
             ]
-        , tr []
-            [ th [] [ text <| "Files (" ++ toString numFiles ++ ")" ]
-            , td [] [ viewFiles sample.sample_files ]
-            ]
-        , tr []
-            [ th [] [ text <| "Ontologies (" ++ toString numOntologies ++ ")" ]
-            , td [] [ viewOntologies sample.ontologies ]
-            ]
         ]
 
 
 viewFiles : List Data.Sample.SampleFile -> Html msg
 viewFiles files =
-    case List.length files of
-        0 ->
-            text "NA"
+    let
+        numFiles =
+            List.length files
 
-        _ ->
-            ul [] (List.map viewFile files)
+        label =
+            case numFiles of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numFiles)
+                        ]
+
+        body =
+            case numFiles of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewFile files)
+    in
+    div []
+        [ h2 []
+            [ text "Files "
+            , label
+            ]
+        , body
+        ]
 
 
 viewFile : Data.Sample.SampleFile -> Html msg
 viewFile file =
-    li [] [ text file.file ]
+    tr []
+        [ td []
+            [ text file.file
+            ]
+        ]
 
 
 viewOntologies : List Data.Sample.Ontology -> Html msg
 viewOntologies ontologies =
-    case List.length ontologies of
-        0 ->
-            text "NA"
+    let
+        numOntologies =
+            List.length ontologies
 
-        _ ->
-            ul [] (List.map viewOntology ontologies)
+        label =
+            case numOntologies of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numOntologies)
+                        ]
+
+        body =
+            case numOntologies of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewOntology ontologies)
+    in
+    div []
+        [ h2 []
+            [ text "Ontologies "
+            , label
+            ]
+        , body
+        ]
 
 
 viewOntology : Data.Sample.Ontology -> Html msg
@@ -160,4 +206,8 @@ viewOntology ont =
                             " (" ++ ont.label ++ ")"
                    )
     in
-    li [] [ text display ]
+    tr []
+        [ td []
+            [ text display
+            ]
+        ]
