@@ -1,7 +1,6 @@
 module Page.Project exposing (Model, Msg, init, update, view)
 
 import Data.Project
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
