@@ -137,8 +137,15 @@ viewInvestigators investigators =
         numInvs =
             List.length investigators
 
-        title =
-            "Investigators (" ++ toString numInvs ++ ")"
+        label =
+            case numInvs of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numInvs)
+                        ]
 
         body =
             case numInvs of
@@ -150,7 +157,10 @@ viewInvestigators investigators =
                         (List.map viewInvestigator investigators)
     in
     div []
-        [ h2 [] [ text title ]
+        [ h2 []
+            [ text "Investigators "
+            , label
+            ]
         , body
         ]
 
@@ -193,9 +203,15 @@ viewSamples samples =
         numSamples =
             List.length samples
 
-        title =
-            "Samples (" ++ toString numSamples ++ ")"
+        label =
+            case numSamples of
+                0 ->
+                    span [] []
 
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numSamples)
+                        ]
         cols =
             tr []
                 (List.map (\s -> th [] [ text s ]) [ "Name", "Type" ])
@@ -212,7 +228,10 @@ viewSamples samples =
                     table [] (cols :: rows)
     in
     div []
-        [ h2 [] [ text title ]
+        [ h2 []
+            [ text "Samples "
+            , label
+            ]
         , body
         ]
 
@@ -234,8 +253,15 @@ viewPubs pubs =
         numPubs =
             List.length pubs
 
-        title =
-            "Publications (" ++ toString numPubs ++ ")"
+        label =
+            case numPubs of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numPubs)
+                        ]
 
         body =
             case numPubs of
@@ -246,7 +272,10 @@ viewPubs pubs =
                     table [ class "table" ] (List.map pubRow pubs)
     in
     div []
-        [ h2 [] [ text title ]
+        [ h2 []
+            [ text "Publications "
+            , label
+            ]
         , body
         ]
 
@@ -267,8 +296,15 @@ viewProjectGroups groups =
         numGroups =
             List.length groups
 
-        title =
-            "Project Groups (" ++ toString numGroups ++ ")"
+        label =
+            case numGroups of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numGroups)
+                        ]
 
         body =
             case numGroups of
@@ -279,7 +315,10 @@ viewProjectGroups groups =
                     table [ class "table" ] (List.map viewGroup groups)
     in
     div []
-        [ h2 [] [ text title ]
+        [ h2 []
+            [ text "Project Groups "
+            , label
+            ]
         , body
         ]
 
