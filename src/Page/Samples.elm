@@ -184,7 +184,7 @@ view model =
 
                 _ ->
                     fieldset []
-                        (text "Limit: "
+                        (text "Types: "
                             :: List.map mkCheckbox sampleTypes
                         )
 
@@ -193,21 +193,31 @@ view model =
                 myLocale =
                     { usLocale | decimals = 0 }
 
-                num =
-                    List.length acceptableSamples |> toFloat |> format myLocale
+                count =
+                    List.length acceptableSamples
+
+                numStr =
+                    count |> toFloat |> format myLocale
             in
-            text ("Showing " ++ num)
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text (model.pageTitle ++ " ")
-                , small []
-                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
-                ]
-            , div [ style [ ( "text-align", "center" ) ] ]
-                [ restrict
                 , numShowing
+                ]
+            , div [ class "panel panel-default" ]
+                [ div [ class "panel-body" ]
+                    [ input [ placeholder "Search by Name", onInput SetQuery ] []
+                    , restrict
+                    ]
                 ]
             , div [] [ Table.view config model.tableState acceptableSamples ]
             ]
@@ -218,7 +228,7 @@ mkCheckbox : String -> Html Msg
 mkCheckbox val =
     label []
         [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
-        , text val
+        , text (" " ++ val)
         ]
 
 
