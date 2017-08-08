@@ -158,31 +158,14 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
+            [ h2 []
+                [ text (model.pageTitle ++ " ")
+                , small []
+                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                ]
             , Table.view config model.tableState acceptableProjects
             ]
         ]
-
-
-
---viewProjects : List Data.Project.Project -> Html msg
---viewProjects projects =
---    case List.length projects of
---        0 ->
---            text "No projects"
---
---        _ ->
---            table [ class "table" ]
---                [ thead []
---                    [ tr []
---                        [ th [] [ text "Name" ]
---                        , th [] [ text "Domains" ]
---                        ]
---                    ]
---                , tbody []
---                    (List.map rowProject projects)
---                ]
 
 
 viewDomain : Data.Project.Domain -> Html msg
@@ -193,21 +176,3 @@ viewDomain domain =
 viewDomains : List Data.Project.Domain -> List (Html msg)
 viewDomains domains =
     List.map viewDomain domains
-
-
-rowProject : Data.Project.Project -> Html msg
-rowProject project =
-    let
-        invs =
-            project.investigators
-
-        domains =
-            List.intersperse (text ", ") (viewDomains project.domains)
-    in
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Project project.project_id) ]
-                [ text project.project_name ]
-            ]
-        , td [] domains
-        ]

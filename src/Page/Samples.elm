@@ -200,10 +200,13 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
+            [ h2 []
+                [ text (model.pageTitle ++ " ")
+                , small []
+                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                ]
             , div [ style [ ( "text-align", "center" ) ] ]
-                [ input [ placeholder "Search by Name", onInput SetQuery ] []
-                , restrict
+                [ restrict
                 , numShowing
                 ]
             , div [] [ Table.view config model.tableState acceptableSamples ]

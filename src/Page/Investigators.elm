@@ -141,8 +141,11 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
+            [ h2 []
+                [ text (model.pageTitle ++ " ")
+                , small []
+                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                ]
             , Table.view config model.tableState acceptablePeople
             ]
         ]
