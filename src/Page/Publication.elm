@@ -77,7 +77,13 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text "Publication "
+                    , small []
+                        [ text model.publication.title ]
+                    ]
+                ]
             , viewPublication model.publication
             ]
         ]

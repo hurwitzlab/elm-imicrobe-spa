@@ -9,7 +9,7 @@ import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Domain
 import Route
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
 
@@ -89,13 +89,21 @@ update msg model =
 
 config : Table.Config Data.Domain.Project Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .project_id
         , toMsg = SetTableState
         , columns =
             [ nameColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table"
+    ]
 
 
 nameColumn : Table.Column Data.Domain.Project Msg
@@ -132,9 +140,58 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , text ("query = " ++ model.query)
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.domain.domain_name ]
+                    ]
+                ]
             , input [ placeholder "Search by Name", onInput SetQuery ] []
-            , Table.view config model.tableState acceptable
+            , viewProjects model.domain.projects
+            ]
+        ]
+
+
+viewProjects : List Data.Domain.Project -> Html msg
+viewProjects projects =
+    let
+        numProjects =
+            List.length projects
+
+        label =
+            case numProjects of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numProjects)
+                        ]
+
+        body =
+            case numProjects of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewProject projects)
+    in
+    div []
+        [ h2 []
+            [ text "Projects "
+            , label
+            ]
+        , body
+        ]
+
+
+viewProject : Data.Domain.Project -> Html msg
+viewProject project =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.Project project.project_id) ]
+                [ text project.project_name ]
             ]
         ]

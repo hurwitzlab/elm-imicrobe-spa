@@ -76,7 +76,13 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.project.project_name ]
+                    ]
+                ]
             , viewProject model.project
             , viewInvestigators model.project.investigators
             , viewPubs model.project.publications
@@ -118,7 +124,6 @@ viewProject project =
             , td [] (viewDomains project.domains)
             ]
         ]
-
 
 viewInvestigator : Data.Project.Investigator -> Html msg
 viewInvestigator investigator =
@@ -224,7 +229,7 @@ viewSamples samples =
                     text "NA"
 
                 _ ->
-                    table [] (cols :: rows)
+                    table [ class "table" ] (cols :: rows)
     in
     div []
         [ h2 []

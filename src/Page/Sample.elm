@@ -77,7 +77,13 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.sample.sample_name ]
+                    ]
+                ]
             , viewSample model.sample
             , viewFiles model.sample.sample_files
             , viewOntologies model.sample.ontologies

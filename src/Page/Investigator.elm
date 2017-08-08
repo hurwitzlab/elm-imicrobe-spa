@@ -75,34 +75,41 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "container" ]
-        [ viewInvestigator model.investigator
-        , viewProjects model.investigator.projects
-        , viewSamples model.investigator.samples
+        [ div [ class "row" ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.investigator.investigator_name ]
+                    ]
+                ]
+            , viewInvestigator model.investigator
+            , viewProjects model.investigator.projects
+            , viewSamples model.investigator.samples
+            ]
         ]
 
 
 viewInvestigator : Data.Investigator.Investigator -> Html msg
 viewInvestigator inv =
     let
+        title =
+            "Investigator: " ++ inv.investigator_name
+
         numProjects =
             List.length inv.projects
 
         numSamples =
             List.length inv.samples
     in
-    div []
-        [ div []
-            [ h2 [] [ text "Investigator" ]
-            , table [ class "table" ]
-                [ tr []
-                    [ th [] [ text "Name" ]
-                    , td [] [ text inv.investigator_name ]
-                    ]
-                , tr []
-                    [ th [] [ text "Institution" ]
-                    , td [] [ text inv.institution ]
-                    ]
-                ]
+    table [ class "table" ]
+        [ tr []
+            [ th [] [ text "Name" ]
+            , td [] [ text inv.investigator_name ]
+            ]
+        , tr []
+            [ th [] [ text "Institution" ]
+            , td [] [ text inv.institution ]
             ]
         ]
 
@@ -179,7 +186,7 @@ viewSamples samples =
                     text "None"
 
                 _ ->
-                    table [] (cols :: rows)
+                    table [ class "table" ] (cols :: rows)
     in
     div []
         [ h2 []

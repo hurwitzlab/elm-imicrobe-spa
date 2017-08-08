@@ -77,8 +77,15 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.projectGroup.group_name ]
+                    ]
+                ]
             , viewProjectGroup model.projectGroup
+            , viewProjects model.projectGroup.projects
             ]
         ]
 
@@ -98,16 +105,6 @@ viewProjectGroup group =
             [ th [] [ text "URL" ]
             , td [] [ viewUrl group.url ]
             ]
-        , tr []
-            [ th []
-                [ text
-                    ("Projects ("
-                        ++ toString (List.length group.projects)
-                        ++ ")"
-                    )
-                ]
-            , td [] [ viewProjects group.projects ]
-            ]
         ]
 
 
@@ -123,20 +120,44 @@ viewUrl url =
 
 viewProjects : List Data.ProjectGroup.Project -> Html msg
 viewProjects projects =
-    case List.length projects of
-        0 ->
-            text "None"
+    let
+        numProjects =
+            List.length projects
 
-        _ ->
-            table [] (List.map projectRow projects)
+        label =
+            case numProjects of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numProjects)
+                        ]
+
+        body =
+            case numProjects of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewProject projects)
+    in
+    div []
+        [ h2 []
+            [ text "Projects "
+            , label
+            ]
+        , body
+        ]
 
 
-projectRow : Data.ProjectGroup.Project -> Html msg
-projectRow project =
+viewProject : Data.ProjectGroup.Project -> Html msg
+viewProject project =
     tr []
-        [ th [] [ text "Project" ]
-        , td []
+        [ td []
             [ a [ Route.href (Route.Project project.project_id) ]
                 [ text project.project_name ]
             ]
         ]
+
