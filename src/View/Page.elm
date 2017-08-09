@@ -9,6 +9,8 @@ type ActivePage
     = About
     | App
     | Apps
+    | Assembly
+    | Assemblies
     | Domains
     | Domain
     | Home
@@ -78,6 +80,7 @@ viewHeader page isLoading =
                             , li [] [ a [ Route.href Route.ProjectGroups ] [ text "Project Groups" ] ]
                             , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
                             , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
+                            , li [] [ a [ Route.href Route.Assemblies ] [ text "Assemblies" ] ]
                             , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                             , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             ]

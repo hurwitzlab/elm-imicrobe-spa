@@ -1,14 +1,17 @@
-module Page.Investigators exposing (Model, Msg, init, update, view)
+module Page.Assemblies exposing (Model, Msg, init, update, view)
 
-import Data.Investigator
+import Data.Assembly
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
+import Json.Encode as Encode
+import List exposing (map)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Investigator
+import Request.Assembly
 import Route
+import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
@@ -19,7 +22,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , investigators : List Data.Investigator.Investigator
+    , assemblies : List Data.Assembly.Assembly
     , tableState : Table.State
     , query : String
     }
@@ -30,10 +33,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigators"
+            Task.succeed "Assemblies"
 
-        loadInvestigators =
-            Request.Investigator.list |> Http.toTask
+        loadAssemblies =
+            Request.Assembly.list |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -59,7 +62,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadInvestigators tblState qry
+    Task.map4 Model title loadAssemblies tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -86,14 +89,13 @@ update msg model =
             )
 
 
-config : Table.Config Data.Investigator.Investigator Msg
+config : Table.Config Data.Assembly.Assembly Msg
 config =
     Table.customConfig
-        { toId = toString << .investigator_id
+        { toId = .assembly_name
         , toMsg = SetTableState
         , columns =
             [ nameColumn
-            , Table.stringColumn "Inst" .institution
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -106,7 +108,7 @@ toTableAttrs =
     ]
 
 
-nameColumn : Table.Column Data.Investigator.Investigator Msg
+nameColumn : Table.Column Data.Assembly.Assembly Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
@@ -115,11 +117,11 @@ nameColumn =
         }
 
 
-nameLink : Data.Investigator.Investigator -> Table.HtmlDetails Msg
-nameLink inv =
+nameLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+nameLink assembly =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Investigator inv.investigator_id) ]
-            [ text inv.investigator_name ]
+        [ a [ Route.href (Route.Assembly assembly.assembly_id) ]
+            [ text assembly.assembly_name ]
         ]
 
 
@@ -136,8 +138,8 @@ view model =
         lowerQuery =
             String.toLower query
 
-        acceptablePeople =
-            List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
+        acceptableAssemblies =
+            List.filter (String.contains lowerQuery << String.toLower << .assembly_name) model.assemblies
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -146,33 +148,6 @@ view model =
                 , small []
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
-            , Table.view config model.tableState acceptablePeople
+            , Table.view config model.tableState acceptableAssemblies
             ]
-        ]
-
-
-viewInvestigators : List Data.Investigator.Investigator -> Html msg
-viewInvestigators invs =
-    case List.length invs of
-        0 ->
-            text "No investigators"
-
-        _ ->
-            table [ class "table" ]
-                [ thead []
-                    [ tr []
-                        [ th [] [ text "Name" ]
-                        , th [] [ text "Institution" ]
-                        ]
-                    ]
-                , tbody []
-                    (List.map rowInv invs)
-                ]
-
-
-rowInv : Data.Investigator.Investigator -> Html msg
-rowInv inv =
-    tr []
-        [ td [] [ a [ Route.href (Route.Investigator inv.investigator_id) ] [ text inv.investigator_name ] ]
-        , td [] [ text inv.institution ]
         ]

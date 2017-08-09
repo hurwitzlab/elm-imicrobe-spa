@@ -14,6 +14,8 @@ type Route
     | About
     | Apps
     | App Int
+    | Assemblies
+    | Assembly Int
     | Domains
     | Domain Int
     | Investigator Int
@@ -40,6 +42,8 @@ routeMather =
         [ Url.map About (s "about")
         , Url.map Apps (s "apps")
         , Url.map App (s "apps" </> Url.int)
+        , Url.map Assemblies (s "assemblies")
+        , Url.map Assembly (s "assemblies" </> Url.int)
         , Url.map Home (s "")
         , Url.map Domains (s "domains")
         , Url.map Domain (s "domains" </> Url.int)
@@ -82,6 +86,12 @@ routeToString page =
 
                 App id ->
                     [ "apps", toString id ]
+
+                Assemblies ->
+                    [ "assemblies" ]
+
+                Assembly id ->
+                    [ "assemblies", toString id ]
 
                 Home ->
                     []

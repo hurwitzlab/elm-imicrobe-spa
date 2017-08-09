@@ -9,6 +9,8 @@ import OAuth.Implicit
 import Page.About as About
 import Page.App as App
 import Page.Apps as Apps
+import Page.Assembly as Assembly
+import Page.Assemblies as Assemblies
 import Page.Domain as Domain
 import Page.Domains as Domains
 import Page.Error as Error exposing (PageLoadError)
@@ -57,6 +59,8 @@ type Page
     | Blank
     | Apps Apps.Model
     | App Int App.Model
+    | Assemblies Assemblies.Model
+    | Assembly Int Assembly.Model
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
@@ -96,6 +100,10 @@ type Msg
     | AppMsg App.Msg
     | AppsLoaded (Result PageLoadError Apps.Model)
     | AppsMsg Apps.Msg
+    | AssemblyLoaded Int (Result PageLoadError Assembly.Model)
+    | AssemblyMsg Assembly.Msg
+    | AssembliesLoaded (Result PageLoadError Assemblies.Model)
+    | AssembliesMsg Assemblies.Msg
     | Authorize (Result PageLoadError Home.Model)
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
@@ -160,6 +168,12 @@ setRoute maybeRoute model =
 
         Just Route.Apps ->
             transition AppsLoaded Apps.init
+
+        Just (Route.Assembly id) ->
+            transition (AssemblyLoaded id) (Assembly.init id)
+
+        Just Route.Assemblies ->
+            transition AssembliesLoaded Assemblies.init
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
@@ -299,6 +313,21 @@ updatePage page msg model =
 
         ( AppsLoaded (Err error), _ ) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( AssemblyLoaded id (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
+
+        ( AssemblyLoaded id (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( AssembliesLoaded (Ok subModel), _ ) ->
+            { model | pageState = Loaded (Assemblies subModel) } => Cmd.none
+
+        ( AssembliesLoaded (Err error), _ ) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ( AssembliesMsg subMsg, Assemblies subModel ) ->
+            toPage Assemblies AssembliesMsg Assemblies.update subMsg subModel
 
         ( DomainsLoaded (Ok subModel), _ ) ->
             { model | pageState = Loaded (Domains subModel) } => Cmd.none
@@ -539,6 +568,16 @@ viewPage session isLoading page =
             Apps.view subModel
                 |> layout Page.Apps
                 |> Html.map AppsMsg
+
+        Assembly id subModel ->
+            Assembly.view subModel
+                |> layout Page.Assembly
+                |> Html.map AssemblyMsg
+
+        Assemblies subModel ->
+            Assemblies.view subModel
+                |> layout Page.Assemblies
+                |> Html.map AssembliesMsg
 
         Domains subModel ->
             Domains.view subModel

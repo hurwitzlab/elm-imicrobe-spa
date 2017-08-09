@@ -155,7 +155,7 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 []
+            [ h1 []
                 [ text (model.pageTitle ++ " ")
                 , small []
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
