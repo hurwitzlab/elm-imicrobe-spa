@@ -112,6 +112,24 @@ viewAssembly assembly =
                         [ Route.href (Route.Sample sample.sample_id) ]
                         [ text sample.sample_name ]
 
+        cdsLink =
+            case assembly.cds_file of
+                "" -> text "No"
+
+                _ -> text "Yes"
+
+        ntLink =
+            case assembly.nt_file of
+                "" -> text "No"
+
+                _ -> text "Yes"
+
+        pepLink =
+            case assembly.pep_file of
+                "" -> text "No"
+
+                _ -> text "Yes"
+
     in
     table [ class "table" ]
         [ tr []
@@ -137,5 +155,17 @@ viewAssembly assembly =
         , tr []
             [ th [] [ text "Project" ]
             , td [] [ projectLink ]
+            ]
+        , tr []
+            [ th [] [ text "CDS" ]
+            , td [] [ cdsLink ]
+            ]
+        , tr []
+            [ th [] [ text "NT" ]
+            , td [] [ ntLink ]
+            ]
+        , tr []
+            [ th [] [ text "Peptides" ]
+            , td [] [ pepLink ]
             ]
         ]

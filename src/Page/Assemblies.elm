@@ -15,6 +15,7 @@ import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
+import Util exposing (truncate)
 
 
 ---- MODEL ----
@@ -95,7 +96,12 @@ config =
         { toId = .assembly_name
         , toMsg = SetTableState
         , columns =
-            [ nameColumn
+            [ projectColumn
+            , nameColumn
+            , Table.stringColumn "Organism" .organism
+            , cdsColumn
+            , ntColumn
+            , pepColumn
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -106,6 +112,40 @@ toTableAttrs : List (Attribute Msg)
 toTableAttrs =
     [ attribute "class" "table"
     ]
+
+
+projectName : Data.Assembly.Assembly -> String
+projectName assembly =
+    case assembly.project of
+        Nothing ->
+            "NA"
+
+        Just project ->
+            project.project_name
+
+
+projectColumn : Table.Column Data.Assembly.Assembly Msg
+projectColumn =
+    Table.veryCustomColumn
+        { name = "Projects"
+        , viewData = projectLink
+        , sorter = Table.increasingOrDecreasingBy projectName
+        }
+
+
+projectLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+projectLink assembly =
+    let
+        link =
+            case assembly.project of
+                Nothing ->
+                    text "NA"
+
+                Just project ->
+                    a [ Route.href (Route.Project project.project_id) ]
+                        [ text project.project_name ]
+    in
+    Table.HtmlDetails [] [ link ]
 
 
 nameColumn : Table.Column Data.Assembly.Assembly Msg
@@ -124,6 +164,74 @@ nameLink assembly =
             [ text assembly.assembly_name ]
         ]
 
+
+cdsText : Data.Assembly.Assembly -> String
+cdsText assembly =
+    case assembly.cds_file of
+        "" -> "No"
+
+        _ -> "Yes"
+
+
+cdsColumn : Table.Column Data.Assembly.Assembly Msg
+cdsColumn =
+    Table.veryCustomColumn
+        { name = "CDS"
+        , viewData = cdsLink
+        , sorter = Table.increasingOrDecreasingBy cdsText
+        }
+
+
+cdsLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+cdsLink assembly =
+    Table.HtmlDetails []
+        [ text (cdsText assembly) ]
+
+
+ntText : Data.Assembly.Assembly -> String
+ntText assembly =
+    case assembly.nt_file of
+        "" -> "No"
+
+        _ -> "Yes"
+
+
+ntColumn : Table.Column Data.Assembly.Assembly Msg
+ntColumn =
+    Table.veryCustomColumn
+        { name = "NT"
+        , viewData = ntLink
+        , sorter = Table.increasingOrDecreasingBy ntText
+        }
+
+
+ntLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+ntLink assembly =
+    Table.HtmlDetails []
+        [ text (ntText assembly) ]
+
+
+pepText : Data.Assembly.Assembly -> String
+pepText assembly =
+    case assembly.pep_file of
+        "" -> "No"
+
+        _ -> "Yes"
+
+
+pepColumn : Table.Column Data.Assembly.Assembly Msg
+pepColumn =
+    Table.veryCustomColumn
+        { name = "PEP"
+        , viewData = pepLink
+        , sorter = Table.increasingOrDecreasingBy pepText
+        }
+
+
+pepLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+pepLink assembly =
+    Table.HtmlDetails []
+        [ text (pepText assembly) ]
 
 
 -- VIEW --
