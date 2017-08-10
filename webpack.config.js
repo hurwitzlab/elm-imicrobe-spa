@@ -37,6 +37,10 @@ module.exports = {
         test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
         loader: 'file-loader',
       },
+        {
+        test: /\.(jpe?g|png|gif|ico)$/,
+        loader: 'file-loader?name=./img/[name].[ext]',
+      },
       { test: /vendor\/.+\.(jsx|js)$/,
         loader: 'imports?jQuery=jquery,$=jquery,this=>window'
       },
