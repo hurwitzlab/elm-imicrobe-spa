@@ -11,6 +11,8 @@ import Page.App as App
 import Page.Apps as Apps
 import Page.Assembly as Assembly
 import Page.Assemblies as Assemblies
+import Page.CombinedAssembly as CombinedAssembly
+import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Domain as Domain
 import Page.Domains as Domains
 import Page.Error as Error exposing (PageLoadError)
@@ -61,6 +63,8 @@ type Page
     | App Int App.Model
     | Assemblies Assemblies.Model
     | Assembly Int Assembly.Model
+    | CombinedAssemblies CombinedAssemblies.Model
+    | CombinedAssembly Int CombinedAssembly.Model
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
@@ -105,6 +109,10 @@ type Msg
     | AssembliesLoaded (Result PageLoadError Assemblies.Model)
     | AssembliesMsg Assemblies.Msg
     | Authorize (Result PageLoadError Home.Model)
+    | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
+    | CombinedAssemblyMsg CombinedAssembly.Msg
+    | CombinedAssembliesLoaded (Result PageLoadError CombinedAssemblies.Model)
+    | CombinedAssembliesMsg CombinedAssemblies.Msg
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
@@ -174,6 +182,12 @@ setRoute maybeRoute model =
 
         Just Route.Assemblies ->
             transition AssembliesLoaded Assemblies.init
+
+        Just (Route.CombinedAssembly id) ->
+            transition (CombinedAssemblyLoaded id) (CombinedAssembly.init id)
+
+        Just Route.CombinedAssemblies ->
+            transition CombinedAssembliesLoaded CombinedAssemblies.init
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
@@ -257,6 +271,286 @@ update msg model =
     updatePage (getPage model.pageState) msg model
 
 
+--updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
+--updatePage page msg model =
+--    let
+--        session =
+--            model.session
+--
+--        toPage toModel toMsg subUpdate subMsg subModel =
+--            let
+--                ( newModel, newCmd ) =
+--                    subUpdate subMsg subModel
+--            in
+--            ( { model | pageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
+--
+--        error =
+--            pageError model
+--    in
+--    case ( msg, page ) of
+--        ( SetRoute route, _ ) ->
+--            setRoute route model
+--
+--        ( AddToCart id, _ ) ->
+--            let
+--                newCart =
+--                    Set.insert id model.session.cart
+--            in
+--            ( { model | session = { cart = newCart } }, Cmd.none )
+--
+--        ( Authorize (Ok subModel), _ ) ->
+--            model
+--                ! [ OAuth.Implicit.authorize
+--                        { clientId = model.oauth.clientId
+--                        , redirectUri = model.oauth.redirectUri
+--                        , responseType = OAuth.Token
+--                        , scope = [ "PRODUCTION" ]
+--                        , state = Just "000"
+--                        , url = model.oauth.authEndpoint
+--                        }
+--                  ]
+--
+--        ( AboutLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (About subModel) } => Cmd.none
+--
+--        ( AboutLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( AppLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (App id subModel) } => Cmd.none
+--
+--        ( AppLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( AppsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Apps subModel) } => Cmd.none
+--
+--        ( AppsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( AssemblyLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
+--
+--        ( AssemblyLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( AssembliesLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Assemblies subModel) } => Cmd.none
+--
+--        ( AssembliesLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( AssembliesMsg subMsg, Assemblies subModel ) ->
+--            toPage Assemblies AssembliesMsg Assemblies.update subMsg subModel
+--
+--        ( CombinedAssemblyLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
+--
+--        ( CombinedAssemblyLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( CombinedAssembliesLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (CombinedAssemblies subModel) } => Cmd.none
+--
+--        ( CombinedAssembliesLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( CombinedAssembliesMsg subMsg, CombinedAssemblies subModel ) ->
+--            toPage CombinedAssemblies CombinedAssembliesMsg CombinedAssemblies.update subMsg subModel
+--
+--        ( DomainsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Domains subModel) } => Cmd.none
+--
+--        ( DomainsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( DomainsMsg subMsg, Domains subModel ) ->
+--            toPage Domains DomainsMsg Domains.update subMsg subModel
+--
+--        ( DomainLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Domain id subModel) } => Cmd.none
+--
+--        ( DomainLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( EmptyCart, _ ) ->
+--            ( { model | session = { cart = Set.empty } }, Cmd.none )
+--
+--        ( HomeLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Home subModel) } => Cmd.none
+--
+--        ( HomeLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( InvestigatorLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
+--
+--        ( InvestigatorLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( InvestigatorsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Investigators subModel) } => Cmd.none
+--
+--        ( InvestigatorsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( InvestigatorsMsg subMsg, Investigators subModel ) ->
+--            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
+--
+--        ( MetaSearchLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
+--
+--        ( MetaSearchLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
+--            toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
+--
+--        ( PubchaseLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Pubchase subModel) } => Cmd.none
+--
+--        ( PubchaseLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( PubchaseMsg subMsg, Pubchase subModel ) ->
+--            toPage Pubchase PubchaseMsg Pubchase.update subMsg subModel
+--
+--        ( PublicationLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Publication id subModel) } => Cmd.none
+--
+--        ( PublicationLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( PublicationsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Publications subModel) } => Cmd.none
+--
+--        ( PublicationsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( PublicationsMsg subMsg, Publications subModel ) ->
+--            toPage Publications PublicationsMsg Publications.update subMsg subModel
+--
+--        ( ProfileLoaded token (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
+--
+--        ( ProfileLoaded token (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( ProjectsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Projects subModel) } => Cmd.none
+--
+--        ( ProjectsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( ProjectsMsg subMsg, Projects subModel ) ->
+--            toPage Projects ProjectsMsg Projects.update subMsg subModel
+--
+--        ( ProjectLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Project id subModel) } => Cmd.none
+--
+--        ( ProjectLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( ProjectGroupLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
+--
+--        ( ProjectGroupLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( ProjectGroupsLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (ProjectGroups subModel) } => Cmd.none
+--
+--        ( ProjectGroupsLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( ProjectGroupsMsg subMsg, ProjectGroups subModel ) ->
+--            toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
+--
+--        ( RemoveFromCart id, _ ) ->
+--            let
+--                newCart =
+--                    Set.remove id model.session.cart
+--            in
+--            ( { model | session = { cart = newCart } }, Cmd.none )
+--
+--        ( SampleLoaded id (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Sample id subModel) } => Cmd.none
+--
+--        ( SampleLoaded id (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( SamplesLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Samples subModel) } => Cmd.none
+--
+--        ( SamplesLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( SamplesMsg subMsg, Samples subModel ) ->
+--            toPage Samples SamplesMsg Samples.update subMsg subModel
+--
+--        ( SearchLoaded (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Search subModel) } => Cmd.none
+--
+--        ( SearchLoaded (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( SearchMsg subMsg, Search subModel ) ->
+--            toPage Search SearchMsg Search.update subMsg subModel
+--
+--        {--
+--        ( HomeMsg subMsg, Home subModel ) ->
+--            toPage Home HomeMsg Home.update subMsg subModel
+--            --}
+--        ( HomeMsg subMsg, Home subModel ) ->
+--            let
+--                ( ( pageModel, cmd ), msgFromPage ) =
+--                    Home.update subMsg subModel
+--
+--                newModel =
+--                    case msgFromPage of
+--                        Home.NoOp ->
+--                            model
+--
+--                        Home.AddToCart id ->
+--                            let
+--                                newCart =
+--                                    Set.insert id model.session.cart
+--                            in
+--                            { model | session = { cart = newCart } }
+--
+--                        Home.EmptyCart ->
+--                            { model | session = { cart = Set.empty } }
+--
+--                        Home.RemoveFromCart id ->
+--                            let
+--                                newCart =
+--                                    Set.remove id model.session.cart
+--                            in
+--                            { model | session = { cart = newCart } }
+--            in
+--            { newModel | pageState = Loaded (Home pageModel) }
+--                => Cmd.map HomeMsg cmd
+--
+--        ( AboutMsg subMsg, About subModel ) ->
+--            toPage About AboutMsg About.update subMsg subModel
+--
+--        ( MapLoaded lat lng (Ok subModel), _ ) ->
+--            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
+--
+--        ( MapLoaded lat lng (Err error), _ ) ->
+--            { model | pageState = Loaded (Error error) } => Cmd.none
+--
+--        ( MapMsg subMsg, Map lat lng subModel ) ->
+--            toPage (Map lat lng) MapMsg Map.update subMsg subModel
+--
+--        ( _, NotFound ) ->
+--            -- Disregard incoming messages when we're on the
+--            -- NotFound page.
+--            model => Cmd.none
+--
+--        ( _, _ ) ->
+--            -- Disregard incoming messages that arrived for the wrong page
+--            model => Cmd.none
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
@@ -273,18 +567,18 @@ updatePage page msg model =
         error =
             pageError model
     in
-    case ( msg, page ) of
-        ( SetRoute route, _ ) ->
+    case msg of
+        SetRoute route ->
             setRoute route model
 
-        ( AddToCart id, _ ) ->
+        AddToCart id ->
             let
                 newCart =
                     Set.insert id model.session.cart
             in
             ( { model | session = { cart = newCart } }, Cmd.none )
 
-        ( Authorize (Ok subModel), _ ) ->
+        Authorize (Ok subModel) ->
             model
                 ! [ OAuth.Implicit.authorize
                         { clientId = model.oauth.clientId
@@ -296,232 +590,319 @@ updatePage page msg model =
                         }
                   ]
 
-        ( AboutLoaded (Ok subModel), _ ) ->
+        AboutLoaded (Ok subModel) ->
             { model | pageState = Loaded (About subModel) } => Cmd.none
 
-        ( AboutLoaded (Err error), _ ) ->
+        AboutLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( AppLoaded id (Ok subModel), _ ) ->
+        AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => Cmd.none
 
-        ( AppLoaded id (Err error), _ ) ->
+        AppLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( AppsLoaded (Ok subModel), _ ) ->
+        AppsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Apps subModel) } => Cmd.none
 
-        ( AppsLoaded (Err error), _ ) ->
+        AppsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( AssemblyLoaded id (Ok subModel), _ ) ->
+        AssemblyLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
 
-        ( AssemblyLoaded id (Err error), _ ) ->
+        AssemblyLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( AssembliesLoaded (Ok subModel), _ ) ->
+        AssembliesLoaded (Ok subModel) ->
             { model | pageState = Loaded (Assemblies subModel) } => Cmd.none
 
-        ( AssembliesLoaded (Err error), _ ) ->
+        AssembliesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( AssembliesMsg subMsg, Assemblies subModel ) ->
-            toPage Assemblies AssembliesMsg Assemblies.update subMsg subModel
+        AssembliesMsg subMsg ->
+            case page of
+                Assemblies subModel ->
+                    toPage Assemblies AssembliesMsg Assemblies.update subMsg subModel
 
-        ( DomainsLoaded (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        CombinedAssemblyLoaded id (Ok subModel) ->
+            { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
+
+        CombinedAssemblyLoaded id (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        CombinedAssembliesLoaded (Ok subModel) ->
+            { model | pageState = Loaded (CombinedAssemblies subModel) } => Cmd.none
+
+        CombinedAssembliesLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        CombinedAssembliesMsg subMsg ->
+            case page of
+                CombinedAssemblies subModel ->
+                    toPage CombinedAssemblies CombinedAssembliesMsg CombinedAssemblies.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
+        DomainsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Domains subModel) } => Cmd.none
 
-        ( DomainsLoaded (Err error), _ ) ->
+        DomainsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( DomainsMsg subMsg, Domains subModel ) ->
-            toPage Domains DomainsMsg Domains.update subMsg subModel
+        DomainsMsg subMsg ->
+            case page of
+                Domains subModel ->
+                    toPage Domains DomainsMsg Domains.update subMsg subModel
 
-        ( DomainLoaded id (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        DomainLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Domain id subModel) } => Cmd.none
 
-        ( DomainLoaded id (Err error), _ ) ->
+        DomainLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( EmptyCart, _ ) ->
+        EmptyCart ->
             ( { model | session = { cart = Set.empty } }, Cmd.none )
 
-        ( HomeLoaded (Ok subModel), _ ) ->
+        HomeLoaded (Ok subModel) ->
             { model | pageState = Loaded (Home subModel) } => Cmd.none
 
-        ( HomeLoaded (Err error), _ ) ->
+        HomeLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( InvestigatorLoaded id (Ok subModel), _ ) ->
+        InvestigatorLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
 
-        ( InvestigatorLoaded id (Err error), _ ) ->
+        InvestigatorLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( InvestigatorsLoaded (Ok subModel), _ ) ->
+        InvestigatorsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Investigators subModel) } => Cmd.none
 
-        ( InvestigatorsLoaded (Err error), _ ) ->
+        InvestigatorsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( InvestigatorsMsg subMsg, Investigators subModel ) ->
-            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
+        InvestigatorsMsg subMsg ->
+            case page of
+                Investigators subModel ->
+                    ( toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel )
 
-        ( MetaSearchLoaded (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        MetaSearchLoaded (Ok subModel) ->
             { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
 
-        ( MetaSearchLoaded (Err error), _ ) ->
+        MetaSearchLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
-            toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
+        MetaSearchMsg subMsg ->
+            case page of
+                MetaSearch subModel ->
+                    toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
 
-        ( PubchaseLoaded (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        PubchaseLoaded (Ok subModel) ->
             { model | pageState = Loaded (Pubchase subModel) } => Cmd.none
 
-        ( PubchaseLoaded (Err error), _ ) ->
+        PubchaseLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( PubchaseMsg subMsg, Pubchase subModel ) ->
-            toPage Pubchase PubchaseMsg Pubchase.update subMsg subModel
+        PubchaseMsg subMsg ->
+            case page of
+                Pubchase subModel ->
+                    toPage Pubchase PubchaseMsg Pubchase.update subMsg subModel
 
-        ( PublicationLoaded id (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        PublicationLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Publication id subModel) } => Cmd.none
 
-        ( PublicationLoaded id (Err error), _ ) ->
+        PublicationLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( PublicationsLoaded (Ok subModel), _ ) ->
+        PublicationsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Publications subModel) } => Cmd.none
 
-        ( PublicationsLoaded (Err error), _ ) ->
+        PublicationsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( PublicationsMsg subMsg, Publications subModel ) ->
-            toPage Publications PublicationsMsg Publications.update subMsg subModel
+        PublicationsMsg subMsg ->
+            case page of
+                Publications subModel ->
+                    toPage Publications PublicationsMsg Publications.update subMsg subModel
 
-        ( ProfileLoaded token (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        ProfileLoaded token (Ok subModel) ->
             { model | pageState = Loaded (Profile token subModel) } => Cmd.none
 
-        ( ProfileLoaded token (Err error), _ ) ->
+        ProfileLoaded token (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( ProjectsLoaded (Ok subModel), _ ) ->
+        ProjectsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
 
-        ( ProjectsLoaded (Err error), _ ) ->
+        ProjectsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( ProjectsMsg subMsg, Projects subModel ) ->
-            toPage Projects ProjectsMsg Projects.update subMsg subModel
+        ProjectsMsg subMsg ->
+            case page of
+                Projects subModel ->
+                    toPage Projects ProjectsMsg Projects.update subMsg subModel
 
-        ( ProjectLoaded id (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        ProjectLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Project id subModel) } => Cmd.none
 
-        ( ProjectLoaded id (Err error), _ ) ->
+        ProjectLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( ProjectGroupLoaded id (Ok subModel), _ ) ->
+        ProjectGroupLoaded id (Ok subModel) ->
             { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
 
-        ( ProjectGroupLoaded id (Err error), _ ) ->
+        ProjectGroupLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( ProjectGroupsLoaded (Ok subModel), _ ) ->
+        ProjectGroupsLoaded (Ok subModel) ->
             { model | pageState = Loaded (ProjectGroups subModel) } => Cmd.none
 
-        ( ProjectGroupsLoaded (Err error), _ ) ->
+        ProjectGroupsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( ProjectGroupsMsg subMsg, ProjectGroups subModel ) ->
-            toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
+        ProjectGroupsMsg subMsg ->
+            case page of
+                ProjectGroups subModel ->
+                    toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
 
-        ( RemoveFromCart id, _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        RemoveFromCart id ->
             let
                 newCart =
                     Set.remove id model.session.cart
             in
             ( { model | session = { cart = newCart } }, Cmd.none )
 
-        ( SampleLoaded id (Ok subModel), _ ) ->
+        SampleLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Sample id subModel) } => Cmd.none
 
-        ( SampleLoaded id (Err error), _ ) ->
+        SampleLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( SamplesLoaded (Ok subModel), _ ) ->
+        SamplesLoaded (Ok subModel) ->
             { model | pageState = Loaded (Samples subModel) } => Cmd.none
 
-        ( SamplesLoaded (Err error), _ ) ->
+        SamplesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( SamplesMsg subMsg, Samples subModel ) ->
-            toPage Samples SamplesMsg Samples.update subMsg subModel
+        SamplesMsg subMsg ->
+            case page of
+                Samples subModel ->
+                    toPage Samples SamplesMsg Samples.update subMsg subModel
 
-        ( SearchLoaded (Ok subModel), _ ) ->
+                _ ->
+                    model => Cmd.none
+
+        SearchLoaded (Ok subModel) ->
             { model | pageState = Loaded (Search subModel) } => Cmd.none
 
-        ( SearchLoaded (Err error), _ ) ->
+        SearchLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( SearchMsg subMsg, Search subModel ) ->
-            toPage Search SearchMsg Search.update subMsg subModel
+        SearchMsg subMsg ->
+            case page of
+                Search subModel ->
+                    toPage Search SearchMsg Search.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
 
         {--
         ( HomeMsg subMsg, Home subModel ) ->
             toPage Home HomeMsg Home.update subMsg subModel
             --}
-        ( HomeMsg subMsg, Home subModel ) ->
-            let
-                ( ( pageModel, cmd ), msgFromPage ) =
-                    Home.update subMsg subModel
+        HomeMsg subMsg ->
+            case page of
+                Home subModel ->
+                let
+                    ( ( pageModel, cmd ), msgFromPage ) =
+                        Home.update subMsg subModel
 
-                newModel =
-                    case msgFromPage of
-                        Home.NoOp ->
-                            model
+                    newModel =
+                        case msgFromPage of
+                            Home.NoOp ->
+                                model
 
-                        Home.AddToCart id ->
-                            let
-                                newCart =
-                                    Set.insert id model.session.cart
-                            in
-                            { model | session = { cart = newCart } }
+                            Home.AddToCart id ->
+                                let
+                                    newCart =
+                                        Set.insert id model.session.cart
+                                in
+                                { model | session = { cart = newCart } }
 
-                        Home.EmptyCart ->
-                            { model | session = { cart = Set.empty } }
+                            Home.EmptyCart ->
+                                { model | session = { cart = Set.empty } }
 
-                        Home.RemoveFromCart id ->
-                            let
-                                newCart =
-                                    Set.remove id model.session.cart
-                            in
-                            { model | session = { cart = newCart } }
-            in
-            { newModel | pageState = Loaded (Home pageModel) }
-                => Cmd.map HomeMsg cmd
+                            Home.RemoveFromCart id ->
+                                let
+                                    newCart =
+                                        Set.remove id model.session.cart
+                                in
+                                { model | session = { cart = newCart } }
+                in
+                { newModel | pageState = Loaded (Home pageModel) }
+                    => Cmd.map HomeMsg cmd
 
-        ( AboutMsg subMsg, About subModel ) ->
-            toPage About AboutMsg About.update subMsg subModel
+                _ ->
+                    model => Cmd.none
 
-        ( MapLoaded lat lng (Ok subModel), _ ) ->
+        AboutMsg subMsg ->
+            case page of
+                About subModel ->
+                    toPage About AboutMsg About.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
+        MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
 
-        ( MapLoaded lat lng (Err error), _ ) ->
+        MapLoaded lat lng (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        ( MapMsg subMsg, Map lat lng subModel ) ->
-            toPage (Map lat lng) MapMsg Map.update subMsg subModel
+        MapMsg subMsg ->
+            case page of
+                Map lat lng subModel ->
+                    toPage (Map lat lng) MapMsg Map.update subMsg subModel
 
-        ( _, NotFound ) ->
-            -- Disregard incoming messages when we're on the
-            -- NotFound page.
-            model => Cmd.none
+                _ ->
+                    model => Cmd.none
 
-        ( _, _ ) ->
-            -- Disregard incoming messages that arrived for the wrong page
-            model => Cmd.none
+        _ ->
+            case page of
+                NotFound ->
+                    -- Disregard incoming messages when we're on the
+                    -- NotFound page.
+                    model => Cmd.none
+
+                _ ->
+                    -- Disregard incoming messages that arrived for the wrong page
+                    model => Cmd.none
 
 
 
@@ -578,6 +959,16 @@ viewPage session isLoading page =
             Assemblies.view subModel
                 |> layout Page.Assemblies
                 |> Html.map AssembliesMsg
+
+        CombinedAssembly id subModel ->
+            CombinedAssembly.view subModel
+                |> layout Page.CombinedAssembly
+                |> Html.map CombinedAssemblyMsg
+
+        CombinedAssemblies subModel ->
+            CombinedAssemblies.view subModel
+                |> layout Page.CombinedAssemblies
+                |> Html.map CombinedAssembliesMsg
 
         Domains subModel ->
             Domains.view subModel
