@@ -16,6 +16,8 @@ type Route
     | App Int
     | Assemblies
     | Assembly Int
+    | CombinedAssemblies
+    | CombinedAssembly Int
     | Domains
     | Domain Int
     | Investigator Int
@@ -44,6 +46,8 @@ routeMather =
         , Url.map App (s "apps" </> Url.int)
         , Url.map Assemblies (s "assemblies")
         , Url.map Assembly (s "assemblies" </> Url.int)
+        , Url.map CombinedAssemblies (s "combined_assemblies")
+        , Url.map CombinedAssembly (s "combined_assemblies" </> Url.int)
         , Url.map Home (s "")
         , Url.map Domains (s "domains")
         , Url.map Domain (s "domains" </> Url.int)
@@ -92,6 +96,12 @@ routeToString page =
 
                 Assembly id ->
                     [ "assemblies", toString id ]
+
+                CombinedAssemblies ->
+                    [ "combined_assemblies" ]
+
+                CombinedAssembly id ->
+                    [ "combined_assemblies", toString id ]
 
                 Home ->
                     []

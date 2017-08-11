@@ -153,7 +153,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.unsortable
+        , sorter = Table.increasingOrDecreasingBy (.assembly_name >> String.toLower)
         }
 
 
