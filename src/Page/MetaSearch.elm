@@ -21,7 +21,7 @@ import String.Extra as SE
 import Table
 import Task exposing (Task)
 import View.Page as Page
-
+import Util exposing (apiHost)
 
 ---- MODEL ----
 
@@ -486,7 +486,7 @@ doSearch : Model -> Cmd Msg
 doSearch model =
     let
         url =
-            "http://localhost:3006/samplesearch"
+            apiHost ++ "/samplesearch"
 
         body =
             serializeForm model.optionValues model.params
@@ -511,7 +511,7 @@ getParamValues :
 getParamValues optionName optionValues params =
     let
         url =
-            "http://localhost:3006/search_param_values"
+            apiHost ++ "/search_param_values"
 
         decoder =
             Decode.dict (Decode.list oneOfJsonType)

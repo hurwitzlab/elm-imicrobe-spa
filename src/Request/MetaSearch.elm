@@ -34,3 +34,4 @@ getParams =
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
+

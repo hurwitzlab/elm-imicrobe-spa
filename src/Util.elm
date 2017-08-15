@@ -3,7 +3,8 @@ module Util exposing ((=>), apiHost, truncate)
 
 apiHost : String
 apiHost =
-    "http://localhost:3006"
+    -- "http://localhost:3006"
+    "http://spa.imicrobe.us/api/v1"
 
 
 maxColumnWidth : Int
