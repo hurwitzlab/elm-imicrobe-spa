@@ -5,11 +5,13 @@ import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.App
 import Route
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing (truncate)
 import View.Page as Page
@@ -31,7 +33,7 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Recommended Reading"
+            Task.succeed "Apps"
 
         loadApps =
             Request.App.list |> Http.toTask
@@ -89,13 +91,21 @@ update msg model =
 
 config : Table.Config Data.App.App Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .app_id
         , toMsg = SetTableState
         , columns =
             [ nameColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table"
+    ]
 
 
 nameColumn : Table.Column Data.App.App Msg
@@ -129,11 +139,34 @@ view model =
             List.filter
                 (String.contains lowerQuery << String.toLower << .app_name)
                 model.apps
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length acceptableApps
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
+            [ h2 []
+                [ text (model.pageTitle ++ " ")
+                , numShowing
+                , small [ class "right" ]
+                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                ]
             , Table.view config model.tableState acceptableApps
             ]
         ]

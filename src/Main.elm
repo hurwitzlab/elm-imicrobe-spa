@@ -608,6 +608,14 @@ updatePage page msg model =
         AppsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        AppsMsg subMsg ->
+            case page of
+                Apps subModel ->
+                    toPage Apps AppsMsg Apps.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         AssemblyLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
 

@@ -77,9 +77,15 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , viewApp model.app
+            [ div [ class "page-header" ]
+                [ h2 []
+                    [ text (model.pageTitle ++ " ")
+                    , small []
+                        [ text model.app.app_name ]
+                    ]
+                ]
             ]
+            , viewApp model.app
         ]
 
 
