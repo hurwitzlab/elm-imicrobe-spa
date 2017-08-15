@@ -2,8 +2,9 @@
 
 require("bootstrap-loader");
 
-// Require index.html so it gets copied to dist
+// Require these files so they get copied to dist
 require('../index.html');
+require("../img/nav-header.png");
 
 // Load config file
 var config = require('../config.json');

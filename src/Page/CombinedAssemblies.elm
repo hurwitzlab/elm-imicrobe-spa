@@ -1,6 +1,6 @@
-module Page.Assemblies exposing (Model, Msg, init, update, view)
+module Page.CombinedAssemblies exposing (Model, Msg, init, update, view)
 
-import Data.Assembly
+import Data.CombinedAssembly
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -9,7 +9,7 @@ import Http
 import Json.Encode as Encode
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Assembly
+import Request.CombinedAssembly
 import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
@@ -23,7 +23,7 @@ import Util exposing (truncate)
 
 type alias Model =
     { pageTitle : String
-    , assemblies : List Data.Assembly.Assembly
+    , combinedAssemblies : List Data.CombinedAssembly.CombinedAssembly
     , tableState : Table.State
     , query : String
     }
@@ -34,10 +34,10 @@ init =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Assemblies"
+            Task.succeed "Combined Assemblies"
 
-        loadAssemblies =
-            Request.Assembly.list |> Http.toTask
+        loadCombinedAssemblies =
+            Request.CombinedAssembly.list |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -63,7 +63,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadAssemblies tblState qry
+    Task.map4 Model title loadCombinedAssemblies tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -90,7 +90,7 @@ update msg model =
             )
 
 
-config : Table.Config Data.Assembly.Assembly Msg
+config : Table.Config Data.CombinedAssembly.CombinedAssembly Msg
 config =
     Table.customConfig
         { toId = .assembly_name
@@ -98,7 +98,14 @@ config =
         , columns =
             [ projectColumn
             , nameColumn
-            , Table.stringColumn "Organism" .organism
+            , Table.stringColumn "Phylum" .phylum
+            , Table.stringColumn "Class" .class
+            , Table.stringColumn "Family" .family
+            , Table.stringColumn "Genus" .genus
+            , Table.stringColumn "Species" .species
+            , Table.stringColumn "Strain" .strain
+            , Table.stringColumn "PCR Amp" .pcr_amp
+            , annoColumn
             , cdsColumn
             , ntColumn
             , pepColumn
@@ -114,7 +121,7 @@ toTableAttrs =
     ]
 
 
-projectName : Data.Assembly.Assembly -> String
+projectName : Data.CombinedAssembly.CombinedAssembly -> String
 projectName assembly =
     case assembly.project of
         Nothing ->
@@ -124,7 +131,7 @@ projectName assembly =
             project.project_name
 
 
-projectColumn : Table.Column Data.Assembly.Assembly Msg
+projectColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
 projectColumn =
     Table.veryCustomColumn
         { name = "Projects"
@@ -133,7 +140,7 @@ projectColumn =
         }
 
 
-projectLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+projectLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 projectLink assembly =
     let
         link =
@@ -148,32 +155,55 @@ projectLink assembly =
     Table.HtmlDetails [] [ link ]
 
 
-nameColumn : Table.Column Data.Assembly.Assembly Msg
+nameColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy (.assembly_name >> String.toLower)
+        , sorter = Table.unsortable
         }
 
 
-nameLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+nameLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 nameLink assembly =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Assembly assembly.assembly_id) ]
+        [ a [ Route.href (Route.CombinedAssembly assembly.combined_assembly_id) ]
             [ text assembly.assembly_name ]
         ]
 
 
-cdsText : Data.Assembly.Assembly -> String
-cdsText assembly =
-    case assembly.cds_file of
+annoText : Data.CombinedAssembly.CombinedAssembly -> String
+annoText assembly =
+    case assembly.anno_file of
         "" -> "No"
 
         _ -> "Yes"
 
 
-cdsColumn : Table.Column Data.Assembly.Assembly Msg
+annoColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
+annoColumn =
+    Table.veryCustomColumn
+        { name = "Anno"
+        , viewData = annoLink
+        , sorter = Table.increasingOrDecreasingBy annoText
+        }
+
+
+annoLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
+annoLink assembly =
+    Table.HtmlDetails []
+        [ text (annoText assembly) ]
+
+
+cdsText : Data.CombinedAssembly.CombinedAssembly -> String
+cdsText assembly =
+    case assembly.anno_file of
+        "" -> "No"
+
+        _ -> "Yes"
+
+
+cdsColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
 cdsColumn =
     Table.veryCustomColumn
         { name = "CDS"
@@ -182,13 +212,13 @@ cdsColumn =
         }
 
 
-cdsLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+cdsLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 cdsLink assembly =
     Table.HtmlDetails []
         [ text (cdsText assembly) ]
 
 
-ntText : Data.Assembly.Assembly -> String
+ntText : Data.CombinedAssembly.CombinedAssembly -> String
 ntText assembly =
     case assembly.nt_file of
         "" -> "No"
@@ -196,7 +226,7 @@ ntText assembly =
         _ -> "Yes"
 
 
-ntColumn : Table.Column Data.Assembly.Assembly Msg
+ntColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
 ntColumn =
     Table.veryCustomColumn
         { name = "NT"
@@ -205,13 +235,13 @@ ntColumn =
         }
 
 
-ntLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+ntLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 ntLink assembly =
     Table.HtmlDetails []
         [ text (ntText assembly) ]
 
 
-pepText : Data.Assembly.Assembly -> String
+pepText : Data.CombinedAssembly.CombinedAssembly -> String
 pepText assembly =
     case assembly.pep_file of
         "" -> "No"
@@ -219,7 +249,7 @@ pepText assembly =
         _ -> "Yes"
 
 
-pepColumn : Table.Column Data.Assembly.Assembly Msg
+pepColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
 pepColumn =
     Table.veryCustomColumn
         { name = "PEP"
@@ -228,7 +258,7 @@ pepColumn =
         }
 
 
-pepLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
+pepLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 pepLink assembly =
     Table.HtmlDetails []
         [ text (pepText assembly) ]
@@ -247,7 +277,7 @@ view model =
             String.toLower query
 
         acceptableAssemblies =
-            List.filter (String.contains lowerQuery << String.toLower << .assembly_name) model.assemblies
+            List.filter (String.contains lowerQuery << String.toLower << .assembly_name) model.combinedAssemblies
     in
     div [ class "container" ]
         [ div [ class "row" ]

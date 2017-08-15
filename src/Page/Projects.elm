@@ -166,13 +166,3 @@ view model =
             , Table.view config model.tableState acceptableProjects
             ]
         ]
-
-
-viewDomain : Data.Project.Domain -> Html msg
-viewDomain domain =
-    a [ href ("/domain" ++ domain.domain_name) ] [ text domain.domain_name ]
-
-
-viewDomains : List Data.Project.Domain -> List (Html msg)
-viewDomains domains =
-    List.map viewDomain domains

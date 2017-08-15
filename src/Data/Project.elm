@@ -150,8 +150,8 @@ decoderSample : Decoder Sample
 decoderSample =
     decode Sample
         |> required "sample_id" Decode.int
-        |> required "sample_acc" Decode.string
-        |> required "sample_name" Decode.string
+        |> optional "sample_acc" Decode.string ""
+        |> optional "sample_name" Decode.string ""
         |> optional "sample_type" Decode.string "NA"
         |> optional "sample_description" Decode.string ""
         |> optional "comments" Decode.string ""
