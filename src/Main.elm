@@ -839,34 +839,34 @@ updatePage page msg model =
         HomeMsg subMsg ->
             case page of
                 Home subModel ->
-                let
-                    ( ( pageModel, cmd ), msgFromPage ) =
-                        Home.update subMsg subModel
+                    let
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            Home.update subMsg subModel
 
-                    newModel =
-                        case msgFromPage of
-                            Home.NoOp ->
-                                model
+                        newModel =
+                            case msgFromPage of
+                                Home.NoOp ->
+                                    model
 
-                            Home.AddToCart id ->
-                                let
-                                    newCart =
-                                        Set.insert id model.session.cart
-                                in
-                                { model | session = { cart = newCart } }
+                                Home.AddToCart id ->
+                                    let
+                                        newCart =
+                                            Set.insert id model.session.cart
+                                    in
+                                    { model | session = { cart = newCart } }
 
-                            Home.EmptyCart ->
-                                { model | session = { cart = Set.empty } }
+                                Home.EmptyCart ->
+                                    { model | session = { cart = Set.empty } }
 
-                            Home.RemoveFromCart id ->
-                                let
-                                    newCart =
-                                        Set.remove id model.session.cart
-                                in
-                                { model | session = { cart = newCart } }
-                in
-                { newModel | pageState = Loaded (Home pageModel) }
-                    => Cmd.map HomeMsg cmd
+                                Home.RemoveFromCart id ->
+                                    let
+                                        newCart =
+                                            Set.remove id model.session.cart
+                                    in
+                                    { model | session = { cart = newCart } }
+                    in
+                    { newModel | pageState = Loaded (Home pageModel) }
+                        => Cmd.map HomeMsg cmd
 
                 _ ->
                     model => Cmd.none
