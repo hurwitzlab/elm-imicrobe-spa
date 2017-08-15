@@ -94,7 +94,7 @@ viewProjectGroup : Data.ProjectGroup.ProjectGroup -> Html msg
 viewProjectGroup group =
     table [ class "table" ]
         [ tr []
-            [ th [] [ text "Group Name" ]
+            [ th [ class "nowrap" ] [ text "Group Name" ]
             , td [] [ text group.group_name ]
             ]
         , tr []
@@ -140,8 +140,8 @@ viewProjects projects =
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
-                        (List.map viewProject projects)
+                    table [ class "table table-condensed" ]
+                        [ tbody [] (List.map viewProject projects) ]
     in
     div []
         [ h2 []

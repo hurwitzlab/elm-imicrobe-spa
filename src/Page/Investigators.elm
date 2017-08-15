@@ -5,6 +5,8 @@ import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Investigator
@@ -111,7 +113,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.unsortable
+        , sorter = Table.increasingOrDecreasingBy .investigator_name
         }
 
 
@@ -138,12 +140,32 @@ view model =
 
         acceptablePeople =
             List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length acceptablePeople
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , small []
+                , numShowing
+                , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
             , Table.view config model.tableState acceptablePeople

@@ -212,11 +212,11 @@ view model =
             [ h1 []
                 [ text (model.pageTitle ++ " ")
                 , numShowing
+                , small [ class "right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
             , div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
-                    [ input [ placeholder "Search by Name", onInput SetQuery ] []
-                    , restrict
+                    [ restrict
                     ]
                 ]
             , div [] [ Table.view config model.tableState acceptableSamples ]

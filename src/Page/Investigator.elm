@@ -96,6 +96,12 @@ viewInvestigator inv =
         title =
             "Investigator: " ++ inv.investigator_name
 
+        institution =
+            case inv.institution of
+                "" -> "None"
+
+                _ -> inv.institution
+
         numProjects =
             List.length inv.projects
 
@@ -109,7 +115,7 @@ viewInvestigator inv =
             ]
         , tr []
             [ th [] [ text "Institution" ]
-            , td [] [ text inv.institution ]
+            , td [] [ text institution ]
             ]
         ]
 
@@ -136,8 +142,8 @@ viewProjects projects =
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
-                        (List.map viewProject projects)
+                    table [ class "table table-condensed" ]
+                        [ tbody [] (List.map viewProject projects) ]
     in
     div []
         [ h2 []
@@ -186,7 +192,7 @@ viewSamples samples =
                     text "None"
 
                 _ ->
-                    table [ class "table" ] (cols :: rows)
+                    table [ class "table table-condensed" ] [ tbody [] (cols :: rows) ]
     in
     div []
         [ h2 []

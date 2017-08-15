@@ -147,13 +147,12 @@ view model =
                         [ text model.domain.domain_name ]
                     ]
                 ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
             , viewProjects model.domain.projects
             ]
         ]
 
 
-viewProjects : List Data.Domain.Project -> Html msg
+viewProjects : List Data.Domain.Project -> Html Msg
 viewProjects projects =
     let
         numProjects =
@@ -169,19 +168,26 @@ viewProjects projects =
                         [ text (toString numProjects)
                         ]
 
+        searchInput =
+            small [ style [ ("float", "right") ] ] [
+                input [ placeholder "Search by Name", onInput SetQuery ] []
+            ]
+
         body =
             case numProjects of
                 0 ->
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
-                        (List.map viewProject projects)
+                    table [ class "table table-condensed" ]
+                        [ tbody [] (List.map viewProject projects) ]
     in
     div []
         [ h2 []
             [ text "Projects "
             , label
+            , text " "
+            , searchInput
             ]
         , body
         ]

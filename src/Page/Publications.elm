@@ -6,10 +6,12 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Publication
 import Route
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
 
@@ -88,7 +90,7 @@ update msg model =
 
 config : Table.Config Data.Publication.Publication Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .publication_id
         , toMsg = SetTableState
         , columns =
@@ -96,7 +98,15 @@ config =
             , authorColumn
             , projectColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table"
+    ]
 
 
 authorColumn : Table.Column Data.Publication.Publication Msg
@@ -187,18 +197,38 @@ view model =
                 )
                 |> String.toLower
 
-        acceptablePeople =
+        acceptablePubs =
             List.filter
                 (\pub -> String.contains lowerQuery (catter pub))
                 model.publications
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length acceptablePubs
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , small []
+                , numShowing
+                , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
-            , Table.view config model.tableState acceptablePeople
+            , Table.view config model.tableState acceptablePubs
             ]
         ]

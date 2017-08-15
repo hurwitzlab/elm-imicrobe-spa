@@ -131,7 +131,7 @@ viewAssembly assembly =
                 _ -> text "Yes"
 
     in
-    table [ class "table" ]
+    table [ class "table table-condensed" ]
         [ tr []
             [ th [] [ text "Name" ]
             , td [] [ text assembly.assembly_name ]

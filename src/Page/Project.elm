@@ -87,7 +87,6 @@ view model =
             , viewInvestigators model.project.investigators
             , viewPubs model.project.publications
             , viewSamples model.project.samples
-            , viewProjectGroups model.project.project_groups
             ]
         ]
 
@@ -123,6 +122,10 @@ viewProject project =
             [ th [] [ text domainText ]
             , td [] (viewDomains project.domains)
             ]
+        , tr []
+            [ th [] [ text "Groups" ]
+            , td [] (viewProjectGroups project.project_groups)
+            ]
         ]
 
 viewInvestigator : Data.Project.Investigator -> Html msg
@@ -157,8 +160,8 @@ viewInvestigators investigators =
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
-                        (List.map viewInvestigator investigators)
+                    table [ class "table table-condensed" ]
+                        [ tbody [] (List.map viewInvestigator investigators) ]
     in
     div []
         [ h2 []
@@ -229,7 +232,7 @@ viewSamples samples =
                     text "NA"
 
                 _ ->
-                    table [ class "table" ] (cols :: rows)
+                    table [ class "table table-condensed" ] [ tbody [] (cols :: rows) ]
     in
     div []
         [ h2 []
@@ -273,7 +276,7 @@ viewPubs pubs =
                     text "None"
 
                 _ ->
-                    table [ class "table" ] (List.map pubRow pubs)
+                    table [ class "table table-condensed" ] [ tbody [] (List.map pubRow pubs) ]
     in
     div []
         [ h2 []
@@ -294,44 +297,17 @@ pubRow pub =
         ]
 
 
-viewProjectGroups : List Data.Project.ProjectGroup -> Html msg
+viewProjectGroup : Data.Project.ProjectGroup -> Html msg
+viewProjectGroup group =
+    a [ Route.href (Route.ProjectGroup group.project_group_id) ]
+        [ text group.group_name ]
+
+
+viewProjectGroups : List Data.Project.ProjectGroup -> List (Html msg)
 viewProjectGroups groups =
-    let
-        numGroups =
-            List.length groups
+    case List.length groups of
+        0 ->
+            [ text "None" ]
 
-        label =
-            case numGroups of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numGroups)
-                        ]
-
-        body =
-            case numGroups of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table" ] (List.map viewGroup groups)
-    in
-    div []
-        [ h2 []
-            [ text "Project Groups "
-            , label
-            ]
-        , body
-        ]
-
-
-viewGroup : Data.Project.ProjectGroup -> Html msg
-viewGroup group =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.ProjectGroup group.project_group_id) ]
-                [ text group.group_name ]
-            ]
-        ]
+        _ ->
+            List.intersperse (text ", ") (List.map viewProjectGroup groups)
