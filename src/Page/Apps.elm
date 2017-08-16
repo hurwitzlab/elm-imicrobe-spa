@@ -161,7 +161,7 @@ view model =
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 []
+            [ h1 []
                 [ text (model.pageTitle ++ " ")
                 , numShowing
                 , small [ class "right" ]
