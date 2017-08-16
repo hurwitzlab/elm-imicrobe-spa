@@ -99,7 +99,7 @@ viewPublication pub =
 
                 Just project ->
                     a
-                        [ Route.href (Route.Publication project.project_id) ]
+                        [ Route.href (Route.Project project.project_id) ]
                         [ text project.project_name ]
 
         pubMedLink =
