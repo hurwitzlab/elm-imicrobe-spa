@@ -12,7 +12,10 @@ var config = require('../config.json');
 // Start up Elm app
 var Elm = require('./Main.elm');
 var mountNode = document.getElementById('main');
-var app = Elm.Main.embed(mountNode, config);
+var app = Elm.Main.embed(mountNode, {
+    config: config,
+    session: localStorage.session
+});
 
 // Initial Google Maps and define Elm ports
 var GoogleMapsLoader = require("google-maps");
@@ -40,19 +43,16 @@ app.ports.setCenter.subscribe(function(model) {
     model.gmap.setCenter(myLatlng);
 });
 
-// Define ports for saving/retrieving auth token
-app.ports.saveAuthToken.subscribe(function(token) {
-    console.log("saveAuthToken: ", token);
-    localStorage.setItem("token", token);
+// Define ports for storing/watching session
+app.ports.storeSession.subscribe(function(session) {
+    console.log("storeSession: ", session);
+    localStorage.session = session;
 });
 
-app.ports.saveCart.subscribe(function(data) {
-    console.log("saveCart: ", data);
-    localStorage.setItem("cart", data);
-});
-
-//app.ports.getAuthToken.subscribe(function(token) {
-//    var token = localStorage.getItem("token");
-//    console.log("getAuthToken: ", token);
-//    app.ports.receiveToken.send(token);
-//});
+window.addEventListener("storage",
+    function(event) {
+        if (event.storageArea === localStorage && event.key === "session")
+            app.ports.onSessionChange.send(event.newValue);
+    },
+    false
+);

@@ -1,19 +1,22 @@
---module Page.Home exposing (ExternalMsg(..), Model, Msg, init, update, view)
-module Page.Home exposing (Model, Msg, init, update, view)
+module Page.Cart exposing (Model, Msg, init, update, view)
 
 import Data.Session as Session exposing (Session)
+import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Task exposing (Task)
 import View.Page as Page
+import View.Cart as Cart
+import Set
+
 
 ---- MODEL ----
 
 
 type alias Model =
     { pageTitle : String
-    , pageBody : String
+    , cart : Cart.Model
     }
 
 
@@ -22,16 +25,16 @@ init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Home Page"
+            Task.succeed "Cart"
 
-        body =
-            Task.succeed "Welcome to the homepage!"
+        cart =
+            Task.succeed (Cart.init session.cart)
 
         handleLoadError _ =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home "The homepage is currently unavailable."
+            Error.pageLoadError Page.Home "The about page is currently unavailable."
     in
-    Task.map2 Model title body
+    Task.map2 Model title cart
         |> Task.mapError handleLoadError
 
 
@@ -40,13 +43,13 @@ init session =
 
 
 type Msg
-    = Todo
+    = CartMsg Cart.Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
-        Todo ->
+        CartMsg subMsg ->
             ( model, Cmd.none )
 
 
@@ -59,6 +62,11 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 [] [ text model.pageTitle ]
-            , div [] [ text model.pageBody ]
+            , div [] [ viewCart model.cart ]
             ]
         ]
+
+
+viewCart : Cart.Model -> Html Msg
+viewCart cart =
+    div [] [ Cart.viewCart cart |> Html.map CartMsg ]

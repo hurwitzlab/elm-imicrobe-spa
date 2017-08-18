@@ -1,7 +1,10 @@
-port module Main exposing (..)
+module Main exposing (..)
 
-import Data.Session exposing (Session)
+import Data.Config as Config exposing (Config)
+import Data.Session as Session exposing (Session)
+import Data.Cart
 import Debug exposing (log)
+import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
 import Navigation exposing (Location)
 import OAuth
@@ -11,6 +14,7 @@ import Page.App as App
 import Page.Apps as Apps
 import Page.Assembly as Assembly
 import Page.Assemblies as Assemblies
+import Page.Cart as Cart
 import Page.CombinedAssembly as CombinedAssembly
 import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Domain as Domain
@@ -34,6 +38,7 @@ import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
 import Route exposing (..)
+import Ports
 import Set
 import Task
 import Util exposing ((=>))
@@ -51,7 +56,7 @@ type alias Model =
         , clientId : String
         , redirectUri : String
         }
-    , token : Maybe OAuth.Token
+--    , token : Maybe OAuth.Token
     , error : Maybe String
     }
 
@@ -63,6 +68,7 @@ type Page
     | App Int App.Model
     | Assemblies Assemblies.Model
     | Assembly Int Assembly.Model
+    | Cart Cart.Model
     | CombinedAssemblies CombinedAssemblies.Model
     | CombinedAssembly Int CombinedAssembly.Model
     | Domain Int Domain.Model
@@ -99,7 +105,6 @@ type PageState
 type Msg
     = AboutLoaded (Result PageLoadError About.Model)
     | AboutMsg About.Msg
-    | AddToCart Int
     | AppLoaded Int (Result PageLoadError App.Model)
     | AppMsg App.Msg
     | AppsLoaded (Result PageLoadError Apps.Model)
@@ -109,6 +114,8 @@ type Msg
     | AssembliesLoaded (Result PageLoadError Assemblies.Model)
     | AssembliesMsg Assemblies.Msg
     | Authorize (Result PageLoadError Home.Model)
+    | CartLoaded (Result PageLoadError Cart.Model)
+    | CartMsg Cart.Msg
     | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
     | CombinedAssemblyMsg CombinedAssembly.Msg
     | CombinedAssembliesLoaded (Result PageLoadError CombinedAssemblies.Model)
@@ -117,7 +124,6 @@ type Msg
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
     | DomainsMsg Domains.Msg
-    | EmptyCart
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
@@ -144,7 +150,6 @@ type Msg
     | PublicationMsg Publication.Msg
     | PublicationsLoaded (Result PageLoadError Publications.Model)
     | PublicationsMsg Publications.Msg
-    | RemoveFromCart Int
     | SampleLoaded Int (Result PageLoadError Sample.Model)
     | SampleMsg Sample.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
@@ -182,6 +187,9 @@ setRoute maybeRoute model =
 
         Just Route.Assemblies ->
             transition AssembliesLoaded Assemblies.init
+
+        Just Route.Cart ->
+            transition CartLoaded (Cart.init model.session)
 
         Just (Route.CombinedAssembly id) ->
             transition (CombinedAssemblyLoaded id) (CombinedAssembly.init id)
@@ -235,7 +243,7 @@ setRoute maybeRoute model =
             transition (SampleLoaded id) (Sample.init id)
 
         Just Route.Samples ->
-            transition SamplesLoaded Samples.init
+            transition SamplesLoaded (Samples.init model.session)
 
         Just Route.MetaSearch ->
             transition MetaSearchLoaded MetaSearch.init
@@ -271,6 +279,10 @@ update msg model =
     updatePage (getPage model.pageState) msg model
 
 
+{-  FIXME updatePage rewritten without tuple-matching due to performance issues in Elm v0.18 which should be
+    fixed in v0.19.
+-}
+------------------------------------------------------------------------------------------------------------------------
 --updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 --updatePage page msg model =
 --    let
@@ -566,17 +578,11 @@ updatePage page msg model =
 
         error =
             pageError model
+
     in
     case msg of
         SetRoute route ->
             setRoute route model
-
-        AddToCart id ->
-            let
-                newCart =
-                    Set.insert id model.session.cart
-            in
-            ( { model | session = { cart = newCart } }, Cmd.none )
 
         Authorize (Ok subModel) ->
             model
@@ -636,6 +642,12 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        CartLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Cart subModel) } => Cmd.none
+
+        CartLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
         CombinedAssemblyLoaded id (Ok subModel) ->
             { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
 
@@ -675,9 +687,6 @@ updatePage page msg model =
 
         DomainLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
-
-        EmptyCart ->
-            ( { model | session = { cart = Set.empty } }, Cmd.none )
 
         HomeLoaded (Ok subModel) ->
             { model | pageState = Loaded (Home subModel) } => Cmd.none
@@ -799,13 +808,6 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        RemoveFromCart id ->
-            let
-                newCart =
-                    Set.remove id model.session.cart
-            in
-            ( { model | session = { cart = newCart } }, Cmd.none )
-
         SampleLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Sample id subModel) } => Cmd.none
 
@@ -821,7 +823,7 @@ updatePage page msg model =
         SamplesMsg subMsg ->
             case page of
                 Samples subModel ->
-                    toPage Samples SamplesMsg Samples.update subMsg subModel
+                    toPage Samples SamplesMsg (Samples.update session) subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -840,41 +842,13 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        {--
-        ( HomeMsg subMsg, Home subModel ) ->
-            toPage Home HomeMsg Home.update subMsg subModel
-            --}
         HomeMsg subMsg ->
+            let
+                x = Debug.log (toString subMsg)
+            in
             case page of
                 Home subModel ->
-                    let
-                        ( ( pageModel, cmd ), msgFromPage ) =
-                            Home.update subMsg subModel
-
-                        newModel =
-                            case msgFromPage of
-                                Home.NoOp ->
-                                    model
-
-                                Home.AddToCart id ->
-                                    let
-                                        newCart =
-                                            Set.insert id model.session.cart
-                                    in
-                                    { model | session = { cart = newCart } }
-
-                                Home.EmptyCart ->
-                                    { model | session = { cart = Set.empty } }
-
-                                Home.RemoveFromCart id ->
-                                    let
-                                        newCart =
-                                            Set.remove id model.session.cart
-                                    in
-                                    { model | session = { cart = newCart } }
-                    in
-                    { newModel | pageState = Loaded (Home pageModel) }
-                        => Cmd.map HomeMsg cmd
+                    toPage Home HomeMsg Home.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -968,6 +942,11 @@ viewPage session isLoading page =
                 |> layout Page.Assemblies
                 |> Html.map AssembliesMsg
 
+        Cart subModel ->
+            Cart.view subModel
+                |> layout Page.Cart
+                |> Html.map CartMsg
+
         CombinedAssembly id subModel ->
             CombinedAssembly.view subModel
                 |> layout Page.CombinedAssembly
@@ -993,7 +972,7 @@ viewPage session isLoading page =
                 |> layout Page.Other
 
         Home subModel ->
-            Home.view session subModel
+            Home.view subModel -- session subModel
                 |> layout Page.Home
                 |> Html.map HomeMsg
 
@@ -1083,17 +1062,6 @@ subscriptions model =
 
 
 
----- PORTS ----
-
-
-port saveAuthToken : String -> Cmd msg
-
-
-port saveCart : String -> Cmd msg
-
-
-
---port getAuthToken : (String -> msg) -> Sub msg
 ---- PROGRAM ----
 
 
@@ -1103,40 +1071,46 @@ initialPage =
 
 
 type alias Flags =
-    { oauthClientId : String
+    { config : Config
+    , session : String
     }
 
 
 init : Flags -> Location -> ( Model, Cmd Msg )
 init flags location =
     let
+        session =
+            decodeSessionFromJson flags.session
+
         model =
             { oauth =
                 { authEndpoint = "https://agave.iplantc.org/authorize"
-                , clientId = flags.oauthClientId
+                , clientId = flags.config.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
-            , session = { cart = Set.empty }
+            , session = session --Session (Data.Cart.Cart Set.empty)
             , error = Nothing
-            , token = Nothing
+--            , token = Nothing
             , pageState = Loaded initialPage
             }
-
-        _ =
-            Debug.log "flags " flags
 
         -- Kludge for Agave not returning required "token_type=bearer" in redirect
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
+
+        _ = Debug.log "init" model
+
+        x = Debug.log "flags" flags
     in
     case OAuth.Implicit.parse location2 of
         Ok { token } ->
-            let
-                saveToken =
-                    saveAuthToken (toString token)
-            in
-            Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
-                (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
+--            let
+--                saveToken =
+--                    saveAuthToken (toString token)
+--            in
+--            Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
+--                (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
+            setRoute (Just (Route.Profile (toString token))) { model | session = (Session session.cart (toString token)) }
 
         Err OAuth.Empty ->
             let
@@ -1159,6 +1133,15 @@ init flags location =
                     Debug.log "Error" (toString a ++ toString location2)
             in
             { model | error = Just "parsing error" } ! []
+
+
+decodeSessionFromJson : String -> Session
+decodeSessionFromJson json =
+    json
+        |> Decode.decodeString Session.decoder
+--        |> Decode.decodeValue Decode.string
+--        |> Result.andThen (Decode.decodeString Session.decoder)
+        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "")
 
 
 main : Program Flags Model Msg

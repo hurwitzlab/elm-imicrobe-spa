@@ -2,22 +2,25 @@ module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
 import Data.Session as Session exposing (Session)
+import Data.Cart
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onCheck, onInput)
+import Html.Events exposing (onCheck, onInput, onClick)
 import Http
 import List exposing (map)
 import List.Extra
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
+import Set
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import Util exposing (truncate)
+import Util exposing ((=>), truncate)
 import View.Page as Page
+import View.Cart as Cart
 
 
 ---- MODEL ----
@@ -29,24 +32,16 @@ type alias Model =
     , tableState : Table.State
     , query : String
     , sampleTypeRestriction : List String
+    , cart : Cart.Model
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Samples"
-
         loadSamples =
             Request.Sample.list |> Http.toTask
-
-        tblState =
-            Task.succeed (Table.initialSort "Name")
-
-        qry =
-            Task.succeed ""
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -66,7 +61,18 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map5 Model title loadSamples tblState qry (Task.succeed [])
+    loadSamples
+        |> Task.andThen
+            (\samples ->
+                Task.succeed
+                    { pageTitle = "Samples"
+                    , samples = samples
+                    , tableState = Table.initialSort "Name"
+                    , query = ""
+                    , sampleTypeRestriction = []
+                    , cart = (Cart.init session.cart)
+                    }
+            )
         |> Task.mapError handleLoadError
 
 
@@ -78,10 +84,11 @@ type Msg
     = SetQuery String
     | SelectOption String Bool
     | SetTableState Table.State
+    | CartMsg Cart.Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
         SetQuery newQuery ->
             ( { model | query = newQuery }
@@ -108,6 +115,13 @@ update msg model =
             in
             ( { model | sampleTypeRestriction = newOpts }, Cmd.none )
 
+        CartMsg subMsg ->
+            let
+                ( newCart, subCmd ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd
+
 
 config : Table.Config Data.Sample.Sample Msg
 config =
@@ -118,6 +132,7 @@ config =
             [ projectColumn
             , nameColumn
             , Table.stringColumn "Type" .sample_type
+            , addToCartColumn
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -226,7 +241,7 @@ view model =
 
 mkCheckbox : String -> Html Msg
 mkCheckbox val =
-    label []
+    label [ style [("padding-left", "1em")]]
         [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
         , text (" " ++ val)
         ]
@@ -263,4 +278,20 @@ projectLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project sample.project_id) ]
             [ text <| Util.truncate sample.project.project_name ]
+        ]
+
+
+addToCartColumn : Table.Column Data.Sample.Sample Msg
+addToCartColumn =
+    Table.veryCustomColumn
+        { name = "Cart"
+        , viewData = addToCartLink
+        , sorter = Table.unsortable
+        }
+
+
+addToCartLink : Data.Sample.Sample -> Table.HtmlDetails Msg
+addToCartLink sample =
+    Table.HtmlDetails []
+        [ Cart.addToCartButton sample.sample_id |> Html.map CartMsg
         ]
