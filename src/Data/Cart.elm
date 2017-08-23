@@ -2,7 +2,6 @@ module Data.Cart exposing (Cart, decoder, encode)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Json.Decode.Extra as Extra exposing (set)
 import Json.Encode as Encode exposing (Value)
 import Set
 import Util exposing ((=>))

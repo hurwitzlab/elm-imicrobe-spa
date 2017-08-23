@@ -2,7 +2,6 @@ module Page.Samples exposing (Model, Msg, init, update, view)
 
 import Data.Sample
 import Data.Session as Session exposing (Session)
-import Data.Cart
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
@@ -14,7 +13,6 @@ import List.Extra
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.Sample
 import Route
-import Set
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)

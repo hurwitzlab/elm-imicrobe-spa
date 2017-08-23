@@ -157,6 +157,8 @@ type Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
     | SetRoute (Maybe Route)
+--    | SetSession (Maybe Session)
+    | SetSession Value
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -648,6 +650,14 @@ updatePage page msg model =
         CartLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        CartMsg subMsg ->
+            case page of
+                Cart subModel ->
+                    toPage Cart CartMsg (Cart.update session) subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         CombinedAssemblyLoaded id (Ok subModel) ->
             { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
 
@@ -875,6 +885,37 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+--        SetSession (Just newSession) ->
+--            let
+--                 _ = Debug.log "SetSession" (toString newSession)
+--            in
+--            case page of
+----                Cart subModel ->
+----                    toPage Cart CartMsg (Cart.update newSession) Cart.SetSession subModel
+--
+--                _ ->
+--                    { model | session = newSession } => Cmd.none
+
+        SetSession val ->
+            let
+                 _ = Debug.log "SetSession" val
+
+                 newSession =
+                     val
+                         |> Decode.decodeValue Session.decoder
+                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "")
+            in
+            case page of
+--                Cart subModel ->
+--                    let
+--                        newSubModel =
+--                            { subModel | cart = session.cart }
+--                    in
+--                    { model | pageState = Loaded (Cart newSubModel) } => Route.modifyUrl Route.Cart
+
+                _ ->
+                    { model | session = newSession } => Cmd.none
+
         _ ->
             case page of
                 NotFound ->
@@ -1056,9 +1097,34 @@ viewPage session isLoading page =
 ---- SUBSCRIPTIONS ----
 
 
+--subscriptions : Model -> Sub Msg
+--subscriptions model =
+--    Sub.batch
+--        [ pageSubscriptions (getPage model.pageState)
+----        , Sub.map SetSession sessionChange
+--        ]
+
+
+--sessionChange : Sub (Maybe Session)
+--sessionChange =
+--    Ports.onSessionChange (Decode.decodeValue Session.decoder >> Result.toMaybe)
+
+
+--pageSubscriptions : Page -> Sub Msg
+--pageSubscriptions page =
+--    case page of
+--        Cart _ ->
+--            let
+--                _ = Debug.log "pageSubscriptions" "foo"
+--            in
+--            Sub.map SetSession sessionChange
+--
+--        _ ->
+--            Sub.none
+
+
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions model = Ports.onSessionChange SetSession
 
 
 
@@ -1139,8 +1205,6 @@ decodeSessionFromJson : String -> Session
 decodeSessionFromJson json =
     json
         |> Decode.decodeString Session.decoder
---        |> Decode.decodeValue Decode.string
---        |> Result.andThen (Decode.decodeString Session.decoder)
         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "")
 
 

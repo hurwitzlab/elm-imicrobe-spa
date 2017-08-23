@@ -3,6 +3,7 @@ module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
+import Util exposing ((=>))
 
 
 type alias Investigator =
@@ -163,16 +164,20 @@ decoderSampleToOntology =
         |> required "ontology_id" Decode.int
 
 
-
-{--
 encode : Sample -> Value
 encode sample =
     Encode.object
         [ "sample_id" => Encode.int sample.sample_id
         , "project_id" => Encode.int sample.project_id
-        , "project_name" => Encode.string sample.project_name
+        , "combined_assembly_id" => Encode.int sample.combined_assembly_id
+        , "sample_acc" => Encode.string sample.sample_acc
         , "sample_name" => Encode.string sample.sample_name
         , "sample_type" => Encode.string sample.sample_type
-        , "domain_name" => Encode.string sample.domain_name
+        , "sample_description" => Encode.string sample.sample_description
+        , "comments" => Encode.string sample.comments
+        , "taxon_id" => Encode.string sample.taxon_id
+        , "latitude" => Encode.string sample.latitude
+        , "longitude" => Encode.string sample.longitude
+        , "url" => Encode.string sample.url
+--        , "project" => Project.encode sample.project
         ]
-        --}

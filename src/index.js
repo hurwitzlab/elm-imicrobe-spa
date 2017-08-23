@@ -34,7 +34,6 @@ app.ports.loadMap.subscribe(function(model) {
       center: myLatlng
     };
     var gmap = new Google.maps.Map(mapDiv, mapOptions);
-    /*We store the Google Map object in Elm*/
     app.ports.receiveMap.send(gmap);
 });
 
@@ -51,8 +50,10 @@ app.ports.storeSession.subscribe(function(session) {
 
 window.addEventListener("storage",
     function(event) {
-        if (event.storageArea === localStorage && event.key === "session")
+        if (event.storageArea === localStorage && event.key === "session") {
+            console.log("storage listener: ", event.newValue);
             app.ports.onSessionChange.send(event.newValue);
+        }
     },
     false
 );
