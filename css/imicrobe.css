@@ -10,3 +10,11 @@ html, body, .container, .tab-content, .tab-pane{height:100%;}
 .nowrap {
     white-space: nowrap;
 }
+
+.margin-right {
+    margin-right: 0.5em;
+}
+
+.padded {
+    padding: 0.5em;
+}

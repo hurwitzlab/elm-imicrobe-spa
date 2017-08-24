@@ -1,6 +1,7 @@
-module Request.Sample exposing (list, get, getSome)
+module Request.Sample exposing (list, get, getSome, files)
 
-import Data.Sample as Sample exposing (Sample)
+import Data.Session as Session exposing (Session)
+import Data.Sample as Sample exposing (Sample, SampleFile, decoderSampleFile)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
@@ -28,6 +29,7 @@ get id =
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
 
+
 getSome : List Int -> Http.Request (List Sample)
 getSome id_list =
     let
@@ -36,6 +38,20 @@ getSome id_list =
 
         decoder =
             Decode.list Sample.decoder
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+files : List Int -> Http.Request (List SampleFile)
+files id_list =
+    let
+        url =
+            apiHost ++ "/samples/files/?id=" ++ (join "," (List.map toString id_list))
+
+        decoder =
+            Decode.list decoderSampleFile
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

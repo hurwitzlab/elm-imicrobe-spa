@@ -16,6 +16,7 @@ type ActivePage
     | CombinedAssemblies
     | Domains
     | Domain
+    | Files
     | Home
     | Investigator
     | Investigators

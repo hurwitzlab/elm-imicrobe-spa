@@ -21,6 +21,7 @@ type Route
     | CombinedAssembly Int
     | Domains
     | Domain Int
+    | Files
     | Investigator Int
     | Investigators
     | Login
@@ -53,6 +54,7 @@ routeMather =
         , Url.map Home (s "")
         , Url.map Domains (s "domains")
         , Url.map Domain (s "domains" </> Url.int)
+        , Url.map Files (s "files")
         , Url.map Investigator (s "investigators" </> Url.int)
         , Url.map Investigators (s "investigators")
         , Url.map Login (s "login")
@@ -110,6 +112,9 @@ routeToString page =
 
                 Home ->
                     []
+
+                Files ->
+                    [ "files" ]
 
                 Domains ->
                     [ "domains" ]

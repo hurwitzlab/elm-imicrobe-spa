@@ -1,4 +1,4 @@
-module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile, decoder)
+module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile, SampleFileType, decoder, decoderSampleFile)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -70,8 +70,20 @@ type alias SampleFile =
     , num_bp : Int
     , avg_len : Int
     , pct_gc : Int
+    , sample_file_type : SampleFileType
+    , sample : SampleFileSample
     }
 
+
+type alias SampleFileSample =
+    { sample_id : Int
+    , sample_name : String
+    }
+
+type alias SampleFileType =
+    { sample_file_type_id : Int
+    , file_type : String
+    }
 
 type alias SampleToOntology =
     { sample_to_ontology_id : Int
@@ -154,6 +166,22 @@ decoderSampleFile =
         |> optional "num_bp" Decode.int 0
         |> optional "avg_len" Decode.int 0
         |> optional "pct_gc" Decode.int 0
+        |> required "sample_file_type" decoderSampleFileType
+        |> required "sample" decoderSampleFileSample
+
+
+decoderSampleFileType : Decoder SampleFileType
+decoderSampleFileType =
+    decode SampleFileType
+        |> required "sample_file_type_id" Decode.int
+        |> required "type" Decode.string
+
+
+decoderSampleFileSample : Decoder SampleFileSample
+decoderSampleFileSample =
+    decode SampleFileSample
+        |> required "sample_id" Decode.int
+        |> required "sample_name" Decode.string
 
 
 decoderSampleToOntology : Decoder SampleToOntology

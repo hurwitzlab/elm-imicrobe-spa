@@ -19,6 +19,7 @@ import Page.CombinedAssembly as CombinedAssembly
 import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Domain as Domain
 import Page.Domains as Domains
+import Page.Files as Files
 import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
@@ -74,6 +75,7 @@ type Page
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
+    | Files Files.Model
     | Home Home.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
@@ -124,6 +126,8 @@ type Msg
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
     | DomainsMsg Domains.Msg
+    | FilesLoaded (Result PageLoadError Files.Model)
+    | FilesMsg Files.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
     | InvestigatorLoaded Int (Result PageLoadError Investigator.Model)
@@ -207,6 +211,9 @@ setRoute maybeRoute model =
 
         Just (Route.Domain id) ->
             transition (DomainLoaded id) (Domain.init id)
+
+        Just Route.Files ->
+            transition FilesLoaded (Files.init model.session)
 
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
@@ -698,6 +705,20 @@ updatePage page msg model =
         DomainLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        FilesLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Files subModel) } => Cmd.none
+
+        FilesLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        FilesMsg subMsg ->
+            case page of
+                Files subModel ->
+                    toPage Files FilesMsg Files.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         HomeLoaded (Ok subModel) ->
             { model | pageState = Loaded (Home subModel) } => Cmd.none
 
@@ -1011,6 +1032,11 @@ viewPage session isLoading page =
         Error subModel ->
             Error.view subModel
                 |> layout Page.Other
+
+        Files subModel ->
+            Files.view subModel
+                |> layout Page.Files
+                |> Html.map FilesMsg
 
         Home subModel ->
             Home.view subModel -- session subModel
