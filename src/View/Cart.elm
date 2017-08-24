@@ -56,7 +56,7 @@ updateInternal session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCart } => Cmd.batch [ storeSession newSession, Route.modifyUrl Route.Cart ]
+            { model | cart = newCart } => Cmd.batch [ Session.store newSession ]--, Route.modifyUrl Route.Cart ]
 
         RemoveFromCart id ->
             let
@@ -66,20 +66,13 @@ updateInternal session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCart } => storeSession newSession
+            { model | cart = newCart } => Session.store newSession
 
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none
 
         SetSession newSession ->
             model => Cmd.none
-
-
-storeSession : Session -> Cmd msg
-storeSession session =
-    Session.encode session
-        |> Encode.encode 0
-        |> Ports.storeSession
 
 
 
@@ -164,7 +157,7 @@ removeFromCartLink sample =
 
 removeFromCartButton : Int -> Html Msg
 removeFromCartButton id =
-    button [ onClick (RemoveFromCart id) ] [ text "Remove" ]
+    button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
 
 
 addToCartButton : Int -> Html Msg
