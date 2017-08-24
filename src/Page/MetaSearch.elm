@@ -486,7 +486,7 @@ doSearch : Model -> Cmd Msg
 doSearch model =
     let
         url =
-            apiHost ++ "/samplesearch"
+            apiHost ++ "/samples/search"
 
         body =
             serializeForm model.optionValues model.params
