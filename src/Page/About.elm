@@ -27,9 +27,9 @@ init =
         body =
             Task.succeed "About page is the page where you can read all about the about page!"
 
-        handleLoadError _ =
+        handleLoadError error =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home "The about page is currently unavailable."
+            Error.pageLoadError Page.Home (toString error)
     in
     Task.map2 Model title body
         |> Task.mapError handleLoadError

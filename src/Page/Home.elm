@@ -27,9 +27,9 @@ init session =
         body =
             Task.succeed "Welcome to the homepage!"
 
-        handleLoadError _ =
+        handleLoadError error =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home "The homepage is currently unavailable."
+            Error.pageLoadError Page.Home (toString error)
     in
     Task.map2 Model title body
         |> Task.mapError handleLoadError

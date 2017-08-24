@@ -35,9 +35,9 @@ init lat lng =
         title =
             Task.succeed "Map Page"
 
-        handleLoadError _ =
+        handleLoadError error =
             -- If a resource task fail load error page
-            Error.pageLoadError Page.Home "The map page is currently unavailable."
+            Error.pageLoadError Page.Home (toString error)
     in
     Task.map2 Model title map
         |> Task.mapError handleLoadError
