@@ -1,7 +1,7 @@
-module Page.Investigators exposing (Model, Msg, init, update, view)
+module Page.Jobs exposing (Model, Msg, init, update, view)
 
-import Data.Investigator
 import Data.Session as Session exposing (Session)
+import Data.Agave as Agave exposing (Job, Jobs)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -9,11 +9,12 @@ import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Investigator
+import Request.Agave
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -21,21 +22,21 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , investigators : List Data.Investigator.Investigator
+    , jobs : Jobs
     , tableState : Table.State
     , query : String
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
-            Task.succeed "Investigators"
+            Task.succeed "Jobs"
 
-        loadInvestigators =
-            Request.Investigator.list |> Http.toTask
+        loadJobs =
+            Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -61,7 +62,7 @@ init =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map4 Model title loadInvestigators tblState qry
+    Task.map4 Model title loadJobs tblState qry
         |> Task.mapError handleLoadError
 
 
@@ -88,14 +89,13 @@ update msg model =
             )
 
 
-config : Table.Config Data.Investigator.Investigator Msg
+config : Table.Config Job Msg
 config =
     Table.customConfig
-        { toId = toString << .investigator_id
+        { toId = .app_id
         , toMsg = SetTableState
         , columns =
             [ nameColumn
-            , Table.stringColumn "Inst" .institution
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -108,20 +108,19 @@ toTableAttrs =
     ]
 
 
-nameColumn : Table.Column Data.Investigator.Investigator Msg
+nameColumn : Table.Column Job Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .investigator_name
+        , sorter = Table.increasingOrDecreasingBy .name
         }
 
 
-nameLink : Data.Investigator.Investigator -> Table.HtmlDetails Msg
-nameLink inv =
+nameLink : Job -> Table.HtmlDetails Msg
+nameLink job =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Investigator inv.investigator_id) ]
-            [ text inv.investigator_name ]
+        [ a [] [] --[ Route.href (Route.Job job.id) ] [ text job.name ]
         ]
 
 
@@ -132,14 +131,11 @@ nameLink inv =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
-        acceptablePeople =
-            List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
+        acceptableJobs =
+            List.filter (String.contains lowerQuery << String.toLower << .name) model.jobs.jobs
 
         numShowing =
             let
@@ -147,7 +143,7 @@ view model =
                     { usLocale | decimals = 0 }
 
                 count =
-                    List.length acceptablePeople
+                    List.length acceptableJobs
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -157,8 +153,7 @@ view model =
                     span [] []
 
                 _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+                    span [ class "badge" ] [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -168,6 +163,6 @@ view model =
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
-            , Table.view config model.tableState acceptablePeople
+            , Table.view config model.tableState acceptableJobs
             ]
         ]

@@ -1,12 +1,12 @@
 module Page.Profile exposing (Model, Msg, init, update, view)
 
-import Data.Profile
+import Data.Profile as Profile exposing (Profile)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
-import Request.Profile
+import Request.Agave
 import Task exposing (Task)
 import View.Page as Page
 
@@ -17,7 +17,7 @@ import View.Page as Page
 type alias Model =
     { pageTitle : String
     , token : String
-    , profile : Data.Profile.Profile
+    , profile : Profile
     }
 
 
@@ -29,7 +29,7 @@ init token =
             Task.succeed "Profile"
 
         loadProfile =
-            Request.Profile.get token |> Http.toTask |> Task.map .result
+            Request.Agave.getProfile token |> Http.toTask |> Task.map .result
 
         handleLoadError err =
             -- If a resource task fail load error page

@@ -24,6 +24,7 @@ import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
+import Page.Jobs as Jobs
 import Page.Map as Map
 import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
@@ -79,6 +80,7 @@ type Page
     | Home Home.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
+    | Jobs Jobs.Model
     | Map String String Map.Model
     | MetaSearch MetaSearch.Model
     | NotFound
@@ -134,6 +136,8 @@ type Msg
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | JobsLoaded (Result PageLoadError Jobs.Model)
+    | JobsMsg Jobs.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
     | MapMsg Map.Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
@@ -183,7 +187,7 @@ setRoute maybeRoute model =
             transition AboutLoaded About.init
 
         Just (Route.App id) ->
-            transition (AppLoaded id) (App.init id)
+            transition (AppLoaded id) (App.init model.session id)
 
         Just Route.Apps ->
             transition AppsLoaded Apps.init
@@ -220,6 +224,9 @@ setRoute maybeRoute model =
 
         Just Route.Investigators ->
             transition InvestigatorsLoaded Investigators.init
+
+        Just Route.Jobs ->
+            transition JobsLoaded (Jobs.init model.session)
 
         Just Route.Login ->
             transition Authorize (Home.init model.session)
@@ -617,6 +624,14 @@ updatePage page msg model =
         AppLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        AppMsg subMsg ->
+            case page of
+                App id subModel ->
+                    toPage (App id) AppMsg (App.update session) subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         AppsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Apps subModel) } => Cmd.none
 
@@ -741,6 +756,20 @@ updatePage page msg model =
             case page of
                 Investigators subModel ->
                     ( toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel )
+
+                _ ->
+                    model => Cmd.none
+
+        JobsLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Jobs subModel) } => Cmd.none
+
+        JobsLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        JobsMsg subMsg ->
+            case page of
+                Jobs subModel ->
+                    ( toPage Jobs JobsMsg Jobs.update subMsg subModel )
 
                 _ ->
                     model => Cmd.none
@@ -1053,6 +1082,11 @@ viewPage session isLoading page =
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
 
+        Jobs subModel ->
+            Jobs.view subModel
+                |> layout Page.Jobs
+                |> Html.map JobsMsg
+
         Map lat lng subModel ->
             Map.view subModel
                 |> layout Page.Map
@@ -1180,9 +1214,8 @@ init flags location =
                 , clientId = flags.config.oauthClientId
                 , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
                 }
-            , session = session --Session (Data.Cart.Cart Set.empty)
+            , session = session
             , error = Nothing
---            , token = Nothing
             , pageState = Loaded initialPage
             }
 
@@ -1196,13 +1229,12 @@ init flags location =
     in
     case OAuth.Implicit.parse location2 of
         Ok { token } ->
---            let
---                saveToken =
---                    saveAuthToken (toString token)
---            in
---            Tuple.mapSecond (\c -> Cmd.batch [ c, saveToken ])
---                (setRoute (Just (Route.Profile (toString token))) { model | token = Just token })
-            setRoute (Just (Route.Profile (toString token))) { model | session = (Session session.cart (toString token)) }
+            let
+                newSession =
+                    (Session session.cart (toString token))
+            in
+            Tuple.mapSecond (\c -> Cmd.batch [ c, Session.store newSession ])
+                (setRoute (Just (Route.Profile (toString token))) { model | session = newSession })
 
         Err OAuth.Empty ->
             let

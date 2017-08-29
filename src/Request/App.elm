@@ -3,8 +3,10 @@ module Request.App exposing (get, list)
 import Data.App as App exposing (App)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder, string)
+import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Util exposing (apiHost)
+
 
 
 list : Http.Request (List App)

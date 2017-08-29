@@ -13,6 +13,15 @@ type alias App =
     }
 
 
+type alias AppRun =
+    { app_run_id : Int
+    , app_id : Int
+    , user_id : Int
+    , app_ran_at : String
+    , params : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -24,6 +33,15 @@ decoder =
         |> required "app_name" Decode.string
         |> optional "is_active" Decode.int 1
 
+
+decoderAppRun : Decoder AppRun
+decoderAppRun =
+    decode AppRun
+        |> required "app_run_id" Decode.int
+        |> required "app_id" Decode.int
+        |> required "user_id" Decode.int
+        |> optional "app_id" Decode.string ""
+        |> optional "params" Decode.string ""
 
 
 {--

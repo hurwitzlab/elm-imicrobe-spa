@@ -20,6 +20,7 @@ type ActivePage
     | Home
     | Investigator
     | Investigators
+    | Jobs
     | Other
     | Pubchase
     | Publication
@@ -88,6 +89,7 @@ viewHeader page isLoading =
                             , li [] [ a [ Route.href Route.CombinedAssemblies ] [ text "CombinedAssemblies" ] ]
                             , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                             , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
+                            , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
                             , li [] [ a [ Route.href Route.Cart ] [ text "Cart" ] ]
                             ]
                         ]

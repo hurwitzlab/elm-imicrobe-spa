@@ -7,6 +7,10 @@ html, body, .container, .tab-content, .tab-pane{height:100%;}
     float: right;
 }
 
+.center {
+    text-align: center;
+}
+
 .nowrap {
     white-space: nowrap;
 }
