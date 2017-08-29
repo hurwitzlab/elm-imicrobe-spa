@@ -582,7 +582,7 @@ resultsTable fieldList query results =
                     { usLocale | decimals = 0 }
 
                 count =
-                    List.length results
+                    List.length resultRows
 
                 numStr =
                     count |> toFloat |> format myLocale
