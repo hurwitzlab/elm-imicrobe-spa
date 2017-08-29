@@ -931,8 +931,12 @@ type alias Flags =
 init : Flags -> Location -> ( Model, Cmd Msg )
 init flags location =
     let
-        session =
-            decodeSessionFromJson flags.session
+        _ = Debug.log "flags" flags
+
+        session = --TODO use Maybe Session instead
+            case flags.session of
+                "" -> Session (Data.Cart.Cart Set.empty) ""
+                _ -> decodeSessionFromJson flags.session
 
         model =
             { oauth =
@@ -951,8 +955,6 @@ init flags location =
             { location | hash = location.hash ++ "&token_type=bearer" }
 
         _ = Debug.log "init" model
-
-        x = Debug.log "flags" flags
     in
     case OAuth.Implicit.parse location2 of
         Ok { token } ->
