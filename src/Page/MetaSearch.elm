@@ -4,6 +4,8 @@ import Data.MetaSearch
 import Data.Session as Session exposing (Session)
 import Dict
 import Exts.Dict as EDict
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
@@ -72,7 +74,7 @@ init =
     Task.andThen
         (\initialParams ->
             Task.succeed
-                { pageTitle = ""
+                { pageTitle = "Sample Search"
                 , query = ""
                 , params = initialParams
                 , selectedParams = []
@@ -98,6 +100,7 @@ type Msg
     | UpdatePossibleOptionValues (Result Http.Error (Dict.Dict String (List JsonType)))
     | Search
     | UpdateSearchResults (WebData (List (Dict.Dict String JsonType)))
+    | SetQuery String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -157,6 +160,11 @@ update msg model =
             , Cmd.none
             )
 
+        SetQuery newQuery ->
+            ( { model | query = newQuery }
+            , Cmd.none
+            )
+
 
 
 -- VIEW --
@@ -166,12 +174,15 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ div [ style [ ( "text-align", "center" ) ] ]
-                [ h2 [] [ text model.pageTitle ]
-                , div [] (mkParamsSelect model)
-                , div [] [ mkOptionTable model ]
-                , div [] [ showResults model ]
+            [ div [ class "page-header" ]
+                [ h1 [] [ text model.pageTitle ]
                 ]
+            , div [ style [ ( "text-align", "center" ) ] ]
+                [ div [] [ mkParamsSelect model ]
+                , div [] [ mkOptionTable model ]
+                ]
+            , div [] [ showResults model ]
+            ]
 
             {--
             , div [] [ text ("restrictedParams = " ++ toString model.restrictedParams) ]
@@ -179,7 +190,6 @@ view model =
             , div [] [ text ("searchResults = " ++ toString model.searchResults) ]
             , div [] [ text ("possibleOptionValues" ++ toString model.possibleOptionValues) ]
             --}
-            ]
         ]
 
 
@@ -198,7 +208,7 @@ config =
         --}
 
 
-mkParamsSelect : Model -> List (Html Msg)
+mkParamsSelect : Model -> Html Msg
 mkParamsSelect model =
     let
         first =
@@ -222,9 +232,10 @@ mkParamsSelect model =
         rest =
             List.map mkParamOption showKeys
     in
-    [ text "Field: "
-    , select [ onInput AddParamOption ] (first :: rest)
-    ]
+    div [ class "padded-xl" ]
+        [ text "Field: "
+        , select [ onInput AddParamOption ] (first :: rest)
+        ]
 
 
 mkParamOption : String -> Html msg
@@ -276,7 +287,7 @@ mkOptionTable model =
         searchButtonRow =
             [ tr []
                 [ td [ colspan 4, style [ ( "text-align", "center" ) ] ]
-                    [ button [ onClick Search ] [ text "Search" ] ]
+                    [ button [ class "padded btn btn-primary", onClick Search ] [ text "Search" ] ]
                 ]
             ]
     in
@@ -377,10 +388,10 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
                     ]
 
         buttons =
-            [ td [] [ button [ onClick (RemoveOption optionName) ] [ text "Remove" ] ]
+            [ td [] [ button [ class "btn btn-default btn-sm", onClick (RemoveOption optionName) ] [ text "Remove" ] ]
             ]
     in
-    tr [] (title ++ el ++ buttons)
+    tr [ class "padded border-top border-bottom", style [("padding", "10px")] ] (title ++ el ++ buttons)
 
 
 mkMultiSelect : String -> List JsonType -> Html Msg
@@ -527,7 +538,7 @@ getParamValues optionName optionValues params =
         |> Http.send UpdatePossibleOptionValues
 
 
-showResults : Model -> Html msg
+showResults : Model -> Html Msg
 showResults model =
     case model.searchResults of
         NotAsked ->
@@ -545,11 +556,11 @@ showResults model =
                     text "No results"
 
                 _ ->
-                    resultsTable model.selectedParams data
+                    resultsTable model.selectedParams model.query data
 
 
-resultsTable : List ( String, String ) -> List (Dict.Dict String JsonType) -> Html msg
-resultsTable fieldList results =
+resultsTable : List ( String, String ) -> String -> List (Dict.Dict String JsonType) -> Html Msg
+resultsTable fieldList query results =
     let
         mkTh fld =
             th [] [ text (prettyName fld) ]
@@ -561,10 +572,34 @@ resultsTable fieldList results =
             [ tr [] (List.map mkTh ("specimen__sample_name" :: fieldNames)) ]
 
         resultRows =
-            List.map (mkResultRow fieldList) results
+            results
+                |> List.filter (\result -> String.contains (String.toLower query) (String.toLower (getVal "specimen__sample_name" result)))
+                |> List.map (mkResultRow fieldList)
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length results
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ] [ text numStr ]
     in
     div []
-        [ text ("Found " ++ toString (List.length results))
+        [ h2 []
+            [ text "Results "
+            , numShowing
+            , small [ class "right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+            ]
         , table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]
         ]
 
@@ -572,24 +607,6 @@ resultsTable fieldList results =
 mkResultRow : List ( String, String ) -> Dict.Dict String JsonType -> Html msg
 mkResultRow fieldList result =
     let
-        getVal : String -> String
-        getVal fldName =
-            case Dict.get fldName result of
-                Just (StrType s) ->
-                    s
-
-                Just (IntType i) ->
-                    toString i
-
-                Just (FloatType f) ->
-                    toString f
-
-                Just (ValueType v) ->
-                    toString v
-
-                _ ->
-                    "NA"
-
         mkTd : ( String, String ) -> Html msg
         mkTd ( fldName, dataType ) =
             let
@@ -599,15 +616,15 @@ mkResultRow fieldList result =
                     else
                         "left"
             in
-            td [ style [ ( "text-align", align ) ] ] [ text (getVal fldName) ]
+            td [ style [ ( "text-align", align ) ] ] [ text (getVal fldName result) ]
 
         nameCol =
             let
                 name =
-                    getVal "specimen__sample_name"
+                    getVal "specimen__sample_name" result
 
                 sampleLink =
-                    case String.toInt (getVal "specimen__sample_id") of
+                    case String.toInt (getVal "specimen__sample_id" result) of
                         Ok sampleId ->
                             a [ Route.href (Route.Sample sampleId) ]
                                 [ text name ]
@@ -621,6 +638,25 @@ mkResultRow fieldList result =
             List.map mkTd fieldList
     in
     tr [] (nameCol :: otherCols)
+
+
+getVal : String -> Dict.Dict String JsonType -> String
+getVal fldName result =
+    case Dict.get fldName result of
+        Just (StrType s) ->
+            s
+
+        Just (IntType i) ->
+            toString i
+
+        Just (FloatType f) ->
+            toString f
+
+        Just (ValueType v) ->
+            toString v
+
+        _ ->
+            "NA"
 
 
 mkRestrictedParams :

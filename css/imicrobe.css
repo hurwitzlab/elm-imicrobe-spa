@@ -20,5 +20,25 @@ html, body, .container, .tab-content, .tab-pane{height:100%;}
 }
 
 .padded {
-    padding: 0.5em;
+    margin: 0.5em;
+}
+
+.padded-lg {
+    margin: 1em;
+}
+
+.padded-xl {
+    margin: 2em;
+}
+
+.border-top {
+    border-top: 1pt solid lightgray;
+}
+
+.border-bottom {
+    border-bottom: 1pt solid lightgray;
+}
+
+tr.padded > td {
+    padding: 5px;
 }
