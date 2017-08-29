@@ -11,6 +11,7 @@ import Html.Events exposing (onClick)
 import Http
 import Request.Sample
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Route
 import Task exposing (Task)
 import View.Page as Page
 import View.Cart as Cart
@@ -59,6 +60,7 @@ init session =
 
 type Msg
     = CartMsg Cart.Msg
+    | Files
     | EmptyCart
     | SetSession Session
 
@@ -77,6 +79,9 @@ update session msg model =
                     ( { model | cart = newModel }, Cmd.map toMsg newCmd )
             in
                 toPage model.cart CartMsg (Cart.update session) subMsg model.cart
+
+        Files ->
+            model => Route.modifyUrl Route.Files
 
         EmptyCart ->
             let
@@ -136,7 +141,7 @@ view model =
                 [ text (model.pageTitle ++ " ")
                 , numShowing
                 , div [ class "right" ]
-                    [ button ([ class "margin-right btn btn-primary btn-sm" ] ++ buttonAttr) [ span [ class "glyphicon glyphicon-file"] [], text " Files" ]
+                    [ button ([ class "margin-right btn btn-primary btn-sm", onClick Files ] ++ buttonAttr) [ span [ class "glyphicon glyphicon-file"] [], text " Files" ]
 --                    , button [ class "margin-right btn btn-primary btn-sm", attribute "type" "submit" ] [ text "Download" ]
                     , button ([ class "btn btn-primary btn-sm", onClick EmptyCart ] ++ buttonAttr)
                         [ span [ class "glyphicon glyphicon-trash"] []
