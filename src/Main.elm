@@ -3,9 +3,11 @@ module Main exposing (..)
 import Data.Config as Config exposing (Config)
 import Data.Session as Session exposing (Session)
 import Data.Cart
+import Data.Profile
 import Debug exposing (log)
 import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
+import Http
 import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
@@ -40,6 +42,7 @@ import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
 import Route exposing (..)
+import Request.Agave
 import Ports
 import Set
 import Task
@@ -60,6 +63,7 @@ type alias Model =
         }
 --    , token : Maybe OAuth.Token
     , error : Maybe String
+    , user : Maybe Data.Profile.Profile
     }
 
 
@@ -142,6 +146,7 @@ type Msg
     | MapMsg Map.Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
     | MetaSearchMsg MetaSearch.Msg
+    | LoadProfile Data.Profile.Profile
     | ProfileLoaded String (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
@@ -295,290 +300,8 @@ update msg model =
     updatePage (getPage model.pageState) msg model
 
 
-{-  FIXME updatePage rewritten without tuple-matching due to performance issues in Elm v0.18 which should be
-    fixed in v0.19.
--}
-------------------------------------------------------------------------------------------------------------------------
---updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
---updatePage page msg model =
---    let
---        session =
---            model.session
---
---        toPage toModel toMsg subUpdate subMsg subModel =
---            let
---                ( newModel, newCmd ) =
---                    subUpdate subMsg subModel
---            in
---            ( { model | pageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
---
---        error =
---            pageError model
---    in
---    case ( msg, page ) of
---        ( SetRoute route, _ ) ->
---            setRoute route model
---
---        ( AddToCart id, _ ) ->
---            let
---                newCart =
---                    Set.insert id model.session.cart
---            in
---            ( { model | session = { cart = newCart } }, Cmd.none )
---
---        ( Authorize (Ok subModel), _ ) ->
---            model
---                ! [ OAuth.Implicit.authorize
---                        { clientId = model.oauth.clientId
---                        , redirectUri = model.oauth.redirectUri
---                        , responseType = OAuth.Token
---                        , scope = [ "PRODUCTION" ]
---                        , state = Just "000"
---                        , url = model.oauth.authEndpoint
---                        }
---                  ]
---
---        ( AboutLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (About subModel) } => Cmd.none
---
---        ( AboutLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( AppLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (App id subModel) } => Cmd.none
---
---        ( AppLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( AppsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Apps subModel) } => Cmd.none
---
---        ( AppsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( AssemblyLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
---
---        ( AssemblyLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( AssembliesLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Assemblies subModel) } => Cmd.none
---
---        ( AssembliesLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( AssembliesMsg subMsg, Assemblies subModel ) ->
---            toPage Assemblies AssembliesMsg Assemblies.update subMsg subModel
---
---        ( CombinedAssemblyLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
---
---        ( CombinedAssemblyLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( CombinedAssembliesLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (CombinedAssemblies subModel) } => Cmd.none
---
---        ( CombinedAssembliesLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( CombinedAssembliesMsg subMsg, CombinedAssemblies subModel ) ->
---            toPage CombinedAssemblies CombinedAssembliesMsg CombinedAssemblies.update subMsg subModel
---
---        ( DomainsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Domains subModel) } => Cmd.none
---
---        ( DomainsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( DomainsMsg subMsg, Domains subModel ) ->
---            toPage Domains DomainsMsg Domains.update subMsg subModel
---
---        ( DomainLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Domain id subModel) } => Cmd.none
---
---        ( DomainLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( EmptyCart, _ ) ->
---            ( { model | session = { cart = Set.empty } }, Cmd.none )
---
---        ( HomeLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Home subModel) } => Cmd.none
---
---        ( HomeLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( InvestigatorLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
---
---        ( InvestigatorLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( InvestigatorsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Investigators subModel) } => Cmd.none
---
---        ( InvestigatorsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( InvestigatorsMsg subMsg, Investigators subModel ) ->
---            toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
---
---        ( MetaSearchLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
---
---        ( MetaSearchLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( MetaSearchMsg subMsg, MetaSearch subModel ) ->
---            toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
---
---        ( PubchaseLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Pubchase subModel) } => Cmd.none
---
---        ( PubchaseLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( PubchaseMsg subMsg, Pubchase subModel ) ->
---            toPage Pubchase PubchaseMsg Pubchase.update subMsg subModel
---
---        ( PublicationLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Publication id subModel) } => Cmd.none
---
---        ( PublicationLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( PublicationsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Publications subModel) } => Cmd.none
---
---        ( PublicationsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( PublicationsMsg subMsg, Publications subModel ) ->
---            toPage Publications PublicationsMsg Publications.update subMsg subModel
---
---        ( ProfileLoaded token (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
---
---        ( ProfileLoaded token (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( ProjectsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Projects subModel) } => Cmd.none
---
---        ( ProjectsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( ProjectsMsg subMsg, Projects subModel ) ->
---            toPage Projects ProjectsMsg Projects.update subMsg subModel
---
---        ( ProjectLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Project id subModel) } => Cmd.none
---
---        ( ProjectLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( ProjectGroupLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
---
---        ( ProjectGroupLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( ProjectGroupsLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (ProjectGroups subModel) } => Cmd.none
---
---        ( ProjectGroupsLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( ProjectGroupsMsg subMsg, ProjectGroups subModel ) ->
---            toPage ProjectGroups ProjectGroupsMsg ProjectGroups.update subMsg subModel
---
---        ( RemoveFromCart id, _ ) ->
---            let
---                newCart =
---                    Set.remove id model.session.cart
---            in
---            ( { model | session = { cart = newCart } }, Cmd.none )
---
---        ( SampleLoaded id (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Sample id subModel) } => Cmd.none
---
---        ( SampleLoaded id (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( SamplesLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Samples subModel) } => Cmd.none
---
---        ( SamplesLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( SamplesMsg subMsg, Samples subModel ) ->
---            toPage Samples SamplesMsg Samples.update subMsg subModel
---
---        ( SearchLoaded (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Search subModel) } => Cmd.none
---
---        ( SearchLoaded (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( SearchMsg subMsg, Search subModel ) ->
---            toPage Search SearchMsg Search.update subMsg subModel
---
---        {--
---        ( HomeMsg subMsg, Home subModel ) ->
---            toPage Home HomeMsg Home.update subMsg subModel
---            --}
---        ( HomeMsg subMsg, Home subModel ) ->
---            let
---                ( ( pageModel, cmd ), msgFromPage ) =
---                    Home.update subMsg subModel
---
---                newModel =
---                    case msgFromPage of
---                        Home.NoOp ->
---                            model
---
---                        Home.AddToCart id ->
---                            let
---                                newCart =
---                                    Set.insert id model.session.cart
---                            in
---                            { model | session = { cart = newCart } }
---
---                        Home.EmptyCart ->
---                            { model | session = { cart = Set.empty } }
---
---                        Home.RemoveFromCart id ->
---                            let
---                                newCart =
---                                    Set.remove id model.session.cart
---                            in
---                            { model | session = { cart = newCart } }
---            in
---            { newModel | pageState = Loaded (Home pageModel) }
---                => Cmd.map HomeMsg cmd
---
---        ( AboutMsg subMsg, About subModel ) ->
---            toPage About AboutMsg About.update subMsg subModel
---
---        ( MapLoaded lat lng (Ok subModel), _ ) ->
---            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
---
---        ( MapLoaded lat lng (Err error), _ ) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        ( MapMsg subMsg, Map lat lng subModel ) ->
---            toPage (Map lat lng) MapMsg Map.update subMsg subModel
---
---        ( _, NotFound ) ->
---            -- Disregard incoming messages when we're on the
---            -- NotFound page.
---            model => Cmd.none
---
---        ( _, _ ) ->
---            -- Disregard incoming messages that arrived for the wrong page
---            model => Cmd.none
+-- FIXME updatePage rewritten without tuple-matching due to performance issues in Elm v0.18 which should be
+-- fixed in v0.19.
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
@@ -822,6 +545,9 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        LoadProfile profile ->
+            { model | user = Just profile } => Route.modifyUrl Route.Home
+
         ProfileLoaded token (Ok subModel) ->
             { model | pageState = Loaded (Profile token subModel) } => Cmd.none
 
@@ -986,17 +712,17 @@ view : Model -> Html Msg
 view model =
     case model.pageState of
         Loaded page ->
-            viewPage model.session False page
+            viewPage model.session False page model.user
 
         TransitioningFrom page ->
-            viewPage model.session True page
+            viewPage model.session True page model.user
 
 
-viewPage : Session -> Bool -> Page -> Html Msg
-viewPage session isLoading page =
+viewPage : Session -> Bool -> Page -> Maybe Data.Profile.Profile -> Html Msg
+viewPage session isLoading page user =
     let
         layout =
-            Page.layout isLoading
+            Page.layout isLoading session.token user
     in
     case page of
         NotFound ->
@@ -1217,6 +943,7 @@ init flags location =
             , session = session
             , error = Nothing
             , pageState = Loaded initialPage
+            , user = Nothing
             }
 
         -- Kludge for Agave not returning required "token_type=bearer" in redirect
@@ -1232,9 +959,22 @@ init flags location =
             let
                 newSession =
                     (Session session.cart (toString token))
+
+                loadProfile =
+                    Request.Agave.getProfile (toString token) |> Http.toTask |> Task.map .result
+
+                handleProfile profile =
+                    case profile of
+                        Ok profile ->
+                            LoadProfile profile
+
+                        Err _ ->
+                            let
+                                _ = Debug.log "Error getting profile"
+                            in
+                            SetRoute (Just Route.Home)
             in
-            Tuple.mapSecond (\c -> Cmd.batch [ c, Session.store newSession ])
-                (setRoute (Just (Route.Profile (toString token))) { model | session = newSession })
+            { model | session = newSession } => Task.attempt handleProfile loadProfile
 
         Err OAuth.Empty ->
             let

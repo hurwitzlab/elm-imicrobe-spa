@@ -3,6 +3,7 @@ module View.Page exposing (ActivePage(..), layout)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Route exposing (Route)
+import Data.Profile as Profile exposing (Profile)
 
 
 type ActivePage
@@ -42,17 +43,30 @@ type ActivePage
 isLoading can be used to slow loading during slow transitions
 
 -}
-layout : Bool -> ActivePage -> Html msg -> Html msg
-layout isLoading page content =
+layout : Bool -> String -> Maybe Profile -> ActivePage -> Html msg -> Html msg
+layout isLoading token user page content =
     div []
-        [ viewHeader page isLoading
+        [ viewHeader page isLoading token user
         , div [] [ content ]
         , viewFooter
         ]
 
 
-viewHeader : ActivePage -> Bool -> Html msg
-viewHeader page isLoading =
+viewHeader : ActivePage -> Bool -> String -> Maybe Profile -> Html msg
+viewHeader page isLoading token user =
+    let
+        loginText =
+            case user of
+                Nothing -> "Login"
+
+                Just profile -> profile.first_name ++ " " ++ profile.last_name
+
+        loginRoute =
+            case user of
+                Nothing -> Route.href Route.Login
+
+                Just profile -> Route.href (Route.Profile token)
+    in
     nav [ class "navbar navbar-default navbar-static-top" ]
         [ div [ class "container" ]
             [ div [ class "navbar-collapse collapse" ]
@@ -79,14 +93,14 @@ viewHeader page isLoading =
                             ]
                         , ul
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                            [ li [] [ a [ Route.href Route.Investigators ] [ text "Investigators" ] ]
-                            , li [] [ a [ Route.href Route.Domains ] [ text "Domains" ] ]
-                            , li [] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+                            [ li [] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
                             , li [] [ a [ Route.href Route.ProjectGroups ] [ text "Project Groups" ] ]
-                            , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
-                            , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
+                            , li [] [ a [ Route.href Route.Investigators ] [ text "Investigators" ] ]
+                            , li [] [ a [ Route.href Route.Domains ] [ text "Domains" ] ]
                             , li [] [ a [ Route.href Route.Assemblies ] [ text "Assemblies" ] ]
                             , li [] [ a [ Route.href Route.CombinedAssemblies ] [ text "CombinedAssemblies" ] ]
+                            , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
+                            , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
                             , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                             , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
@@ -102,8 +116,8 @@ viewHeader page isLoading =
                             [ text "About" ]
                         ]
                     , li []
-                        [ a [ Route.href Route.Login ]
-                            [ text "Login" ]
+                        [ a [ loginRoute ]
+                            [ text loginText ]
                         ]
                     ]
                 ]
