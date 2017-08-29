@@ -21,10 +21,7 @@ truncate string =
         String.left (maxColumnWidth - 3) string ++ "..."
 
 
-
 -- toTuple
-
-
 (=>) : a -> b -> ( a, b )
 (=>) =
     (,)
