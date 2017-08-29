@@ -565,7 +565,7 @@ resultsTable fieldList results =
     in
     div []
         [ text ("Found " ++ toString (List.length results))
-        , table [] (headerRow ++ resultRows)
+        , table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]
         ]
 
 
