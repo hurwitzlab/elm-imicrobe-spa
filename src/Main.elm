@@ -938,11 +938,13 @@ init flags location =
                 "" -> Session (Data.Cart.Cart Set.empty) ""
                 _ -> decodeSessionFromJson flags.session
 
+        _ = Debug.log "location" (toString location)
+
         model =
             { oauth =
                 { authEndpoint = "https://agave.iplantc.org/authorize"
                 , clientId = flags.config.oauthClientId
-                , redirectUri = "http://localhost:8080/" --location.origin ++ location.pathname
+                , redirectUri = location.origin --location.origin ++ location.pathname
                 }
             , session = session
             , error = Nothing
