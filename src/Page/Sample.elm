@@ -122,7 +122,7 @@ viewSample sample =
         ]
 
 
-viewFiles : List Data.Sample.SampleFile -> Html msg
+viewFiles : List Data.Sample.SampleFile2 -> Html msg
 viewFiles files =
     let
         numFiles =
@@ -156,7 +156,7 @@ viewFiles files =
         ]
 
 
-viewFile : Data.Sample.SampleFile -> Html msg
+viewFile : Data.Sample.SampleFile2 -> Html msg
 viewFile file =
     tr []
         [ td []

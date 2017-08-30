@@ -1,4 +1,4 @@
-module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile, SampleFileType, decoder, decoderSampleFile)
+module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile, SampleFile2, SampleFileType, decoder, decoderSampleFile)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -56,7 +56,7 @@ type alias Sample =
     , url : String
     , project : Project
     , investigators : List Investigator
-    , sample_files : List SampleFile
+    , sample_files : List SampleFile2
     , ontologies : List Ontology
     }
 
@@ -72,6 +72,20 @@ type alias SampleFile =
     , pct_gc : Int
     , sample_file_type : SampleFileType
     , sample : SampleFileSample
+    }
+
+
+-- FIXME added this because samples reference sample files but sample files reference samples
+type alias SampleFile2 =
+    { sample_file_id : Int
+    , sample_id : Int
+    , sample_file_type_id : Int
+    , file : String
+    , num_seqs : Int
+    , num_bp : Int
+    , avg_len : Int
+    , pct_gc : Int
+--    , sample_file_type : SampleFileType
     }
 
 
@@ -151,7 +165,7 @@ decoder =
         |> optional "url" Decode.string "NA"
         |> required "project" decoderProject
         |> optional "investigators" (Decode.list decoderInv) []
-        |> optional "sample_files" (Decode.list decoderSampleFile) []
+        |> optional "sample_files" (Decode.list decoderSampleFile2) []
         |> optional "ontologies" (Decode.list decoderOnt) []
 
 
@@ -168,6 +182,20 @@ decoderSampleFile =
         |> optional "pct_gc" Decode.int 0
         |> required "sample_file_type" decoderSampleFileType
         |> required "sample" decoderSampleFileSample
+
+
+decoderSampleFile2 : Decoder SampleFile2
+decoderSampleFile2 =
+    decode SampleFile2
+        |> required "sample_file_id" Decode.int
+        |> required "sample_id" Decode.int
+        |> optional "sample_file_type_id" Decode.int 0
+        |> required "file" Decode.string
+        |> optional "num_seqs" Decode.int 0
+        |> optional "num_bp" Decode.int 0
+        |> optional "avg_len" Decode.int 0
+        |> optional "pct_gc" Decode.int 0
+--        |> required "sample_file_type" decoderSampleFileType
 
 
 decoderSampleFileType : Decoder SampleFileType
