@@ -162,4 +162,4 @@ removeFromCartButton id =
 
 addToCartButton : Int -> Html Msg
 addToCartButton id =
-    button [ onClick (AddToCart id) ] [ text "Add" ]
+    button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
