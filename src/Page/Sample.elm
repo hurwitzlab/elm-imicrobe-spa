@@ -160,7 +160,7 @@ viewFile : Data.Sample.SampleFile2 -> Html msg
 viewFile file =
     tr []
         [ td []
-            [ text file.file
+            [ a [ href ("http://datacommons.cyverse.org/browse" ++ file.file) ] [ text file.file ] --TODO move Data Commons base URL to config file
             ]
         ]
 
