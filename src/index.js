@@ -5,6 +5,7 @@ require("bootstrap-loader");
 // Require these files so they get copied to dist
 require('../index.html');
 require("../img/nav-header.png");
+require('../css/imicrobe.css');
 
 // Load config file
 var config = require('../config.json');
