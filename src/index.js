@@ -6,6 +6,7 @@ require("bootstrap-loader");
 require('../index.html');
 require("../img/nav-header.png");
 require('../css/imicrobe.css');
+require('../css/readable.min.css');
 
 // Load config file
 var config = require('../config.json');
