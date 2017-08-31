@@ -25,6 +25,7 @@ type Route
     | Investigator Int
     | Investigators
     | Jobs
+    | Job String
     | Login
     | Publication Int
     | Publications
@@ -59,6 +60,7 @@ routeMather =
         , Url.map Investigator (s "investigators" </> Url.int)
         , Url.map Investigators (s "investigators")
         , Url.map Jobs (s "jobs")
+        , Url.map Job (s "jobs" </> Url.string)
         , Url.map Login (s "login")
         , Url.map Pubchase (s "pubchase")
         , Url.map Publication (s "publications" </> Url.int)
@@ -132,6 +134,9 @@ routeToString page =
 
                 Jobs ->
                     [ "jobs" ]
+
+                Job id ->
+                    [ "jobs", id ]
 
                 Login ->
                     [ "login" ]

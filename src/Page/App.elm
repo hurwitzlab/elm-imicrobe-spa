@@ -10,6 +10,7 @@ import Http
 import Page.Error as Error exposing (PageLoadError, pageLoadError)
 import Request.App
 import Request.Agave
+import Route
 import Task exposing (Task)
 import View.Page as Page
 import Dict as Dict exposing (Dict)
@@ -109,8 +110,9 @@ update session msg model =
             in
             ( model, cmd )
 
-        RunJobCompleted (Ok foo) ->
-            ( model, Cmd.none )
+        RunJobCompleted (Ok response) ->
+            --TODO add job to app_run table
+            model => Route.modifyUrl (Route.Job response.result.id)
 
         RunJobCompleted (Err error) ->
             ( model, Cmd.none )

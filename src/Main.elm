@@ -26,6 +26,7 @@ import Page.Error as Error exposing (PageLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
+import Page.Job as Job
 import Page.Jobs as Jobs
 import Page.Map as Map
 import Page.MetaSearch as MetaSearch
@@ -84,6 +85,7 @@ type Page
     | Home Home.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
+    | Job String Job.Model
     | Jobs Jobs.Model
     | Map String String Map.Model
     | MetaSearch MetaSearch.Model
@@ -140,6 +142,8 @@ type Msg
     | InvestigatorMsg Investigator.Msg
     | InvestigatorsLoaded (Result PageLoadError Investigators.Model)
     | InvestigatorsMsg Investigators.Msg
+    | JobLoaded String (Result PageLoadError Job.Model)
+    | JobMsg Job.Msg
     | JobsLoaded (Result PageLoadError Jobs.Model)
     | JobsMsg Jobs.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
@@ -232,6 +236,9 @@ setRoute maybeRoute model =
 
         Just Route.Jobs ->
             transition JobsLoaded (Jobs.init model.session)
+
+        Just (Route.Job id) ->
+            transition (JobLoaded id) (Job.init model.session id)
 
         Just Route.Login ->
             transition Authorize (Home.init model.session)
@@ -496,6 +503,12 @@ updatePage page msg model =
 
                 _ ->
                     model => Cmd.none
+
+        JobLoaded id (Ok subModel) ->
+            { model | pageState = Loaded (Job id subModel) } => Cmd.none
+
+        JobLoaded id (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
 
         MetaSearchLoaded (Ok subModel) ->
             { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
@@ -807,6 +820,11 @@ viewPage session isLoading page user =
             Investigators.view subModel
                 |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
+
+        Job id subModel ->
+            Job.view subModel
+                |> layout Page.Job
+                |> Html.map JobMsg
 
         Jobs subModel ->
             Jobs.view subModel

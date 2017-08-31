@@ -21,6 +21,7 @@ type ActivePage
     | Home
     | Investigator
     | Investigators
+    | Job
     | Jobs
     | Other
     | Pubchase

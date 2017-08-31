@@ -73,16 +73,14 @@ type alias Job =
     { id : String
     , name : String
     , app_id : String
+    , startTime : String
+    , endTime : String
+    , status : String
     }
 
 
 type alias JobStatus =
     { id : String
-    }
-
-
-type alias Jobs =
-    { jobs : List Job
     }
 
 
@@ -135,18 +133,15 @@ decoderJobStatus =
         |> required "id" Decode.string
 
 
-decoderJobs : Decoder Jobs
-decoderJobs =
-    decode Jobs
-        |> required "jobs" (Decode.list decoderJob)
-
-
 decoderJob : Decoder Job
 decoderJob =
     decode Job
         |> required "id" Decode.string
         |> required "name" Decode.string
-        |> required "app_id" Decode.string
+        |> required "appId" Decode.string
+        |> optional "startTime" Decode.string ""
+        |> optional "endTime" Decode.string ""
+        |> optional "status" Decode.string ""
 
 
 encodeJobRequest : JobRequest -> Encode.Value

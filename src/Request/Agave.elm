@@ -1,7 +1,7 @@
 module Request.Agave exposing (..)
 
 import Data.Profile as Profile exposing (Profile)
-import Data.Agave as Agave exposing (App, Jobs, JobRequest, JobStatus, encodeJobRequest)
+import Data.Agave as Agave exposing (App, Job, JobRequest, JobStatus, encodeJobRequest)
 import Http
 import HttpBuilder
 import Json.Decode as Decode exposing (Decoder, string)
@@ -63,7 +63,7 @@ getApp token name =
         |> HttpBuilder.toRequest
 
 
-getJobs : String -> Http.Request (Response Jobs)
+getJobs : String -> Http.Request (Response (List Job))
 getJobs token =
     let
         url =
@@ -74,7 +74,22 @@ getJobs token =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobs))
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderJob)))
+        |> HttpBuilder.toRequest
+
+
+getJob : String -> String -> Http.Request (Response Job)
+getJob token id =
+    let
+        url =
+            baseUrl ++ "/jobs/v2/" ++ id
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJob))
         |> HttpBuilder.toRequest
 
 

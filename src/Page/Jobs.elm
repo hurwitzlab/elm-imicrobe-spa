@@ -1,7 +1,7 @@
 module Page.Jobs exposing (Model, Msg, init, update, view)
 
 import Data.Session as Session exposing (Session)
-import Data.Agave as Agave exposing (Job, Jobs)
+import Data.Agave as Agave exposing (Job)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -22,7 +22,7 @@ import View.Page as Page
 
 type alias Model =
     { pageTitle : String
-    , jobs : Jobs
+    , jobs : List Job
     , tableState : Table.State
     , query : String
     }
@@ -96,6 +96,10 @@ config =
         , toMsg = SetTableState
         , columns =
             [ nameColumn
+            , appColumn
+            , Table.stringColumn "Start" .startTime
+            , Table.stringColumn "End" .endTime
+            , Table.stringColumn "Status" .status
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -120,7 +124,23 @@ nameColumn =
 nameLink : Job -> Table.HtmlDetails Msg
 nameLink job =
     Table.HtmlDetails []
-        [ a [] [] --[ Route.href (Route.Job job.id) ] [ text job.name ]
+        [ a [ Route.href (Route.Job job.id) ] [ text job.name ]
+        ]
+
+
+appColumn : Table.Column Job Msg
+appColumn =
+    Table.veryCustomColumn
+        { name = "App"
+        , viewData = appLink
+        , sorter = Table.increasingOrDecreasingBy .app_id
+        }
+
+
+appLink : Job -> Table.HtmlDetails Msg
+appLink job =
+    Table.HtmlDetails []
+        [ text job.app_id
         ]
 
 
@@ -135,7 +155,7 @@ view model =
             String.toLower model.query
 
         acceptableJobs =
-            List.filter (String.contains lowerQuery << String.toLower << .name) model.jobs.jobs
+            List.filter (String.contains lowerQuery << String.toLower << .name) model.jobs
 
         numShowing =
             let
