@@ -1,4 +1,4 @@
-module Data.App exposing (App, decoder)
+module Data.App exposing (App, FileBrowser, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -19,6 +19,14 @@ type alias AppRun =
     , user_id : Int
     , app_ran_at : String
     , params : String
+    }
+
+
+type alias FileBrowser =
+    { id : String
+    , username : String
+    , token : String
+    , path : String
     }
 
 

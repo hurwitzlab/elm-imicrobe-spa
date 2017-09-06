@@ -89,7 +89,7 @@ update session msg model =
                     Data.Cart.Cart Set.empty
 
                 newSession =
-                    Session newCart session.token
+                    Session newCart session.username session.token
             in
             { model | samples = [] } => Session.store newSession
 

@@ -19,5 +19,28 @@
   <body id="page-body">
     <div id="main"></div>
     <script src="/app.js"></script>
+
+    <-- Note: this dialog has to be here instead of in Elm code because Agave File Browser is rendered into it -->
+    <div id="file-browser-dialog" class="modal fade">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">CyVerse Data Store</h3>
+          </div>
+          <div class="modal-body" style="max-height:calc(100vh - 300px);overflow-y:auto;">
+            <div id="file-browser">
+              <div class="center">
+                <div class="padded-xl spinner"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dismiss="modal">Select</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </body>
 </html>

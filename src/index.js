@@ -1,12 +1,15 @@
 'use strict';
 
 require("bootstrap-loader");
+import * as agave from '../node_modules/agave-file-browser/AgaveFileBrowser.js';
+import 'jstree';
 
 // Require these files so they get copied to dist
 require('../index.html');
 require("../img/nav-header.png");
 require('../css/imicrobe.css');
-require('../css/readable.min.css');
+//require('../css/readable.min.css');
+require('../css/spinner.css');
 
 // Load config file
 var config = require('../config.json');
@@ -59,3 +62,26 @@ window.addEventListener("storage",
     },
     false
 );
+
+var fileBrowser;
+app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/token from localStorage.session instead of passing in
+    if (typeof fileBrowser == 'undefined') {
+        fileBrowser = new agave.AgaveFileBrowser({
+            elementId: "file-browser",
+            baseUrl:   "https://agave.iplantc.org/files/v2/listings", // TODO move base URL into config.json
+            path:      input.username,
+            authToken: input.token,
+            selectCallback: function(node) {
+                console.log("selected: ", node);
+                app.ports.onFileSelect.send({
+                    id: input.id,
+                    username: input.username,
+                    token: input.token,
+                    path: node.id
+                });
+            }
+        });
+    }
+
+    $('#file-browser-dialog').modal('show');
+});

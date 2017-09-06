@@ -10,6 +10,7 @@ import Ports
 
 type alias Session =
     { cart : Cart
+    , username : String
     , token : String
     }
 
@@ -18,6 +19,7 @@ decoder : Decoder Session
 decoder =
     decode Session
         |> required "cart" Cart.decoder
+        |> optional "username" Decode.string ""
         |> optional "token" Decode.string ""
 
 
@@ -25,6 +27,7 @@ encode : Session -> Value
 encode session =
     Encode.object
         [ "cart" => Cart.encode session.cart
+        , "username" => Encode.string session.username
         , "token" => Encode.string session.token
         ]
 

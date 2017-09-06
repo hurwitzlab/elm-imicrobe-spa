@@ -4,6 +4,7 @@
   "description": "Simple SPA iMicrobe.  Structured to handle each page as a separate module in a similar fashion to a MVC app. Made to be the bare minimum of a SPA but with a structure that can scale well.",
   "main": "dist/bundle.js",
   "dependencies": {
+    "agave-file-browser": "git+https://github.com/hurwitzlab/agave-file-browser.git",
     "bootstrap": "^3.3.7",
     "bootstrap-loader": "^2.1.0",
     "bootstrap-sass": "^3.3.7",
@@ -15,6 +16,7 @@
     "google-maps": "^3.2.1",
     "imports-loader": "^0.7.1",
     "jquery": "^3.2.1",
+    "jstree": "^3.3.4",
     "less": "^2.7.2",
     "less-loader": "^4.0.5",
     "node-sass": "^4.5.3",

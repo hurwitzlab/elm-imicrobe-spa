@@ -39,6 +39,7 @@ type Msg
     | SetTableState Table.State
     | SetSession Session
 
+
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg (Model internalModel) =
     updateInternal session msg internalModel

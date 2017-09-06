@@ -4,6 +4,7 @@ import Data.Config as Config exposing (Config)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Data.Profile
+import Data.App
 import Debug exposing (log)
 import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
@@ -51,6 +52,7 @@ import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
 
 
+
 ---- MODEL ----
 
 
@@ -62,7 +64,6 @@ type alias Model =
         , clientId : String
         , redirectUri : String
         }
---    , token : Maybe OAuth.Token
     , error : Maybe String
     , user : Maybe Data.Profile.Profile
     }
@@ -176,6 +177,7 @@ type Msg
     | SetRoute (Maybe Route)
 --    | SetSession (Maybe Session)
     | SetSession Value
+    | SelectFile Data.App.FileBrowser
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -559,7 +561,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         LoadProfile profile ->
-            { model | user = Just profile } => Route.modifyUrl Route.Home
+            let
+                session = model.session
+
+                newSession =
+                    { session | username = profile.username }
+            in
+            { model | user = Just profile, session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
         ProfileLoaded token (Ok subModel) ->
             { model | pageState = Loaded (Profile token subModel) } => Cmd.none
@@ -692,7 +700,7 @@ updatePage page msg model =
                  newSession =
                      val
                          |> Decode.decodeValue Session.decoder
-                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "")
+                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" "")
             in
             case page of
 --                Cart subModel ->
@@ -704,6 +712,21 @@ updatePage page msg model =
 
                 _ ->
                     { model | session = newSession } => Cmd.none
+
+        SelectFile selection ->
+            let
+                _ = Debug.log "Main.SelectFile" (toString selection)
+            in
+            case page of
+                App id subModel ->
+                    let
+                        (pageModel, cmd) =
+                            App.update session (App.SetInput selection.id selection.path) subModel
+                    in
+                    { model | pageState = Loaded (App id pageModel) } => Cmd.map AppMsg cmd
+
+                _ ->
+                    model => Cmd.none
 
         _ ->
             case page of
@@ -928,7 +951,10 @@ viewPage session isLoading page user =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model = Ports.onSessionChange SetSession
+subscriptions model = Sub.batch
+    [ Ports.onSessionChange SetSession
+    , Ports.onFileSelect SelectFile
+    ]
 
 
 
@@ -953,7 +979,7 @@ init flags location =
 
         session = --TODO use Maybe Session instead
             case flags.session of
-                "" -> Session (Data.Cart.Cart Set.empty) ""
+                "" -> Session (Data.Cart.Cart Set.empty) "" ""
                 _ -> decodeSessionFromJson flags.session
 
         _ = Debug.log "location" (toString location)
@@ -980,7 +1006,7 @@ init flags location =
         Ok { token } ->
             let
                 newSession =
-                    (Session session.cart (toString token))
+                    (Session session.cart "" (toString token))
 
                 loadProfile =
                     Request.Agave.getProfile (toString token) |> Http.toTask |> Task.map .result
@@ -1025,7 +1051,7 @@ decodeSessionFromJson : String -> Session
 decodeSessionFromJson json =
     json
         |> Decode.decodeString Session.decoder
-        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "")
+        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" "")
 
 
 main : Program Flags Model Msg
