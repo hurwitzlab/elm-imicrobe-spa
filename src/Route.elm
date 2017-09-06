@@ -29,7 +29,7 @@ type Route
     | Login
     | Publication Int
     | Publications
-    | Profile String
+    | Profile
     | Project Int
     | Projects
     | ProjectGroups
@@ -65,7 +65,7 @@ routeMather =
         , Url.map Pubchase (s "pubchase")
         , Url.map Publication (s "publications" </> Url.int)
         , Url.map Publications (s "publications")
-        , Url.map Profile (s "profile" </> Url.string)
+        , Url.map Profile (s "profile")
         , Url.map Project (s "projects" </> Url.int)
         , Url.map Projects (s "projects")
         , Url.map ProjectGroup (s "project_groups" </> Url.int)
@@ -156,8 +156,8 @@ routeToString page =
                 Publications ->
                     [ "publications" ]
 
-                Profile token ->
-                    [ "profile", token ]
+                Profile ->
+                    [ "profile" ]
 
                 Project id ->
                     [ "projects", toString id ]

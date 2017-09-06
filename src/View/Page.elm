@@ -3,6 +3,7 @@ module View.Page exposing (ActivePage(..), layout)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Route exposing (Route)
+import Data.Session as Session exposing (Session)
 import Data.Profile as Profile exposing (Profile)
 
 
@@ -44,29 +45,35 @@ type ActivePage
 isLoading can be used to slow loading during slow transitions
 
 -}
-layout : Bool -> String -> Maybe Profile -> ActivePage -> Html msg -> Html msg
-layout isLoading token user page content =
+layout : Bool -> Session -> ActivePage -> Html msg -> Html msg
+layout isLoading session page content =
     div []
-        [ viewHeader page isLoading token user
+        [ viewHeader page isLoading session
         , div [] [ content ]
         , viewFooter
         ]
 
 
-viewHeader : ActivePage -> Bool -> String -> Maybe Profile -> Html msg
-viewHeader page isLoading token user =
+viewHeader : ActivePage -> Bool -> Session -> Html msg
+viewHeader page isLoading session =
     let
-        loginText =
-            case user of
-                Nothing -> "Login"
+        profile = session.profile
 
-                Just profile -> profile.first_name ++ " " ++ profile.last_name
+        loginText =
+            case profile of
+                Nothing ->
+                    "Login"
+
+                Just profile ->
+                    profile.first_name ++ " " ++ profile.last_name
 
         loginRoute =
-            case user of
-                Nothing -> Route.href Route.Login
+            case profile of
+                Nothing ->
+                    Route.href Route.Login
 
-                Just profile -> Route.href (Route.Profile token)
+                Just profile ->
+                    Route.href Route.Profile
     in
     nav [ class "navbar navbar-default navbar-static-top" ]
         [ div [ class "container" ]

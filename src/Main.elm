@@ -65,7 +65,6 @@ type alias Model =
         , redirectUri : String
         }
     , error : Maybe String
-    , user : Maybe Data.Profile.Profile
     }
 
 
@@ -91,7 +90,7 @@ type Page
     | Map String String Map.Model
     | MetaSearch MetaSearch.Model
     | NotFound
-    | Profile String Profile.Model
+    | Profile Profile.Model
     | Project Int Project.Model
     | ProjectGroup Int ProjectGroup.Model
     | ProjectGroups ProjectGroups.Model
@@ -152,7 +151,7 @@ type Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
     | MetaSearchMsg MetaSearch.Msg
     | LoadProfile Data.Profile.Profile
-    | ProfileLoaded String (Result PageLoadError Profile.Model)
+    | ProfileLoaded (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
     | ProjectGroupMsg ProjectGroup.Msg
@@ -254,8 +253,8 @@ setRoute maybeRoute model =
         Just (Route.Publication id) ->
             transition (PublicationLoaded id) (Publication.init id)
 
-        Just (Route.Profile token) ->
-            transition (ProfileLoaded token) (Profile.init token)
+        Just Route.Profile ->
+            transition ProfileLoaded (Profile.init model.session)
 
         Just (Route.Project id) ->
             transition (ProjectLoaded id) (Project.init id)
@@ -565,14 +564,14 @@ updatePage page msg model =
                 session = model.session
 
                 newSession =
-                    { session | username = profile.username }
+                    { session | profile = Just profile }
             in
-            { model | user = Just profile, session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
-        ProfileLoaded token (Ok subModel) ->
-            { model | pageState = Loaded (Profile token subModel) } => Cmd.none
+        ProfileLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Profile subModel) } => Cmd.none
 
-        ProfileLoaded token (Err error) ->
+        ProfileLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ProjectsLoaded (Ok subModel) ->
@@ -700,7 +699,7 @@ updatePage page msg model =
                  newSession =
                      val
                          |> Decode.decodeValue Session.decoder
-                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" "")
+                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" Nothing)
             in
             case page of
 --                Cart subModel ->
@@ -748,17 +747,17 @@ view : Model -> Html Msg
 view model =
     case model.pageState of
         Loaded page ->
-            viewPage model.session False page model.user
+            viewPage model.session False page
 
         TransitioningFrom page ->
-            viewPage model.session True page model.user
+            viewPage model.session True page
 
 
-viewPage : Session -> Bool -> Page -> Maybe Data.Profile.Profile -> Html Msg
-viewPage session isLoading page user =
+viewPage : Session -> Bool -> Page -> Html Msg
+viewPage session isLoading page =
     let
         layout =
-            Page.layout isLoading session.token user
+            Page.layout isLoading session
     in
     case page of
         NotFound ->
@@ -874,7 +873,7 @@ viewPage session isLoading page user =
                 |> layout Page.Publications
                 |> Html.map PublicationsMsg
 
-        Profile token subModel ->
+        Profile subModel ->
             Profile.view subModel
                 |> layout Page.Profile
                 |> Html.map ProfileMsg
@@ -979,7 +978,7 @@ init flags location =
 
         session = --TODO use Maybe Session instead
             case flags.session of
-                "" -> Session (Data.Cart.Cart Set.empty) "" ""
+                "" -> Session (Data.Cart.Cart Set.empty) "" Nothing
                 _ -> decodeSessionFromJson flags.session
 
         _ = Debug.log "location" (toString location)
@@ -993,7 +992,6 @@ init flags location =
             , session = session
             , error = Nothing
             , pageState = Loaded initialPage
-            , user = Nothing
             }
 
         -- Kludge for Agave not returning required "token_type=bearer" in redirect
@@ -1006,7 +1004,7 @@ init flags location =
         Ok { token } ->
             let
                 newSession =
-                    (Session session.cart "" (toString token))
+                    { session | token = toString token }
 
                 loadProfile =
                     Request.Agave.getProfile (toString token) |> Http.toTask |> Task.map .result
@@ -1051,7 +1049,7 @@ decodeSessionFromJson : String -> Session
 decodeSessionFromJson json =
     json
         |> Decode.decodeString Session.decoder
-        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" "")
+        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" Nothing)
 
 
 main : Program Flags Model Msg

@@ -21,15 +21,15 @@ type alias Model =
     }
 
 
-init : String -> Task PageLoadError Model
-init token =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Profile"
 
         loadProfile =
-            Request.Agave.getProfile token |> Http.toTask |> Task.map .result
+            Request.Agave.getProfile session.token |> Http.toTask |> Task.map .result
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -49,7 +49,7 @@ init token =
             in
             Error.pageLoadError Page.Home errMsg
     in
-    Task.map3 Model title (Task.succeed token) loadProfile
+    Task.map3 Model title (Task.succeed session.token) loadProfile
         |> Task.mapError handleLoadError
 
 

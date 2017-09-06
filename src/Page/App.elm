@@ -87,6 +87,7 @@ type Msg
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
     | Acknowledge
     | OpenFileBrowser String
+    | OpenCart String
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -131,7 +132,19 @@ update session msg model =
             { model | showRunDialog = False } => Cmd.none
 
         OpenFileBrowser id ->
-            model => Ports.createFileBrowser (App.FileBrowser id session.username session.token "")
+            let
+                username =
+                    case session.profile of
+                        Nothing ->
+                            ""
+
+                        Just profile ->
+                            profile.username
+            in
+            model => Ports.createFileBrowser (App.FileBrowser id username session.token "")
+
+        OpenCart id ->
+            model => Cmd.none
 
 
 
@@ -206,8 +219,6 @@ viewApp model =
 viewAppInput : (Agave.AppInput, String) -> Html Msg
 viewAppInput input =
     let
-        _ = Debug.log "input" (toString input)
-
         spec = Tuple.first input
 
         val = Tuple.second input
@@ -219,7 +230,7 @@ viewAppInput input =
     , td []
         [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
         , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ] [ text "CyVerse" ]
-        , button [ class "btn btn-default btn-sm" ] [ text "Cart" ]
+        , button [ class "btn btn-default btn-sm", onClick (OpenCart id) ] [ text "Cart" ]
         ]
     ]
 
