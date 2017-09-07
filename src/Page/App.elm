@@ -28,11 +28,11 @@ type alias Model =
     { pageTitle : String
     , app_id : Int
     , app : App
-    , app_spec : Agave.App
+    , agaveApp : Agave.App
     , inputs : Dict String String
     , parameters : Dict String String
     , showRunDialog : Bool
-    , dialogError : String
+    , dialogError : Maybe String
     }
 
 
@@ -46,8 +46,11 @@ init session id =
         loadAppFromAgave name =
             Request.Agave.getApp session.token name |> Http.toTask |> Task.map .result
 
-        inputs spec =
-            Dict.fromList (List.map (\input -> (input.id, "")) spec.inputs)
+        inputs app =
+            app.inputs |> List.map (\input -> (input.id, "")) |> Dict.fromList
+
+        params app =
+            app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
 
         handleLoadError err =
             -- If a resource task fail load error page
@@ -70,7 +73,7 @@ init session id =
     loadApp |> Task.andThen
         (\app ->
             (loadAppFromAgave app.app_name |> Task.andThen
-                (\spec -> Task.succeed (Model "App" id app spec (inputs spec) Dict.empty False ""))
+                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) False Nothing))
             )
         )
         |> Task.mapError handleLoadError
@@ -126,7 +129,7 @@ update session msg model =
             model => Route.modifyUrl (Route.Job response.result.id)
 
         RunJobCompleted (Err error) ->
-            { model | dialogError = toString error } => Cmd.none
+            { model | dialogError = Just (toString error) } => Cmd.none
 
         Acknowledge ->
             { model | showRunDialog = False } => Cmd.none
@@ -182,17 +185,17 @@ viewApp model =
     let
         app = model.app
 
-        spec = model.app_spec
+        agaveApp = model.agaveApp
 
         inputs =
-            case spec.inputs of
+            case agaveApp.inputs of
                 [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] (List.map viewAppInput (List.Extra.zip spec.inputs (Dict.values model.inputs)) ) --FIXME rewrite this
+                _  -> table [ class "table" ] (List.map viewAppInput (List.Extra.zip (List.sortBy .id agaveApp.inputs) (Dict.values model.inputs))) --FIXME simplify this
 
         parameters =
-            case spec.parameters of
+            case agaveApp.parameters of
                 [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] (List.map viewAppParameter spec.parameters)
+                _  -> table [ class "table" ] (List.map viewAppParameter (List.Extra.zip (List.sortBy .id agaveApp.parameters) (Dict.values model.parameters))) --FIXME simplify this
     in
     div []
     [ table [ class "table" ]
@@ -202,11 +205,11 @@ viewApp model =
             ]
         , tr []
             [ th [] [ text "Description" ]
-            , td [] [ text spec.shortDescription ]
+            , td [] [ text agaveApp.shortDescription ]
             ]
         , tr []
             [ th [] [ text "Help" ]
-            , td [] [ a [ href spec.helpURI ] [ text spec.helpURI ] ]
+            , td [] [ a [ href agaveApp.helpURI ] [ text agaveApp.helpURI ] ]
             ]
         ]
     , h3 [] [ text "Inputs" ]
@@ -219,14 +222,14 @@ viewApp model =
 viewAppInput : (Agave.AppInput, String) -> Html Msg
 viewAppInput input =
     let
-        spec = Tuple.first input
+        agaveApp = Tuple.first input
 
         val = Tuple.second input
 
-        id = spec.id
+        id = agaveApp.id
     in
     tr []
-    [ th [] [ text spec.details.label ]
+    [ th [] [ text agaveApp.details.label ]
     , td []
         [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
         , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ] [ text "CyVerse" ]
@@ -235,13 +238,28 @@ viewAppInput input =
     ]
 
 
-viewAppParameter : Agave.AppParameter -> Html Msg
-viewAppParameter param =
+viewAppParameter : (Agave.AppParameter, String) -> Html Msg
+viewAppParameter input =
+    let
+        param = Tuple.first input
+
+        val = Tuple.second input
+
+        id = param.id
+
+        interface =
+            case param.value.enum_values of
+                Nothing ->
+                    Html.input [ type_ "text", size 40, name id, value val, onInput (SetParameter id) ] []
+
+                Just enum ->
+                    select [ onInput (SetParameter id) ]
+                        (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+    in
     tr []
     [ th [] [ text param.details.label ]
     , td []
-        [ select [ onInput (SetParameter param.id) ]
-            (param.value.enum_values |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+        [ interface
         ]
     ]
 
@@ -251,15 +269,15 @@ runDialogConfig model =
     let
         content =
             case model.dialogError of
-                "" ->
+                Nothing ->
                     div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-                _ ->
-                    text model.dialogError
+                Just error ->
+                    text error
 
         footer =
             case model.dialogError of
-                "" -> Just (div [] [ text " " ])
+                Nothing -> Just (div [] [ text " " ])
 
                 _ ->
                     Just

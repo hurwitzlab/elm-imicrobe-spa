@@ -25,7 +25,7 @@ type alias AppInput =
 type alias AppParameter =
     { id : String
     , details : Details
-    , value : Value
+    , value : ParameterValue
     }
 
 
@@ -34,10 +34,11 @@ type alias Details =
     }
 
 
-type alias Value =
+type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/
     { order : Int
     , type_ : String
-    , enum_values : List (List (String, String))
+    , default : String
+    , enum_values : Maybe (List (List (String, String)))
     }
 
 
@@ -119,12 +120,13 @@ decoderDetails =
         |> required "label" Decode.string
 
 
-decoderValue : Decoder Value
+decoderValue : Decoder ParameterValue
 decoderValue =
-    decode Value
+    decode ParameterValue
         |> required "order" Decode.int
         |> required "type" Decode.string
-        |> required "enum_values" (Decode.list (Decode.keyValuePairs Decode.string))
+        |> optional "default" Decode.string ""
+        |> optional "enum_values" (Decode.nullable (Decode.list (Decode.keyValuePairs Decode.string))) Nothing
 
 
 decoderJobStatus : Decoder JobStatus
