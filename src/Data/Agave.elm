@@ -11,6 +11,8 @@ type alias App =
     { name : String
     , helpURI : String
     , shortDescription : String
+    , version : String
+    , tags : List String
     , inputs : List AppInput
     , parameters : List AppParameter
     }
@@ -19,6 +21,7 @@ type alias App =
 type alias AppInput =
     { id : String
     , details : Details
+    , value : InputValue
     }
 
 
@@ -33,6 +36,11 @@ type alias Details =
     { label : String
     }
 
+
+type alias InputValue =
+    { order : Int
+    , default : String
+    }
 
 type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/
     { order : Int
@@ -95,6 +103,8 @@ decoderApp =
         |> required "name" Decode.string
         |> required "helpURI" Decode.string
         |> required "shortDescription" Decode.string
+        |> required "version" Decode.string
+        |> optional "tags" (Decode.list Decode.string) []
         |> required "inputs" (Decode.list decoderAppInput)
         |> required "parameters" (Decode.list decoderAppParameter)
 
@@ -104,6 +114,7 @@ decoderAppInput =
     decode AppInput
         |> required "id" Decode.string
         |> required "details" decoderDetails
+        |> required "value" decoderInputValue
 
 
 decoderAppParameter : Decoder AppParameter
@@ -111,7 +122,7 @@ decoderAppParameter =
     decode AppParameter
         |> required "id" Decode.string
         |> required "details" decoderDetails
-        |> required "value" decoderValue
+        |> required "value" decoderParameterValue
 
 
 decoderDetails : Decoder Details
@@ -120,8 +131,15 @@ decoderDetails =
         |> required "label" Decode.string
 
 
-decoderValue : Decoder ParameterValue
-decoderValue =
+decoderInputValue : Decoder InputValue
+decoderInputValue =
+    decode InputValue
+        |> required "order" Decode.int
+        |> optional "default" Decode.string ""
+
+
+decoderParameterValue : Decoder ParameterValue
+decoderParameterValue =
     decode ParameterValue
         |> required "order" Decode.int
         |> required "type" Decode.string

@@ -47,7 +47,7 @@ init session id =
             Request.Agave.getApp session.token name |> Http.toTask |> Task.map .result
 
         inputs app =
-            app.inputs |> List.map (\input -> (input.id, "")) |> Dict.fromList
+            app.inputs |> List.map (\input -> (input.id, input.value.default)) |> Dict.fromList
 
         params app =
             app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
@@ -58,12 +58,16 @@ init session id =
                 errMsg =
                     case err of
                         Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
+                            case response.status.code of
+                                401 -> ""
 
                                 _ ->
-                                    response.body
+                                    case String.length response.body of
+                                        0 ->
+                                            "Bad status"
+
+                                        _ ->
+                                            response.body
 
                         _ ->
                             toString err
@@ -210,6 +214,14 @@ viewApp model =
         , tr []
             [ th [] [ text "Help" ]
             , td [] [ a [ href agaveApp.helpURI ] [ text agaveApp.helpURI ] ]
+            ]
+        , tr []
+            [ th [] [ text "Version" ]
+            , td [] [ text agaveApp.version ]
+            ]
+        , tr []
+            [ th [] [ text "Tags" ]
+            , td [] [ text (String.join ", " agaveApp.tags) ]
             ]
         ]
     , h3 [] [ text "Inputs" ]
