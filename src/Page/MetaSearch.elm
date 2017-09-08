@@ -14,7 +14,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import List.Extra
 import MultiSelect as Multi
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import RemoteData exposing (..)
 import Request.MetaSearch
 import Route
@@ -24,6 +24,8 @@ import Table
 import Task exposing (Task)
 import View.Page as Page
 import Util exposing (apiHost)
+
+
 
 ---- MODEL ----
 
@@ -52,24 +54,6 @@ init =
     let
         loadParams =
             Request.MetaSearch.getParams |> Http.toTask
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.andThen
         (\initialParams ->
@@ -85,7 +69,7 @@ init =
                 }
         )
         loadParams
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

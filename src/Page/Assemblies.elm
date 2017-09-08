@@ -1,23 +1,20 @@
 module Page.Assemblies exposing (Model, Msg, init, update, view)
 
 import Data.Assembly
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import Json.Encode as Encode
 import List exposing (map)
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.Assembly
 import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import View.Page as Page
-import Util exposing (truncate)
+
 
 
 ---- MODEL ----
@@ -46,27 +43,9 @@ init =
 
         qry =
             Task.succeed ""
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map4 Model title loadAssemblies tblState qry
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

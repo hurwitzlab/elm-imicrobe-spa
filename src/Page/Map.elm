@@ -5,12 +5,13 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Encode as Encode exposing (Value)
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import String exposing (toFloat)
 import Task exposing (Task)
 import Time exposing (Time)
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
 import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -34,13 +35,9 @@ init lat lng =
 
         title =
             Task.succeed "Map Page"
-
-        handleLoadError error =
-            -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString error)
     in
     Task.map2 Model title map
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

@@ -27,6 +27,7 @@ type Route
     | Jobs
     | Job String
     | Login
+    | Logout
     | Publication Int
     | Publications
     | Profile
@@ -62,6 +63,7 @@ routeMather =
         , Url.map Jobs (s "jobs")
         , Url.map Job (s "jobs" </> Url.string)
         , Url.map Login (s "login")
+        , Url.map Logout (s "logout")
         , Url.map Pubchase (s "pubchase")
         , Url.map Publication (s "publications" </> Url.int)
         , Url.map Publications (s "publications")
@@ -140,6 +142,9 @@ routeToString page =
 
                 Login ->
                     [ "login" ]
+
+                Logout ->
+                    [ "logout" ]
 
                 Map lat lng ->
                     [ "map", lat, lng ]

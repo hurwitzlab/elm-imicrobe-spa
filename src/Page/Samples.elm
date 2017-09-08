@@ -10,7 +10,7 @@ import Html.Events exposing (onCheck, onInput, onClick)
 import Http
 import List exposing (map)
 import List.Extra
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.Sample
 import Route
 import String exposing (join)
@@ -19,6 +19,7 @@ import Task exposing (Task)
 import Util exposing ((=>), truncate)
 import View.Page as Page
 import View.Cart as Cart
+
 
 
 ---- MODEL ----
@@ -40,24 +41,6 @@ init session =
         -- Load page - Perform tasks to load the resources of a page
         loadSamples =
             Request.Sample.list |> Http.toTask
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     loadSamples
         |> Task.andThen
@@ -71,7 +54,7 @@ init session =
                     , cart = (Cart.init session.cart)
                     }
             )
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

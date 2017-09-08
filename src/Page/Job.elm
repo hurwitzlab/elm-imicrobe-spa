@@ -5,7 +5,7 @@ import Data.Agave as Agave
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
 import Route
 import Task exposing (Task)
@@ -32,27 +32,9 @@ init session id =
 
         loadJob =
             Request.Agave.getJob session.token id |> Http.toTask |> Task.map .result
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map3 Model title (Task.succeed id) loadJob
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

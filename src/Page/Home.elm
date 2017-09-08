@@ -4,9 +4,10 @@ module Page.Home exposing (Model, Msg, init, update, view)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
-import View.Page as Page
+
+
 
 ---- MODEL ----
 
@@ -26,13 +27,9 @@ init session =
 
         body =
             Task.succeed "Welcome to the homepage!"
-
-        handleLoadError error =
-            -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString error)
     in
     Task.map2 Model title body
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

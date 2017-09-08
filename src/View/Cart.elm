@@ -3,15 +3,14 @@ module View.Cart exposing (Model, Msg, init, update, viewCart, addToCartButton)
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
 import Data.Sample as Sample exposing (Sample)
-import Ports as Ports
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import Json.Encode as Encode exposing (Value)
 import Table exposing (defaultCustomizations)
 import Route
 import Set
 import Util exposing ((=>))
+
 
 
 type Model

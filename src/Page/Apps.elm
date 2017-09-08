@@ -8,13 +8,14 @@ import Html.Events exposing (onInput)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.App
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing (truncate)
 import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -43,27 +44,9 @@ init =
 
         qry =
             Task.succeed ""
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map4 Model title loadApps tblState qry
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

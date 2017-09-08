@@ -7,12 +7,13 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
 import List.Extra
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import RemoteData exposing (..)
 import Request.Search
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+
 
 
 ---- MODEL ----

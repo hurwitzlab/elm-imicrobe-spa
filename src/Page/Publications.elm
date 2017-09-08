@@ -1,19 +1,18 @@
 module Page.Publications exposing (Model, Msg, init, update, view)
 
 import Data.Publication
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.Publication
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -42,27 +41,9 @@ init =
 
         qry =
             Task.succeed ""
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map4 Model title loadPublications tblState qry
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

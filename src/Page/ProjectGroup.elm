@@ -5,11 +5,12 @@ import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.ProjectGroup
 import Route
 import Task exposing (Task)
 import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -31,27 +32,9 @@ init id =
 
         loadProjectGroup =
             Request.ProjectGroup.get id |> Http.toTask
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map3 Model title (Task.succeed id) loadProjectGroup
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

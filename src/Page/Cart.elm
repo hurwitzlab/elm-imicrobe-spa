@@ -10,7 +10,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Http
 import Request.Sample
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Route
 import Task exposing (Task)
 import View.Page as Page
@@ -18,6 +18,7 @@ import View.Cart as Cart
 import Set
 import Debug
 import Util exposing ((=>))
+
 
 
 ---- MODEL ----
@@ -45,13 +46,9 @@ init session =
 
         loadSamples =
             Request.Sample.getSome id_list |> Http.toTask
-
-        handleLoadError error =
-            -- If a resource task fail load error page
-            Error.pageLoadError Page.Home (toString error)
     in
     Task.map3 Model title cart loadSamples
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

@@ -1,14 +1,15 @@
-module Page.Error exposing (PageLoadError, pageLoadError, view)
+module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, redirectLoadError, errorMessage, view)
 
 {-| The page that renders when there was an error trying to load another page,
 for example a Page Not Found error.
 -}
 
---import Data.Session as Session exposing (Session)
-
 import Html exposing (Html, div, h1, img, main_, p, text)
 import Html.Attributes exposing (alt, class, id, tabindex)
 import View.Page as Page exposing (ActivePage)
+import Route
+import Http
+
 
 
 -- MODEL --
@@ -20,13 +21,52 @@ type PageLoadError
 
 type alias Model =
     { activePage : ActivePage
-    , errorMessage : String
+    , error : Http.Error
     }
 
 
-pageLoadError : ActivePage -> String -> PageLoadError
-pageLoadError activePage errorMessage =
-    PageLoadError { activePage = activePage, errorMessage = errorMessage }
+pageLoadError : ActivePage -> Http.Error -> PageLoadError
+pageLoadError activePage error =
+    PageLoadError { activePage = activePage, error = error }
+
+
+handleLoadError : Http.Error -> PageLoadError
+handleLoadError error =
+    pageLoadError Page.Home error
+
+
+redirectLoadError : PageLoadError -> Cmd msg
+redirectLoadError (PageLoadError model) =
+    case model.error of
+        Http.BadStatus response ->
+            case response.status.code of
+                401 -> Route.modifyUrl Route.Login -- redirect to Login page
+
+                _ -> Cmd.none
+
+        _ -> Cmd.none
+
+
+errorMessage : Http.Error -> String
+errorMessage error =
+    case error of
+        Http.NetworkError ->
+            "Cannot connect to remote host"
+
+        Http.BadStatus response ->
+            case response.status.code of
+                401 -> "Unauthorized"
+
+                _ ->
+                    case String.length response.body of
+                        0 ->
+                            "Bad status"
+
+                        _ ->
+                            response.body
+
+        _ ->
+            toString error
 
 
 
@@ -36,7 +76,8 @@ pageLoadError activePage errorMessage =
 view : PageLoadError -> Html msg
 view (PageLoadError model) =
     main_ [ id "content", class "container", tabindex -1 ]
-        [ h1 [] [ text "Error Loading Page" ]
+        [ div [ class "page-header" ]
+            [ h1 [] [ text "Page Error" ] ]
         , div [ class "row" ]
-            [ p [] [ text model.errorMessage ] ]
+            [ div [ class "alert alert-danger" ] [ text (errorMessage model.error) ] ]
         ]

@@ -23,7 +23,7 @@ import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Domain as Domain
 import Page.Domains as Domains
 import Page.Files as Files
-import Page.Error as Error exposing (PageLoadError)
+import Page.Error as Error exposing (PageLoadError, redirectLoadError)
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
@@ -124,6 +124,7 @@ type Msg
     | AssembliesLoaded (Result PageLoadError Assemblies.Model)
     | AssembliesMsg Assemblies.Msg
     | Authorize (Result PageLoadError Home.Model)
+    | Deauthorize (Result PageLoadError Home.Model)
     | CartLoaded (Result PageLoadError Cart.Model)
     | CartMsg Cart.Msg
     | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
@@ -186,8 +187,8 @@ setRoute maybeRoute model =
             { model | pageState = TransitioningFrom (getPage model.pageState) }
                 => Task.attempt toMsg task
 
-        error =
-            pageError model
+--        error =
+--            pageError model
     in
     case maybeRoute of
         Nothing ->
@@ -244,6 +245,9 @@ setRoute maybeRoute model =
         Just Route.Login ->
             transition Authorize (Home.init model.session)
 
+        Just Route.Logout ->
+            transition Deauthorize (Home.init model.session)
+
         Just Route.Pubchase ->
             transition PubchaseLoaded Pubchase.init
 
@@ -294,13 +298,13 @@ getPage pageState =
             page
 
 
-pageError : Model -> ActivePage -> String -> ( Model, Cmd msg )
-pageError model activePage errorMessage =
-    let
-        error =
-            Error.pageLoadError activePage errorMessage
-    in
-    { model | pageState = Loaded (Error error) } => Cmd.none
+--pageError : Model -> ActivePage -> String -> ( Model, Cmd msg )
+--pageError model activePage errorMessage =
+--    let
+--        error =
+--            Error.pageLoadError activePage errorMessage
+--    in
+--    { model | pageState = Loaded (Error error) } => Cmd.none
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -323,8 +327,8 @@ updatePage page msg model =
             in
             ( { model | pageState = Loaded (toModel newModel) }, Cmd.map toMsg newCmd )
 
-        error =
-            pageError model
+--        error =
+--            pageError model
 
     in
     case msg of
@@ -343,6 +347,13 @@ updatePage page msg model =
                         }
                   ]
 
+        Deauthorize (Ok subModel) ->
+            let
+                newSession =
+                    { session | token = "", profile = Nothing }
+            in
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+
         AboutLoaded (Ok subModel) ->
             { model | pageState = Loaded (About subModel) } => Cmd.none
 
@@ -353,7 +364,7 @@ updatePage page msg model =
             { model | pageState = Loaded (App id subModel) } => Cmd.none
 
         AppLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         AppMsg subMsg ->
             case page of
@@ -495,7 +506,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Jobs subModel) } => Cmd.none
 
         JobsLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         JobsMsg subMsg ->
             case page of
@@ -509,7 +520,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Job id subModel) } => Cmd.none
 
         JobLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         MetaSearchLoaded (Ok subModel) ->
             { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
@@ -572,7 +583,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Profile subModel) } => Cmd.none
 
         ProfileLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         ProjectsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Projects subModel) } => Cmd.none
@@ -985,7 +996,7 @@ init flags location =
 
         model =
             { oauth =
-                { authEndpoint = "https://agave.iplantc.org/authorize"
+                { authEndpoint = "https://agave.iplantc.org/authorize" --FIXME move into config.json
                 , clientId = flags.config.oauthClientId
                 , redirectUri = location.origin --location.origin ++ location.pathname
                 }
@@ -1018,7 +1029,7 @@ init flags location =
                             let
                                 _ = Debug.log "Error getting profile"
                             in
-                            SetRoute (Just Route.Home)
+                            SetRoute (Just Route.Home) --FIXME go to Error page with a relevant error message instead
             in
             { model | session = newSession } => Task.attempt handleProfile loadProfile
 

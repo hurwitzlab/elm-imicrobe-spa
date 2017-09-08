@@ -8,7 +8,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Dialog
 import Http
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.App
 import Request.Agave
 import Route
@@ -51,28 +51,6 @@ init session id =
 
         params app =
             app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case response.status.code of
-                                401 -> ""
-
-                                _ ->
-                                    case String.length response.body of
-                                        0 ->
-                                            "Bad status"
-
-                                        _ ->
-                                            response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     loadApp |> Task.andThen
         (\app ->
@@ -80,7 +58,7 @@ init session id =
                 (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) False Nothing))
             )
         )
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 

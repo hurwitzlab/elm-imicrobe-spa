@@ -4,7 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Route exposing (Route)
 import Data.Session as Session exposing (Session)
-import Data.Profile as Profile exposing (Profile)
+
 
 
 type ActivePage
@@ -59,21 +59,24 @@ viewHeader page isLoading session =
     let
         profile = session.profile
 
-        loginText =
+        loginMenuItem =
             case profile of
                 Nothing ->
-                    "Login"
+                    li [] [ a [ Route.href Route.Login ] [ text "Login" ] ]
 
                 Just profile ->
-                    profile.first_name ++ " " ++ profile.last_name
+                    li [ class "dropdown" ]
+                        [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                            [ text (profile.first_name ++ " " ++ profile.last_name)
+                            , span [ class "caret" ] []
+                            ]
+                        , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+                            [ li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
+                            , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
+                            ]
+                        ]
 
-        loginRoute =
-            case profile of
-                Nothing ->
-                    Route.href Route.Login
 
-                Just profile ->
-                    Route.href Route.Profile
     in
     nav [ class "navbar navbar-default navbar-static-top" ]
         [ div [ class "container" ]
@@ -123,10 +126,7 @@ viewHeader page isLoading session =
                         [ a [ Route.href Route.About ]
                             [ text "About" ]
                         ]
-                    , li []
-                        [ a [ loginRoute ]
-                            [ text loginText ]
-                        ]
+                    , loginMenuItem
                     ]
                 ]
             ]

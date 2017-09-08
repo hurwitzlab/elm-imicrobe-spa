@@ -6,12 +6,13 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
-import Page.Error as Error exposing (PageLoadError, pageLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Request.Domain
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Page as Page
+
 
 
 ---- MODEL ----
@@ -41,27 +42,9 @@ init id =
 
         qry =
             Task.succeed ""
-
-        handleLoadError err =
-            -- If a resource task fail load error page
-            let
-                errMsg =
-                    case err of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status"
-
-                                _ ->
-                                    response.body
-
-                        _ ->
-                            toString err
-            in
-            Error.pageLoadError Page.Home errMsg
     in
     Task.map5 Model title (Task.succeed id) loadDomain tblState qry
-        |> Task.mapError handleLoadError
+        |> Task.mapError Error.handleLoadError
 
 
 
