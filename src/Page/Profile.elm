@@ -62,7 +62,8 @@ view model =
             model.profile
     in
     div [ class "container" ]
-        [ h2 [] [ text model.pageTitle ]
+        [ div [ class "page-header" ]
+            [ h1 [] [ text model.pageTitle ] ]
         , table [ class "table" ]
             [ tr []
                 [ th [] [ text "Username" ]
