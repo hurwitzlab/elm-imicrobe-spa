@@ -22,7 +22,11 @@ var app = Elm.Main.embed(mountNode, {
     session: localStorage.session || ""
 });
 
-// Initial Google Maps and define Elm ports
+
+/*
+ * Initialize Google Maps and define ports
+ */
+
 var GoogleMapsLoader = require("google-maps");
 GoogleMapsLoader.KEY = config.googleApiKey;
 var Google;
@@ -47,7 +51,11 @@ app.ports.setCenter.subscribe(function(model) {
     model.gmap.setCenter(myLatlng);
 });
 
-// Define ports for storing/watching session
+
+/*
+ * Define ports for storing/watching session
+ */
+
 app.ports.storeSession.subscribe(function(session) {
     console.log("storeSession: ", session);
     localStorage.session = session;
@@ -62,6 +70,11 @@ window.addEventListener("storage",
     },
     false
 );
+
+
+/*
+ * Define ports for Agave File Browser
+ */
 
 var fileBrowser;
 app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/token from localStorage.session instead of passing in
