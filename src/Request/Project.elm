@@ -4,14 +4,14 @@ import Data.Project as Project exposing (Project)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List Project)
 list =
     let
         url =
-            apiHost ++ "/projects"
+            apiBaseUrl ++ "/projects"
 
         decoder =
             Decode.list Project.decoder
@@ -25,7 +25,7 @@ get : Int -> Http.Request Project
 get id =
     let
         url =
-            apiHost ++ "/projects/" ++ toString id
+            apiBaseUrl ++ "/projects/" ++ toString id
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)

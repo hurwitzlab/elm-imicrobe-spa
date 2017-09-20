@@ -6,13 +6,8 @@ import Http
 import HttpBuilder
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
+import Config exposing (agaveBaseUrl)
 
-
-
--- TODO move into config file
-baseUrl : String
-baseUrl =
-    "https://agave.iplantc.org"
 
 
 type alias Response a =
@@ -32,7 +27,7 @@ getProfile : String -> Http.Request (Response Profile)
 getProfile token =
     let
         url =
-            baseUrl ++ "/profiles/v2/me"
+            agaveBaseUrl ++ "/profiles/v2/me"
 
         headers =
             [ Http.header "Authorization" token ]
@@ -52,7 +47,7 @@ getApp : String -> String -> Http.Request (Response App)
 getApp token name =
     let
         url =
-            baseUrl ++ "/apps/v2/" ++ name
+            agaveBaseUrl ++ "/apps/v2/" ++ name
 
         headers =
             [( "Authorization", token)]
@@ -67,7 +62,7 @@ getJobs : String -> Http.Request (Response (List Job))
 getJobs token =
     let
         url =
-            baseUrl ++ "/jobs/v2/"
+            agaveBaseUrl ++ "/jobs/v2/"
 
         headers =
             [( "Authorization", token)]
@@ -82,7 +77,7 @@ getJob : String -> String -> Http.Request (Response Job)
 getJob token id =
     let
         url =
-            baseUrl ++ "/jobs/v2/" ++ id
+            agaveBaseUrl ++ "/jobs/v2/" ++ id
 
         headers =
             [( "Authorization", token)]
@@ -97,7 +92,7 @@ launchJob : String -> JobRequest -> Http.Request (Response JobStatus)
 launchJob token request =
     let
         url =
-            baseUrl ++ "/jobs/v2"
+            agaveBaseUrl ++ "/jobs/v2"
 
         headers =
             [( "Authorization", token)]

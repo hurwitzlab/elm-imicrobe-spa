@@ -4,14 +4,14 @@ import Data.Publication as Publication exposing (Publication)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List Publication)
 list =
     let
         url =
-            apiHost ++ "/publications"
+            apiBaseUrl ++ "/publications"
 
         decoder =
             Decode.list Publication.decoder
@@ -25,7 +25,7 @@ get : Int -> Http.Request Publication
 get id =
     let
         url =
-            apiHost ++ "/publications/" ++ toString id
+            apiBaseUrl ++ "/publications/" ++ toString id
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson Publication.decoder)

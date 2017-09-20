@@ -4,14 +4,14 @@ import Data.CombinedAssembly as CombinedAssembly exposing (CombinedAssembly)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List CombinedAssembly)
 list =
     let
         url =
-            apiHost ++ "/combined_assemblies"
+            apiBaseUrl ++ "/combined_assemblies"
 
         decoder =
             Decode.list CombinedAssembly.decoder
@@ -25,7 +25,7 @@ get : Int -> Http.Request CombinedAssembly
 get id =
     let
         url =
-            apiHost ++ "/combined_assemblies/" ++ toString id
+            apiBaseUrl ++ "/combined_assemblies/" ++ toString id
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson CombinedAssembly.decoder)

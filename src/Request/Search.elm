@@ -4,14 +4,14 @@ import Data.Search as Search exposing (SearchResult)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 get : String -> Http.Request (List SearchResult)
 get query =
     let
         url =
-            apiHost ++ "/search/" ++ query
+            apiBaseUrl ++ "/search/" ++ query
 
         decoder =
             Decode.list Search.decoder

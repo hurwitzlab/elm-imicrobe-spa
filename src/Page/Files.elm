@@ -19,6 +19,7 @@ import Table exposing (defaultCustomizations)
 import Set
 import Debug
 import Util exposing ((=>))
+import Config exposing (dataCommonsUrl)
 
 
 
@@ -132,7 +133,7 @@ fileColumn =
 fileLink : SampleFile -> Table.HtmlDetails Msg
 fileLink file =
     Table.HtmlDetails []
-        [ a [ attribute "href" ("http://datacommons.cyverse.org/browse" ++ file.file) ] --TODO move Data Commons base URL to config file
+        [ a [ attribute "href" (dataCommonsUrl ++ file.file) ]
             [ text <| file.file ]
         ]
 

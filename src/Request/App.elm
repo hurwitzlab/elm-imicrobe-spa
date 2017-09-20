@@ -5,7 +5,7 @@ import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 
@@ -13,7 +13,7 @@ list : Http.Request (List App)
 list =
     let
         url =
-            apiHost ++ "/apps"
+            apiBaseUrl ++ "/apps"
 
         decoder =
             Decode.list App.decoder
@@ -25,6 +25,6 @@ list =
 
 get : Int -> Http.Request App
 get id =
-    HttpBuilder.get (apiHost ++ "/apps/" ++ toString id)
+    HttpBuilder.get (apiBaseUrl ++ "/apps/" ++ toString id)
         |> HttpBuilder.withExpect (Http.expectJson App.decoder)
         |> HttpBuilder.toRequest

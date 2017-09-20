@@ -18,7 +18,6 @@ var config = require('../config.json');
 var Elm = require('./Main.elm');
 var mountNode = document.getElementById('main');
 var app = Elm.Main.embed(mountNode, {
-    config: config,
     session: localStorage.session || ""
 });
 
@@ -81,7 +80,7 @@ app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/tok
     if (typeof fileBrowser == 'undefined') {
         fileBrowser = new agave.AgaveFileBrowser({
             elementId: "file-browser",
-            baseUrl:   "https://agave.iplantc.org/files/v2/listings", // TODO move base URL into config.json
+            baseUrl:   config.agaveFilesUrl,
             path:      input.username,
             authToken: input.token,
             selectCallback: function(node) {

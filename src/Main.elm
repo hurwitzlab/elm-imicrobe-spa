@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Data.Config as Config exposing (Config)
+import Config as Config
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Data.Profile
@@ -977,8 +977,7 @@ initialPage =
 
 
 type alias Flags =
-    { config : Config
-    , session : String
+    { session : String
     }
 
 
@@ -996,8 +995,8 @@ init flags location =
 
         model =
             { oauth =
-                { authEndpoint = "https://agave.iplantc.org/authorize" --FIXME move into config.json
-                , clientId = flags.config.oauthClientId
+                { authEndpoint = Config.oauthUrl
+                , clientId = Config.oauthClientId
                 , redirectUri = location.origin --location.origin ++ location.pathname
                 }
             , session = session

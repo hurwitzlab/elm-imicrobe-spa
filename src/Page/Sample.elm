@@ -10,6 +10,7 @@ import Request.Sample
 import Route
 import Task exposing (Task)
 import View.Page as Page
+import Config exposing (dataCommonsUrl)
 
 
 
@@ -143,7 +144,7 @@ viewFile : Data.Sample.SampleFile2 -> Html msg
 viewFile file =
     tr []
         [ td []
-            [ a [ href ("http://datacommons.cyverse.org/browse" ++ file.file) ] [ text file.file ] --TODO move Data Commons base URL to config file
+            [ a [ href (dataCommonsUrl ++ file.file) ] [ text file.file ]
             ]
         ]
 

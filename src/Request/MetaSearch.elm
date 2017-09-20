@@ -5,14 +5,14 @@ import Dict
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 get : String -> Http.Request (List SearchResult)
 get query =
     let
         url =
-            apiHost ++ "/search/" ++ query
+            apiBaseUrl ++ "/search/" ++ query
 
         decoder =
             Decode.list MetaSearch.decoder
@@ -26,7 +26,7 @@ getParams : Http.Request (Dict.Dict String String)
 getParams =
     let
         url =
-            apiHost ++ "/search_params"
+            apiBaseUrl ++ "/search_params"
 
         decoder =
             Decode.dict Decode.string

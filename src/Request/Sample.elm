@@ -6,14 +6,14 @@ import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import String exposing (join)
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List Sample)
 list =
     let
         url =
-            apiHost ++ "/samples"
+            apiBaseUrl ++ "/samples"
 
         decoder =
             Decode.list Sample.decoder
@@ -25,7 +25,7 @@ list =
 
 get : Int -> Http.Request Sample
 get id =
-    HttpBuilder.get (apiHost ++ "/samples/" ++ toString id)
+    HttpBuilder.get (apiBaseUrl ++ "/samples/" ++ toString id)
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
 
@@ -34,7 +34,7 @@ getSome : List Int -> Http.Request (List Sample)
 getSome id_list =
     let
         url =
-            apiHost ++ "/samples/?id=" ++ (join "," (List.map toString id_list))
+            apiBaseUrl ++ "/samples/?id=" ++ (join "," (List.map toString id_list))
 
         decoder =
             Decode.list Sample.decoder
@@ -48,7 +48,7 @@ files : List Int -> Http.Request (List SampleFile)
 files id_list =
     let
         url =
-            apiHost ++ "/samples/files/?id=" ++ (join "," (List.map toString id_list))
+            apiBaseUrl ++ "/samples/files/?id=" ++ (join "," (List.map toString id_list))
 
         decoder =
             Decode.list decoderSampleFile

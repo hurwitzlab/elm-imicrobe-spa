@@ -4,14 +4,14 @@ import Data.Assembly as Assembly exposing (Assembly)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List Assembly)
 list =
     let
         url =
-            apiHost ++ "/assemblies"
+            apiBaseUrl ++ "/assemblies"
 
         decoder =
             Decode.list Assembly.decoder
@@ -25,7 +25,7 @@ get : Int -> Http.Request Assembly
 get id =
     let
         url =
-            apiHost ++ "/assemblies/" ++ toString id
+            apiBaseUrl ++ "/assemblies/" ++ toString id
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson Assembly.decoder)

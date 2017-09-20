@@ -4,14 +4,14 @@ import Data.Pubchase as Pubchase exposing (Article)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Util exposing (apiHost)
+import Config exposing (apiBaseUrl)
 
 
 list : Http.Request (List Article)
 list =
     let
         url =
-            apiHost ++ "/pubchase"
+            apiBaseUrl ++ "/pubchase"
 
         decoder =
             Decode.list Pubchase.decoder

@@ -1,4 +1,4 @@
 {
-    "oauthClientId": "Agave API client ID",
-    "googleApiKey": "Google Maps API key"
+    "googleApiKey": "Google Maps API key",
+    "agaveFilesUrl": "https://agave.iplantc.org/files/v2/listings"
 }

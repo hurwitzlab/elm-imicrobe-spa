@@ -1,11 +1,4 @@
-module Util exposing ((=>), apiHost, truncate)
-
-
--- TODO move into config.json
-apiHost : String
-apiHost =
-    "http://localhost:3006"
-    --"http://spa.imicrobe.us/api/v1"
+module Util exposing ((=>), truncate)
 
 
 maxColumnWidth : Int
