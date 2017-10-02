@@ -13,6 +13,7 @@ install:
 - pwd
 - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
 - cp config.json.default config.json
+- cp src/ConfigDefault.elm src/Config.elm
 - elm package install -y
 - npm install
 - npm run build
