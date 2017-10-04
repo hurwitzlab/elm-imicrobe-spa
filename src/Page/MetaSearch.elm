@@ -1,7 +1,5 @@
 module Page.MetaSearch exposing (Model, Msg, init, update, view)
 
-import Data.MetaSearch
-import Data.Session as Session exposing (Session)
 import Dict
 import Exts.Dict as EDict
 import FormatNumber exposing (format)
@@ -20,9 +18,7 @@ import Request.MetaSearch
 import Route
 import Set
 import String.Extra as SE
-import Table
 import Task exposing (Task)
-import View.Page as Page
 import Config exposing (apiBaseUrl)
 
 
@@ -477,6 +473,7 @@ serializeForm optionValues paramTypes =
         |> Encode.object
 
 
+--FIXME move to Request/MetaSearch.elm
 doSearch : Model -> Cmd Msg
 doSearch model =
     let
@@ -498,6 +495,7 @@ doSearch model =
         |> Cmd.map UpdateSearchResults
 
 
+--FIXME move to Request/MetaSearch.elm
 getParamValues :
     String
     -> Dict.Dict String (List String)
