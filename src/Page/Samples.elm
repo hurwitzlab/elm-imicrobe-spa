@@ -103,8 +103,8 @@ update session msg model =
             { model | cart = newCart } => Cmd.map CartMsg subCmd
 
 
-config : Table.Config Data.Sample.Sample Msg
-config =
+config : Cart.Model -> Table.Config Data.Sample.Sample Msg
+config cart =
     Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
@@ -112,7 +112,7 @@ config =
             [ projectColumn
             , nameColumn
             , Table.stringColumn "Type" .sample_type
-            , addToCartColumn
+            , addToCartColumn cart
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -214,7 +214,7 @@ view model =
                     [ restrict
                     ]
                 ]
-            , div [] [ Table.view config model.tableState acceptableSamples ]
+            , div [] [ Table.view (config model.cart) model.tableState acceptableSamples ]
             ]
         ]
 
@@ -261,17 +261,17 @@ projectLink sample =
         ]
 
 
-addToCartColumn : Table.Column Data.Sample.Sample Msg
-addToCartColumn =
+addToCartColumn : Cart.Model -> Table.Column Data.Sample.Sample Msg
+addToCartColumn cart =
     Table.veryCustomColumn
         { name = "Cart"
-        , viewData = addToCartLink
+        , viewData = (\sample -> addToCartButton cart sample)
         , sorter = Table.unsortable
         }
 
 
-addToCartLink : Data.Sample.Sample -> Table.HtmlDetails Msg
-addToCartLink sample =
+addToCartButton : Cart.Model -> Data.Sample.Sample -> Table.HtmlDetails Msg
+addToCartButton cart sample =
     Table.HtmlDetails []
-        [ Cart.addToCartButton sample.sample_id |> Html.map CartMsg
+        [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg
         ]

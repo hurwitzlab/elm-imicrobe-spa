@@ -9,6 +9,7 @@ import Html.Events exposing (onClick)
 import Table exposing (defaultCustomizations)
 import Route
 import Util exposing ((=>))
+import Set
 
 
 
@@ -190,9 +191,14 @@ removeFromCartButton id =
     button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
 
 
-addToCartButton : Int -> Html Msg
-addToCartButton id =
-    button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
+addToCartButton : Model -> Int -> Html Msg
+addToCartButton (Model internalModel) id =
+    case (Set.member id internalModel.cart.contents) of
+        True ->
+            button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
+
+        False ->
+            button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
 
 
 selectInCartColumn : Table.Column Sample Msg
