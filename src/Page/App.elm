@@ -1,7 +1,7 @@
 module Page.App exposing (Model, Msg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
-import Data.App as App exposing (App)
+import Data.App as App exposing (App, AppRun)
 import Data.Agave as Agave
 import Data.Sample as Sample exposing (Sample, SampleFile)
 import Html exposing (..)
@@ -16,7 +16,6 @@ import Request.Sample
 import Route
 import Ports
 import Task exposing (Task)
-import View.Page as Page
 import View.Cart as Cart
 import Dict as Dict exposing (Dict)
 import List.Extra
@@ -81,6 +80,7 @@ type Msg
     | SetParameter String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
+    | AppRunCompleted (Result Http.Error AppRun)
     | CloseRunDialog
     | OpenFileBrowser String
     | OpenCart String
@@ -115,10 +115,13 @@ update session msg model =
                 jobRequest =
                     Agave.JobRequest "job name here" model.app.app_name False jobInputs jobParameters []
 
-                cmd = Request.Agave.launchJob session.token jobRequest
+                cmd1 = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
+
+                cmd2 = Request.App.run model.app_id 13 (Agave.encodeJobRequest jobRequest |> toString) --FIXME user_id hardcoded to mbomhoff
+                    |> Http.send AppRunCompleted
             in
-            { model | showRunDialog = True } => cmd
+            { model | showRunDialog = True } => Cmd.batch [ cmd1, cmd2 ]
 
         RunJobCompleted (Ok response) ->
             --TODO add job to app_run table
@@ -126,6 +129,12 @@ update session msg model =
 
         RunJobCompleted (Err error) ->
             { model | dialogError = Just (toString error) } => Cmd.none
+
+        AppRunCompleted (Ok response) ->
+            model => Cmd.none
+
+        AppRunCompleted (Err error) ->
+            model => Cmd.none
 
         CloseRunDialog ->
             { model | showRunDialog = False } => Cmd.none

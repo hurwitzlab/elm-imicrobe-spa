@@ -1,9 +1,11 @@
-module Data.App exposing (App, FileBrowser, decoder)
+module Data.App exposing (App, AppRun, FileBrowser, decoder, decoderAppRun, encodeAppRun)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
 import Json.Encode.Extra as EncodeExtra
+import Util exposing ((=>))
+
 
 
 type alias App =
@@ -48,16 +50,14 @@ decoderAppRun =
         |> required "app_run_id" Decode.int
         |> required "app_id" Decode.int
         |> required "user_id" Decode.int
-        |> optional "app_id" Decode.string ""
+        |> optional "app_ran_at" Decode.string ""
         |> optional "params" Decode.string ""
 
 
-{--
-encode : App -> Value
-encode inv =
+encodeAppRun : AppRun -> Encode.Value
+encodeAppRun run =
     Encode.object
-        [ "investigator_id" => Encode.int inv.investigator_id
-        , "investigator_name" => Encode.string inv.investigator_name
-        , "institution" => Encode.string inv.institution
+        [ "app_id" => Encode.int run.app_id
+        , "user_id" => Encode.int run.user_id
+        , "app_ran_at" => Encode.string run.app_ran_at
         ]
-        --}
