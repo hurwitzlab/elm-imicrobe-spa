@@ -3,6 +3,7 @@ module Page.App exposing (Model, Msg(..), init, update, view)
 import Data.Session as Session exposing (Session)
 import Data.App as App exposing (App)
 import Data.Agave as Agave
+import Data.Sample as Sample exposing (Sample, SampleFile)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -11,13 +12,16 @@ import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.App
 import Request.Agave
+import Request.Sample
 import Route
 import Ports
 import Task exposing (Task)
 import View.Page as Page
+import View.Cart as Cart
 import Dict as Dict exposing (Dict)
 import List.Extra
 import Util exposing ((=>))
+import Set
 
 
 
@@ -31,7 +35,11 @@ type alias Model =
     , agaveApp : Agave.App
     , inputs : Dict String String
     , parameters : Dict String String
+    , cart : Cart.Model
+    , samples : List Sample
+    , files : List SampleFile
     , showRunDialog : Bool
+    , cartDialogInputId : Maybe String
     , dialogError : Maybe String
     }
 
@@ -51,11 +59,14 @@ init session id =
 
         params app =
             app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
+
+        cart =
+            Cart.init session.cart Cart.Selectable
     in
     loadApp |> Task.andThen
         (\app ->
             (loadAppFromAgave app.app_name |> Task.andThen
-                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) False Nothing))
+                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing))
             )
         )
         |> Task.mapError Error.handleLoadError
@@ -70,9 +81,12 @@ type Msg
     | SetParameter String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
-    | Acknowledge
+    | CloseRunDialog
     | OpenFileBrowser String
     | OpenCart String
+    | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile)))
+    | CloseCartDialog
+    | CartMsg Cart.Msg
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -113,10 +127,32 @@ update session msg model =
         RunJobCompleted (Err error) ->
             { model | dialogError = Just (toString error) } => Cmd.none
 
-        Acknowledge ->
+        CloseRunDialog ->
             { model | showRunDialog = False } => Cmd.none
 
-        OpenFileBrowser id ->
+        CloseCartDialog ->
+            let
+                selected =
+                    Cart.selected model.cart
+
+                sampleIds =
+                    Set.toList selected.contents
+
+                match file =
+                    if (List.member file.sample_id sampleIds) then
+                        Just file.file
+                    else
+                        Nothing
+
+                filesStr =
+                    List.filterMap match model.files |> String.join ", "
+
+                msg =
+                    SetInput (Maybe.withDefault "" model.cartDialogInputId) filesStr
+            in
+            update session msg { model | cartDialogInputId = Nothing }
+
+        OpenFileBrowser inputId ->
             let
                 username =
                     case session.profile of
@@ -126,10 +162,37 @@ update session msg model =
                         Just profile ->
                             profile.username
             in
-            model => Ports.createFileBrowser (App.FileBrowser id username session.token "")
+            model => Ports.createFileBrowser (App.FileBrowser inputId username session.token "")
 
-        OpenCart id ->
+        OpenCart inputId ->
+            let
+                id_list =
+                    session.cart.contents |> Set.toList
+
+                cmd =
+                    Task.attempt LoadCartCompleted <|
+                        Task.map2 (\samples files -> (samples, files))
+                            (Request.Sample.getSome id_list |> Http.toTask)
+                            (Request.Sample.files id_list |> Http.toTask)
+            in
+            { model | cartDialogInputId = Just inputId } => cmd
+
+        LoadCartCompleted (Ok (samples, files)) ->
+            { model | samples = samples, files = files } => Cmd.none
+
+        LoadCartCompleted (Err error) ->
             model => Cmd.none
+
+        CartMsg subMsg ->
+            let
+                toPage toModel toMsg subUpdate subMsg subModel =
+                    let
+                        ( newModel, newCmd ) =
+                            subUpdate subMsg subModel
+                    in
+                    ( { model | cart = newModel }, Cmd.map toMsg newCmd )
+            in
+                toPage model.cart CartMsg (Cart.update session) subMsg model.cart
 
 
 
@@ -138,6 +201,12 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        showCartDialog =
+            case model.cartDialogInputId of
+                Nothing -> False
+                _ -> True
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -156,6 +225,8 @@ view model =
             , Dialog.view
                 (if model.showRunDialog then
                     Just (runDialogConfig model)
+                 else if showCartDialog then
+                    Just (cartDialogConfig model)
                  else
                     Nothing
                 )
@@ -273,7 +344,7 @@ runDialogConfig model =
                     Just
                         (button
                             [ class "btn btn-success"
-                            , onClick Acknowledge
+                            , onClick CloseRunDialog
                             ]
                             [ text "OK" ]
                         )
@@ -284,3 +355,39 @@ runDialogConfig model =
     , body = Just content
     , footer = footer
     }
+
+
+cartDialogConfig : Model -> Dialog.Config Msg
+cartDialogConfig model =
+    let
+        content =
+            case List.length model.samples of
+                0 ->
+                    text "Cart is empty"
+
+                _ ->
+                    viewCart model
+
+        footer =
+            button
+                [ class "btn btn-success"
+                , onClick CloseCartDialog
+                ]
+                [ text "OK" ]
+
+    in
+    { closeMessage = Nothing
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Cart" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+viewCart : Model -> Html Msg
+viewCart model =
+    case model.samples of
+        [] -> text "The cart is empty"
+
+        _ ->
+            div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]

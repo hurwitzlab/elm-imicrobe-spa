@@ -1,4 +1,4 @@
-module Data.Cart exposing (Cart, decoder, encode)
+module Data.Cart exposing (Cart, empty, add, remove, decoder, encode)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -7,9 +7,33 @@ import Set
 import Util exposing ((=>))
 
 
+
 type alias Cart =
     { contents : Set.Set Int
     }
+
+
+empty : Cart
+empty =
+    Cart Set.empty
+
+
+add : Int -> Cart -> Cart
+add id cart =
+    let
+        newContents =
+            Set.insert id cart.contents
+    in
+    { cart | contents = newContents }
+
+
+remove : Int -> Cart -> Cart
+remove id cart =
+    let
+        newContents =
+            Set.remove id cart.contents
+    in
+    { cart | contents = newContents }
 
 
 decoder : Decoder Cart

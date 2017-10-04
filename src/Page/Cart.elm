@@ -39,7 +39,7 @@ init session =
             Task.succeed "Cart"
 
         cart =
-            Task.succeed (Cart.init session.cart)
+            Task.succeed (Cart.init session.cart Cart.Editable)
 
         id_list =
             session.cart.contents |> Set.toList
@@ -72,7 +72,6 @@ update session msg model =
                         ( newModel, newCmd ) =
                             subUpdate subMsg subModel
                     in
-                    --( model, Cmd.map toMsg newCmd )
                     ( { model | cart = newModel }, Cmd.map toMsg newCmd )
             in
                 toPage model.cart CartMsg (Cart.update session) subMsg model.cart

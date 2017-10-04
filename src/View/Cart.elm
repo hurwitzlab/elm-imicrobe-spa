@@ -1,4 +1,4 @@
-module View.Cart exposing (Model, Msg, init, update, viewCart, addToCartButton)
+module View.Cart exposing (Model, Msg, init, update, viewCart, addToCartButton, selected, CartType(..))
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
@@ -17,15 +17,27 @@ type Model
     = Model InternalModel
 
 
+type CartType
+    = Selectable
+    | Editable
+
+
 type alias InternalModel =
-    { cart : Cart.Cart
+    { cart : Cart
     , tableState : Table.State
+    , cartType : CartType
+    , selected : Cart
     }
 
 
-init : Cart.Cart -> Model -- Task Http.Error Model
-init cart =
-    Model (InternalModel cart (Table.initialSort "Name"))
+init : Cart -> CartType -> Model
+init cart cartType =
+    Model (InternalModel cart (Table.initialSort "Name") cartType Cart.empty)
+
+
+selected : Model -> Cart
+selected (Model internalModel) =
+    internalModel.selected
 
 
 
@@ -35,6 +47,7 @@ init cart =
 type Msg
     = AddToCart Int
     | RemoveFromCart Int
+    | SelectInCart Int
     | SetTableState Table.State
     | SetSession Session
 
@@ -51,7 +64,7 @@ updateInternal session msg model =
         AddToCart id ->
             let
                 newCart =
-                    Cart (Set.insert id model.cart.contents)
+                    Cart.add id model.cart
 
                 newSession =
                     { session | cart = newCart }
@@ -61,12 +74,19 @@ updateInternal session msg model =
         RemoveFromCart id ->
             let
                 newCart =
-                    Cart (Set.remove id model.cart.contents)
+                    Cart.remove id model.cart
 
                 newSession =
                     { session | cart = newCart }
             in
             { model | cart = newCart } => Session.store newSession
+
+        SelectInCart id ->
+            let
+                selected =
+                    Cart.add id model.selected
+            in
+            { model | selected = selected } => Cmd.none
 
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none
@@ -79,16 +99,27 @@ updateInternal session msg model =
 -- VIEW --
 
 
-config : Table.Config Sample Msg
-config =
+config : InternalModel -> Table.Config Sample Msg
+config model =
+    let
+        columns =
+            case model.cartType of
+                Editable ->
+                    [ projectColumn
+                    , nameColumn
+                    , removeFromCartColumn
+                    ]
+
+                Selectable ->
+                    [ selectInCartColumn
+                    , projectColumn
+                    , nameColumn
+                    ]
+    in
     Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
-        , columns =
-            [ projectColumn
-            , nameColumn
-            , removeFromCartColumn
-            ]
+        , columns = columns
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
         }
@@ -102,7 +133,7 @@ toTableAttrs =
 
 viewCart : Model -> List Sample -> Html Msg
 viewCart (Model internalModel) samples =
-    div [] [ Table.view config internalModel.tableState samples ]
+    div [] [ Table.view (config internalModel) internalModel.tableState samples ]
 
 
 nameColumn : Table.Column Sample Msg
@@ -163,3 +194,24 @@ removeFromCartButton id =
 addToCartButton : Int -> Html Msg
 addToCartButton id =
     button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
+
+
+selectInCartColumn : Table.Column Sample Msg
+selectInCartColumn =
+    Table.veryCustomColumn
+        { name = ""
+        , viewData = selectInCartLink
+        , sorter = Table.unsortable
+        }
+
+
+selectInCartLink : Sample -> Table.HtmlDetails Msg
+selectInCartLink sample =
+    Table.HtmlDetails []
+        [ selectInCartCheckbox sample.sample_id |> Html.map (\_ -> SelectInCart sample.sample_id)
+        ]
+
+
+selectInCartCheckbox : Int -> Html Msg
+selectInCartCheckbox id =
+    input [ type_ "checkbox", onClick (SelectInCart id) ] []

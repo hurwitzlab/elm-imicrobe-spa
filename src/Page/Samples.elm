@@ -51,7 +51,7 @@ init session =
                     , tableState = Table.initialSort "Name"
                     , query = ""
                     , sampleTypeRestriction = []
-                    , cart = (Cart.init session.cart)
+                    , cart = (Cart.init session.cart Cart.Editable)
                     }
             )
         |> Task.mapError Error.handleLoadError
