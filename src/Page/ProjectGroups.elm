@@ -1,7 +1,6 @@
 module Page.ProjectGroups exposing (Model, Msg, init, update, view)
 
 import Data.ProjectGroup
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -13,7 +12,6 @@ import Request.ProjectGroup
 import Route
 import Table
 import Task exposing (Task)
-import View.Page as Page
 
 
 

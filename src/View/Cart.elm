@@ -8,7 +8,6 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Table exposing (defaultCustomizations)
 import Route
-import Set
 import Util exposing ((=>))
 
 

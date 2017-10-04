@@ -1,11 +1,9 @@
 module Page.About exposing (Model, Msg, init, update, view)
 
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
-import View.Page as Page
 
 
 

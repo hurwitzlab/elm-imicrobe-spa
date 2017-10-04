@@ -1,12 +1,12 @@
 module Request.Sample exposing (list, get, getSome, files)
 
-import Data.Session as Session exposing (Session)
 import Data.Sample as Sample exposing (Sample, SampleFile, decoderSampleFile)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
 import String exposing (join)
 import Config exposing (apiBaseUrl)
+
 
 
 list : Http.Request (List Sample)

@@ -1,14 +1,12 @@
 module Page.Projects exposing (Model, Msg, init, update, view)
 
 import Data.Project
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import Json.Encode as Encode
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
@@ -16,7 +14,6 @@ import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import View.Page as Page
 
 
 

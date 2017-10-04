@@ -1,7 +1,6 @@
 module Page.Sample exposing (Model, Msg, init, update, view)
 
 import Data.Sample
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -9,7 +8,6 @@ import Page.Error as Error exposing (PageLoadError)
 import Request.Sample
 import Route
 import Task exposing (Task)
-import View.Page as Page
 import Config exposing (dataCommonsUrl)
 
 

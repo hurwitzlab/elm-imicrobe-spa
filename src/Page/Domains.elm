@@ -1,7 +1,6 @@
 module Page.Domains exposing (Model, Msg, init, update, view)
 
 import Data.Domain
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -13,7 +12,6 @@ import Request.Domain
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import View.Page as Page
 
 
 

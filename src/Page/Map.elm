@@ -1,6 +1,5 @@
 module Page.Map exposing (Model, Msg, init, update, view)
 
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -10,7 +9,6 @@ import String exposing (toFloat)
 import Task exposing (Task)
 import Time exposing (Time)
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
-import View.Page as Page
 
 
 

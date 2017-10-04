@@ -1,14 +1,12 @@
 module Page.CombinedAssemblies exposing (Model, Msg, init, update, view)
 
 import Data.CombinedAssembly
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import Json.Encode as Encode
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError)
 import Request.CombinedAssembly
@@ -16,8 +14,6 @@ import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import View.Page as Page
-import Util exposing (truncate)
 
 
 

@@ -13,10 +13,8 @@ import Request.Sample
 import Page.Error as Error exposing (PageLoadError)
 import Route
 import Task exposing (Task)
-import View.Page as Page
 import View.Cart as Cart
 import Set
-import Debug
 import Util exposing ((=>))
 
 

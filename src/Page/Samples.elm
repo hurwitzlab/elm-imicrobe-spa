@@ -17,7 +17,6 @@ import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>), truncate)
-import View.Page as Page
 import View.Cart as Cart
 
 

@@ -1,7 +1,6 @@
 module Page.ProjectGroup exposing (Model, Msg, init, update, view)
 
 import Data.ProjectGroup
-import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -9,7 +8,6 @@ import Page.Error as Error exposing (PageLoadError)
 import Request.ProjectGroup
 import Route
 import Task exposing (Task)
-import View.Page as Page
 
 
 
