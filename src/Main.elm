@@ -2,7 +2,6 @@ module Main exposing (..)
 
 import Config as Config
 import Data.Session as Session exposing (Session)
-import Data.Cart
 import Data.Profile
 import Data.App
 import Debug exposing (log)
@@ -45,8 +44,8 @@ import Page.Samples as Samples
 import Page.Search as Search
 import Route exposing (..)
 import Request.Agave
+import Request.Login
 import Ports
-import Set
 import Task
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
@@ -152,6 +151,7 @@ type Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
     | MetaSearchMsg MetaSearch.Msg
     | LoadProfile Data.Profile.Profile
+    | LoginRecorded Request.Login.Login
     | ProfileLoaded (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
@@ -576,6 +576,31 @@ updatePage page msg model =
 
                 newSession =
                     { session | profile = Just profile }
+
+                recordLogin username =
+                    Request.Login.record username |> Http.toTask |> Task.attempt handleRecordLogin
+
+                handleRecordLogin login =
+                    case login of
+                        Ok login ->
+                            LoginRecorded login
+
+                        Err error ->
+                            let
+                                _ = Debug.log "Error" "could not record login: " ++ (toString error)
+                            in
+                            SetRoute (Just Route.Home)
+            in
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, (recordLogin profile.username) ]
+
+        LoginRecorded login ->
+            let
+                _ = Debug.log "login" login
+
+                session = model.session
+
+                newSession =
+                    { session | user_id = Just login.user_id }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
@@ -710,7 +735,7 @@ updatePage page msg model =
                  newSession =
                      val
                          |> Decode.decodeValue Session.decoder
-                         |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" Nothing)
+                         |> Result.withDefault Session.empty
             in
             case page of
 --                Cart subModel ->
@@ -988,7 +1013,7 @@ init flags location =
 
         session = --TODO use Maybe Session instead
             case flags.session of
-                "" -> Session (Data.Cart.Cart Set.empty) "" Nothing
+                "" -> Session.empty
                 _ -> decodeSessionFromJson flags.session
 
         _ = Debug.log "location" (toString location)
@@ -1026,7 +1051,7 @@ init flags location =
 
                         Err _ ->
                             let
-                                _ = Debug.log "Error getting profile"
+                                _ = Debug.log "Error" "could not retrieve profile"
                             in
                             SetRoute (Just Route.Home) --FIXME go to Error page with a relevant error message instead
             in
@@ -1059,7 +1084,7 @@ decodeSessionFromJson : String -> Session
 decodeSessionFromJson json =
     json
         |> Decode.decodeString Session.decoder
-        |> Result.withDefault (Session (Data.Cart.Cart Set.empty) "" Nothing)
+        |> Result.withDefault Session.empty
 
 
 main : Program Flags Model Msg
