@@ -1,7 +1,7 @@
-module Page.Cart exposing (Model, Msg, init, update, view)
+module Page.Cart exposing (Model, Msg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
-import Data.Sample
+import Data.Sample as Sample exposing (Sample)
 import Data.Cart
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
@@ -25,7 +25,7 @@ import Util exposing ((=>))
 type alias Model =
     { pageTitle : String
     , cart : Cart.Model
-    , samples : List Data.Sample.Sample
+    , samples : List Sample
     }
 
 
@@ -58,6 +58,7 @@ type Msg
     | Files
     | EmptyCart
     | SetSession Session
+    | SetSamples (List Sample)
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -65,14 +66,12 @@ update session msg model =
     case msg of
         CartMsg subMsg ->
             let
-                toPage toModel toMsg subUpdate subMsg subModel =
-                    let
-                        ( newModel, newCmd ) =
-                            subUpdate subMsg subModel
-                    in
-                    ( { model | cart = newModel }, Cmd.map toMsg newCmd )
+                _ = Debug.log "Cart.CartMsg" (toString subMsg)
+
+                ( newCart, subCmd ) =
+                    Cart.update session subMsg model.cart
             in
-                toPage model.cart CartMsg (Cart.update session) subMsg model.cart
+            { model | cart = newCart } => Cmd.map CartMsg subCmd
 
         Files ->
             model => Route.modifyUrl Route.Files
@@ -88,7 +87,36 @@ update session msg model =
             { model | samples = [] } => Session.store newSession
 
         SetSession newSession ->
-            model => Cmd.none
+            let
+                _ = Debug.log "Page.Cart.SetSession" (toString newSession)
+
+                newCart =
+                    Cart.init newSession.cart Cart.Editable
+
+                id_list =
+                    newSession.cart.contents |> Set.toList
+
+                loadSamples =
+                    Request.Sample.getSome id_list |> Http.toTask
+
+                handleSamples samples =
+                    case samples of
+                        Ok samples ->
+                            let
+                                (subModel, cmd) = Cart.update newSession (Cart.SetSession newSession) model.cart
+                            in
+                            SetSamples samples
+
+                        Err _ ->
+                            let
+                                _ = Debug.log "Error" "could not retrieve samples"
+                            in
+                            SetSamples []
+            in
+            { model | cart = newCart } => Task.attempt handleSamples loadSamples
+
+        SetSamples newSamples ->
+            { model | samples = newSamples } => Cmd.none
 
 
 
@@ -98,25 +126,12 @@ update session msg model =
 view : Model -> Html Msg
 view model =
     let
-        isEmpty =
-            case model.samples of
-                [] ->  True
-
-                _ -> False
-
-        buttonAttr =
-            case isEmpty of
-                True -> [ attribute "disabled" "" ]
-
-                False -> []
+        count = Cart.size model.cart
 
         numShowing =
             let
                 myLocale =
                     { usLocale | decimals = 0 }
-
-                count =
-                    List.length model.samples
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -128,6 +143,18 @@ view model =
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
+
+        isEmpty =
+            case count of
+                0 -> True
+
+                _ -> False
+
+        buttonAttr =
+            case isEmpty of
+                True -> [ attribute "disabled" "" ]
+
+                False -> []
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -152,8 +179,8 @@ view model =
 
 viewCart : Model -> Html Msg
 viewCart model =
-    case model.samples of
-        [] -> text "The cart is empty"
+    case (Cart.size model.cart) of
+        0 -> text "The cart is empty"
 
         _ ->
             div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]

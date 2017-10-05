@@ -11,7 +11,7 @@ import Data.App exposing (FileBrowser)
 port storeSession : String -> Cmd msg
 
 
-port onSessionChange : (Value -> msg) -> Sub msg
+port onSessionChange : (String -> msg) -> Sub msg
 
 
 

@@ -1,4 +1,4 @@
-module View.Cart exposing (Model, Msg, init, update, viewCart, addToCartButton, selected, CartType(..))
+module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, selected, size, CartType(..))
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
@@ -69,7 +69,7 @@ updateInternal session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCart } => Cmd.batch [ Session.store newSession ]--, Route.modifyUrl Route.Cart ]
+            { model | cart = newCart } => Session.store newSession
 
         RemoveFromCart id ->
             let
@@ -92,7 +92,11 @@ updateInternal session msg model =
             { model | tableState = newState } => Cmd.none
 
         SetSession newSession ->
-            model => Cmd.none
+            let
+                newCart =
+                    newSession.cart
+            in
+            { model | cart = newCart } => Cmd.none
 
 
 
@@ -133,7 +137,7 @@ toTableAttrs =
 
 viewCart : Model -> List Sample -> Html Msg
 viewCart (Model internalModel) samples =
-    div [] [ Table.view (config internalModel) internalModel.tableState samples ]
+    div [] [ Table.view (config internalModel) internalModel.tableState (samplesInCart internalModel.cart samples) ]
 
 
 nameColumn : Table.Column Sample Msg
@@ -220,3 +224,13 @@ selectInCartLink sample =
 selectInCartCheckbox : Int -> Html Msg
 selectInCartCheckbox id =
     input [ type_ "checkbox", onClick (SelectInCart id) ] []
+
+
+samplesInCart : Cart -> List Sample -> List Sample
+samplesInCart cart samples =
+    List.filter (\sample -> Set.member sample.sample_id cart.contents) samples
+
+
+size : Model -> Int
+size (Model internalModel) =
+    Cart.size internalModel.cart

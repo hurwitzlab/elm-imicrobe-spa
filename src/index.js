@@ -60,10 +60,11 @@ app.ports.storeSession.subscribe(function(session) {
     localStorage.session = session;
 });
 
+// This event is only triggered when localStorage is modifed from another window
 window.addEventListener("storage",
     function(event) {
         if (event.storageArea === localStorage && event.key === "session") {
-            console.log("storage listener: ", event.newValue);
+            console.log("storage listener:", event.newValue);
             app.ports.onSessionChange.send(event.newValue);
         }
     },

@@ -1,6 +1,6 @@
-module Page.Samples exposing (Model, Msg, init, update, view)
+module Page.Samples exposing (Model, Msg(..), init, update, view)
 
-import Data.Sample
+import Data.Sample as Sample exposing (Sample)
 import Data.Session as Session exposing (Session)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
@@ -26,7 +26,7 @@ import View.Cart as Cart
 
 type alias Model =
     { pageTitle : String
-    , samples : List Data.Sample.Sample
+    , samples : List Sample
     , tableState : Table.State
     , query : String
     , sampleTypeRestriction : List String
@@ -65,6 +65,7 @@ type Msg
     | SelectOption String Bool
     | SetTableState Table.State
     | CartMsg Cart.Msg
+    | SetSession Session
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -97,13 +98,27 @@ update session msg model =
 
         CartMsg subMsg ->
             let
+                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+
                 ( newCart, subCmd ) =
                     Cart.update session subMsg model.cart
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd
 
+        SetSession newSession ->
+            let
+                _ = Debug.log "Page.Samples.SetSession" (toString newSession)
 
-config : Cart.Model -> Table.Config Data.Sample.Sample Msg
+                newCart =
+                    Cart.init newSession.cart Cart.Editable
+
+                (subModel, cmd) =
+                    Cart.update newSession (Cart.SetSession newSession) model.cart
+            in
+            { model | cart = newCart } => Cmd.none
+
+
+config : Cart.Model -> Table.Config Sample Msg
 config cart =
     Table.customConfig
         { toId = toString << .sample_id
@@ -227,7 +242,7 @@ mkCheckbox val =
         ]
 
 
-nameColumn : Table.Column Data.Sample.Sample Msg
+nameColumn : Table.Column Sample Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
@@ -236,7 +251,7 @@ nameColumn =
         }
 
 
-nameLink : Data.Sample.Sample -> Table.HtmlDetails Msg
+nameLink : Sample -> Table.HtmlDetails Msg
 nameLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Sample sample.sample_id) ]
@@ -244,7 +259,7 @@ nameLink sample =
         ]
 
 
-projectColumn : Table.Column Data.Sample.Sample Msg
+projectColumn : Table.Column Sample Msg
 projectColumn =
     Table.veryCustomColumn
         { name = "Project"
@@ -253,7 +268,7 @@ projectColumn =
         }
 
 
-projectLink : Data.Sample.Sample -> Table.HtmlDetails Msg
+projectLink : Sample -> Table.HtmlDetails Msg
 projectLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project sample.project_id) ]
@@ -261,7 +276,7 @@ projectLink sample =
         ]
 
 
-addToCartColumn : Cart.Model -> Table.Column Data.Sample.Sample Msg
+addToCartColumn : Cart.Model -> Table.Column Sample Msg
 addToCartColumn cart =
     Table.veryCustomColumn
         { name = "Cart"
@@ -270,7 +285,7 @@ addToCartColumn cart =
         }
 
 
-addToCartButton : Cart.Model -> Data.Sample.Sample -> Table.HtmlDetails Msg
+addToCartButton : Cart.Model -> Sample -> Table.HtmlDetails Msg
 addToCartButton cart sample =
     Table.HtmlDetails []
         [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg

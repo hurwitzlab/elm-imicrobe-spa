@@ -175,8 +175,7 @@ type Msg
     | SearchLoaded (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
     | SetRoute (Maybe Route)
---    | SetSession (Maybe Session)
-    | SetSession Value
+    | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
 
 
@@ -317,6 +316,8 @@ update msg model =
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
+        _ = Debug.log "Main.updatePage" (toString msg)
+
         session =
             model.session
 
@@ -717,36 +718,24 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
---        SetSession (Just newSession) ->
---            let
---                 _ = Debug.log "SetSession" (toString newSession)
---            in
---            case page of
-----                Cart subModel ->
-----                    toPage Cart CartMsg (Cart.update newSession) Cart.SetSession subModel
---
---                _ ->
---                    { model | session = newSession } => Cmd.none
-
-        SetSession val ->
+        SetSession newSession ->
             let
-                 _ = Debug.log "SetSession" val
-
-                 newSession =
-                     val
-                         |> Decode.decodeValue Session.decoder
-                         |> Result.withDefault Session.empty
+                 _ = Debug.log "Main.SetSession" (toString newSession)
             in
-            case page of
---                Cart subModel ->
---                    let
---                        newSubModel =
---                            { subModel | cart = session.cart }
---                    in
---                    { model | pageState = Loaded (Cart newSubModel) } => Route.modifyUrl Route.Cart
+            case newSession of
+                Just newSession ->
+                    case page of
+                        Cart subModel ->
+                            toPage Cart CartMsg (Cart.update newSession) (Cart.SetSession newSession) subModel
 
-                _ ->
-                    { model | session = newSession } => Cmd.none
+                        Samples subModel ->
+                            toPage Samples SamplesMsg (Samples.update newSession) (Samples.SetSession newSession) subModel
+
+                        _ ->
+                            { model | session = newSession } => Cmd.none
+
+                Nothing ->
+                    model => Cmd.none
 
         SelectFile selection ->
             let
@@ -959,37 +948,28 @@ viewPage session isLoading page =
 ---- SUBSCRIPTIONS ----
 
 
---subscriptions : Model -> Sub Msg
---subscriptions model =
---    Sub.batch
---        [ pageSubscriptions (getPage model.pageState)
-----        , Sub.map SetSession sessionChange
---        ]
-
-
---sessionChange : Sub (Maybe Session)
---sessionChange =
---    Ports.onSessionChange (Decode.decodeValue Session.decoder >> Result.toMaybe)
-
-
---pageSubscriptions : Page -> Sub Msg
---pageSubscriptions page =
---    case page of
---        Cart _ ->
---            let
---                _ = Debug.log "pageSubscriptions" "foo"
---            in
---            Sub.map SetSession sessionChange
---
---        _ ->
---            Sub.none
-
-
 subscriptions : Model -> Sub Msg
-subscriptions model = Sub.batch
-    [ Ports.onSessionChange SetSession
-    , Ports.onFileSelect SelectFile
-    ]
+subscriptions model =
+    Sub.batch
+        [--pageSubscriptions (getPage model.pageState)
+          Sub.map SetSession sessionChange
+        , Ports.onFileSelect SelectFile
+        ]
+
+
+sessionChange : Sub (Maybe Session)
+sessionChange =
+    Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe)
+
+
+pageSubscriptions : Page -> Sub Msg
+pageSubscriptions page =
+    case page of
+        _ ->
+            let
+                _ = Debug.log "pageSubscriptions" "_"
+            in
+            Sub.none
 
 
 
@@ -1014,6 +994,7 @@ init flags location =
         session = --TODO use Maybe Session instead
             case flags.session of
                 "" -> Session.empty
+
                 _ -> decodeSessionFromJson flags.session
 
         _ = Debug.log "location" (toString location)
