@@ -182,9 +182,15 @@ type Msg
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
 setRoute maybeRoute model =
     let
+        routeString =
+            case maybeRoute of
+                Nothing -> "Nothing"
+
+                Just route -> Route.routeToString route
+
         transition toMsg task =
             { model | pageState = TransitioningFrom (getPage model.pageState) }
-                => Task.attempt toMsg task
+                => Cmd.batch [ Ports.updateAnalytics routeString, Task.attempt toMsg task ]
 
 --        error =
 --            pageError model
