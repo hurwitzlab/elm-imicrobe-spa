@@ -316,8 +316,6 @@ update msg model =
 updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     let
-        _ = Debug.log "Main.updatePage" (toString msg)
-
         session =
             model.session
 
@@ -418,7 +416,27 @@ updatePage page msg model =
         CartMsg subMsg ->
             case page of
                 Cart subModel ->
-                    toPage Cart CartMsg (Cart.update session) subMsg subModel
+                    let
+                        _ = Debug.log "Main.CartMsg" (toString subMsg)
+
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            Cart.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                Cart.NoOp ->
+                                    model
+
+                                Cart.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (Cart pageModel) }
+                        => Cmd.map CartMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -666,7 +684,27 @@ updatePage page msg model =
         SamplesMsg subMsg ->
             case page of
                 Samples subModel ->
-                    toPage Samples SamplesMsg (Samples.update session) subMsg subModel
+                    let
+                        _ = Debug.log "Main.SamplesMsg" (toString subMsg)
+
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            Samples.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                Samples.NoOp ->
+                                    model
+
+                                Samples.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (Samples pageModel) }
+                        => Cmd.map SamplesMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -726,10 +764,22 @@ updatePage page msg model =
                 Just newSession ->
                     case page of
                         Cart subModel ->
-                            toPage Cart CartMsg (Cart.update newSession) (Cart.SetSession newSession) subModel
+--                            toPage Cart CartMsg (Cart.update newSession) (Cart.SetSession newSession) subModel
+                            let
+                                ( ( pageModel, cmd ), msgFromPage ) =
+                                    Cart.update model.session (Cart.SetSession newSession) subModel
+                            in
+                            { model | pageState = Loaded (Cart pageModel) }
+                                => Cmd.map CartMsg cmd
 
                         Samples subModel ->
-                            toPage Samples SamplesMsg (Samples.update newSession) (Samples.SetSession newSession) subModel
+--                            toPage Samples SamplesMsg (Samples.update newSession) (Samples.SetSession newSession) subModel
+                            let
+                                ( ( pageModel, cmd ), msgFromPage ) =
+                                    Samples.update model.session (Samples.SetSession newSession) subModel
+                            in
+                            { model | pageState = Loaded (Samples pageModel) }
+                                => Cmd.map SamplesMsg cmd
 
                         _ ->
                             { model | session = newSession } => Cmd.none

@@ -1,4 +1,4 @@
-module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, selected, size, CartType(..))
+module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, size, CartType(..))
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
@@ -13,16 +13,12 @@ import Set
 
 
 
-type Model
-    = Model InternalModel
-
-
 type CartType
     = Selectable
     | Editable
 
 
-type alias InternalModel =
+type alias Model =
     { cart : Cart
     , tableState : Table.State
     , cartType : CartType
@@ -32,12 +28,7 @@ type alias InternalModel =
 
 init : Cart -> CartType -> Model
 init cart cartType =
-    Model (InternalModel cart (Table.initialSort "Name") cartType Cart.empty)
-
-
-selected : Model -> Cart
-selected (Model internalModel) =
-    internalModel.selected
+    Model cart (Table.initialSort "Name") cartType Cart.empty
 
 
 
@@ -52,14 +43,13 @@ type Msg
     | SetSession Session
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
-update session msg (Model internalModel) =
-    updateInternal session msg internalModel
-        |> Tuple.mapFirst Model
+type ExternalMsg
+    = NoOp
+    | SetCart Cart
 
 
-updateInternal : Session -> Msg -> InternalModel -> ( InternalModel, Cmd Msg )
-updateInternal session msg model =
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update session msg model =
     case msg of
         AddToCart id ->
             let
@@ -69,7 +59,7 @@ updateInternal session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCart } => Session.store newSession
+            { model | cart = newCart } => Session.store newSession => SetCart newCart
 
         RemoveFromCart id ->
             let
@@ -79,31 +69,31 @@ updateInternal session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCart } => Session.store newSession
+            { model | cart = newCart } => Session.store newSession => SetCart newCart
 
         SelectInCart id ->
             let
                 selected =
                     Cart.add id model.selected
             in
-            { model | selected = selected } => Cmd.none
+            { model | selected = selected } => Cmd.none => NoOp
 
         SetTableState newState ->
-            { model | tableState = newState } => Cmd.none
+            { model | tableState = newState } => Cmd.none => NoOp
 
         SetSession newSession ->
             let
                 newCart =
                     newSession.cart
             in
-            { model | cart = newCart } => Cmd.none
+            { model | cart = newCart } => Cmd.none => NoOp
 
 
 
 -- VIEW --
 
 
-config : InternalModel -> Table.Config Sample Msg
+config : Model -> Table.Config Sample Msg
 config model =
     let
         columns =
@@ -136,8 +126,8 @@ toTableAttrs =
 
 
 viewCart : Model -> List Sample -> Html Msg
-viewCart (Model internalModel) samples =
-    div [] [ Table.view (config internalModel) internalModel.tableState (samplesInCart internalModel.cart samples) ]
+viewCart model samples =
+    div [] [ Table.view (config model) model.tableState (samplesInCart model.cart samples) ]
 
 
 nameColumn : Table.Column Sample Msg
@@ -196,8 +186,8 @@ removeFromCartButton id =
 
 
 addToCartButton : Model -> Int -> Html Msg
-addToCartButton (Model internalModel) id =
-    case (Set.member id internalModel.cart.contents) of
+addToCartButton model id =
+    case (Set.member id model.cart.contents) of
         True ->
             button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
 
@@ -230,7 +220,6 @@ samplesInCart : Cart -> List Sample -> List Sample
 samplesInCart cart samples =
     List.filter (\sample -> Set.member sample.sample_id cart.contents) samples
 
-
 size : Model -> Int
-size (Model internalModel) =
-    Cart.size internalModel.cart
+size model =
+    Set.size model.cart.contents

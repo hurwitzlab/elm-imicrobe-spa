@@ -1,4 +1,4 @@
-module Page.Cart exposing (Model, Msg(..), init, update, view)
+module Page.Cart exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Data.Sample as Sample exposing (Sample)
@@ -61,20 +61,25 @@ type Msg
     | SetSamples (List Sample)
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
         CartMsg subMsg ->
             let
                 _ = Debug.log "Cart.CartMsg" (toString subMsg)
 
-                ( newCart, subCmd ) =
+                ( ( newCart, subCmd ), msgFromPage ) =
                     Cart.update session subMsg model.cart
             in
-            { model | cart = newCart } => Cmd.map CartMsg subCmd
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
         Files ->
-            model => Route.modifyUrl Route.Files
+            model => Route.modifyUrl Route.Files => NoOp
 
         EmptyCart ->
             let
@@ -84,7 +89,7 @@ update session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | samples = [] } => Session.store newSession
+            { model | samples = [] } => Session.store newSession => SetCart newCart
 
         SetSession newSession ->
             let
@@ -113,10 +118,10 @@ update session msg model =
                             in
                             SetSamples []
             in
-            { model | cart = newCart } => Task.attempt handleSamples loadSamples
+            { model | cart = newCart } => Task.attempt handleSamples loadSamples => NoOp
 
         SetSamples newSamples ->
-            { model | samples = newSamples } => Cmd.none
+            { model | samples = newSamples } => Cmd.none => NoOp
 
 
 

@@ -1,7 +1,8 @@
-module Page.Samples exposing (Model, Msg(..), init, update, view)
+module Page.Samples exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Sample as Sample exposing (Sample)
 import Data.Session as Session exposing (Session)
+import Data.Cart
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
@@ -61,25 +62,35 @@ init session =
 
 
 type Msg
-    = SetQuery String
+    = CartMsg Cart.Msg
+    | SetQuery String
     | SelectOption String Bool
     | SetTableState Table.State
-    | CartMsg Cart.Msg
     | SetSession Session
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
         SetQuery newQuery ->
-            ( { model | query = newQuery }
-            , Cmd.none
-            )
+            { model | query = newQuery } => Cmd.none => NoOp
 
         SetTableState newState ->
-            ( { model | tableState = newState }
-            , Cmd.none
-            )
+            { model | tableState = newState } => Cmd.none => NoOp
 
         SelectOption value bool ->
             let
@@ -94,16 +105,7 @@ update session msg model =
                         False ->
                             List.filter ((/=) value) curOptions
             in
-            ( { model | sampleTypeRestriction = newOpts }, Cmd.none )
-
-        CartMsg subMsg ->
-            let
-                _ = Debug.log "Samples.CartMsg" (toString subMsg)
-
-                ( newCart, subCmd ) =
-                    Cart.update session subMsg model.cart
-            in
-            { model | cart = newCart } => Cmd.map CartMsg subCmd
+            { model | sampleTypeRestriction = newOpts } => Cmd.none => NoOp
 
         SetSession newSession ->
             let
@@ -115,7 +117,7 @@ update session msg model =
                 (subModel, cmd) =
                     Cart.update newSession (Cart.SetSession newSession) model.cart
             in
-            { model | cart = newCart } => Cmd.none
+            { model | cart = newCart } => Cmd.none => NoOp
 
 
 config : Cart.Model -> Table.Config Sample Msg

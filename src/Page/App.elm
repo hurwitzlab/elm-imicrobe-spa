@@ -142,7 +142,7 @@ update session msg model =
         CloseCartDialog ->
             let
                 selected =
-                    Cart.selected model.cart
+                    model.cart.selected
 
                 sampleIds =
                     Set.toList selected.contents
@@ -194,14 +194,12 @@ update session msg model =
 
         CartMsg subMsg ->
             let
-                toPage toModel toMsg subUpdate subMsg subModel =
-                    let
-                        ( newModel, newCmd ) =
-                            subUpdate subMsg subModel
-                    in
-                    ( { model | cart = newModel }, Cmd.map toMsg newCmd )
+                _ = Debug.log "App.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage )  =
+                    Cart.update session subMsg model.cart
             in
-                toPage model.cart CartMsg (Cart.update session) subMsg model.cart
+            { model | cart = newCart } => Cmd.map CartMsg subCmd
 
 
 
