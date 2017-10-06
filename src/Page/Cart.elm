@@ -81,15 +81,21 @@ update session msg model =
         Files ->
             model => Route.modifyUrl Route.Files => NoOp
 
-        EmptyCart ->
+        EmptyCart -> --FIXME this is ugly
             let
                 newCart =
                     Data.Cart.Cart Set.empty
 
+                cartModel =
+                    model.cart
+
+                newCartModel =
+                    { cartModel | cart = newCart }
+
                 newSession =
                     { session | cart = newCart }
             in
-            { model | samples = [] } => Session.store newSession => SetCart newCart
+            { model | cart = newCartModel, samples = [] } => Session.store newSession => SetCart newCart
 
         SetSession newSession ->
             let
