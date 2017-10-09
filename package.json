@@ -9,7 +9,6 @@
     "bootstrap-loader": "^2.1.0",
     "bootstrap-sass": "^3.3.7",
     "css-loader": "^0.28.4",
-    "datatables": "^1.10.13",
     "elm-webpack-loader": "^4.3.1",
     "extract-text-webpack-plugin": "^3.0.0",
     "file-loader": "^0.11.2",
