@@ -1,6 +1,5 @@
 port module Ports exposing (storeSession, onSessionChange, createFileBrowser, onFileSelect, updateAnalytics)
 
-import Json.Encode exposing (Value)
 import Data.App exposing (FileBrowser)
 
 
