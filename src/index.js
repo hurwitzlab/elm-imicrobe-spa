@@ -10,6 +10,7 @@ require("../img/nav-header.png");
 require('../css/imicrobe.css');
 //require('../css/readable.min.css');
 require('../css/spinner.css');
+require('../node_modules/agave-file-browser/spinner.gif');
 
 // Load config file
 var config = require('../config.json');
@@ -78,25 +79,33 @@ window.addEventListener("storage",
 
 var fileBrowser;
 app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/token from localStorage.session instead of passing in
+    var dialog = $('#file-browser-dialog');
+
     if (typeof fileBrowser == 'undefined') {
         fileBrowser = new agave.AgaveFileBrowser({
-            elementId: "file-browser",
-            baseUrl:   config.agaveFilesUrl,
-            path:      input.username,
-            authToken: input.token,
-            selectCallback: function(node) {
-                console.log("selected: ", node);
-                app.ports.onFileSelect.send({
-                    id: input.id,
-                    username: input.username,
-                    token: input.token,
-                    path: node.id
-                });
-            }
+            elementId:   'file-browser',
+            baseUrl:     config.agaveFilesUrl,
+            path:        input.username,
+            authToken:   input.token,
+            busyIconUrl: 'img/spinner.gif'
+        });
+
+        dialog.find('button.btn-primary').click(function() {
+            var files = fileBrowser.getSelectedNodes();
+            console.log('selected:', files);
+
+            dialog.modal('hide');
+
+            app.ports.onFileSelect.send({
+                id: input.id,
+                username: input.username,
+                token: input.token,
+                path: files.map(f => f.id).join(',')
+            });
         });
     }
 
-    $('#file-browser-dialog').modal('show');
+    dialog.modal('show');
 });
 
 
