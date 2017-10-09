@@ -77,6 +77,7 @@ config =
         , columns =
             [ nameColumn
             , tagColumn
+            , dataTypeColumn
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -126,6 +127,20 @@ tagBadge tag =
     span [ class "badge margin-right" ] [ text tag.value ]
 
 
+dataTypeColumn : Table.Column Data.App.App Msg
+dataTypeColumn =
+    Table.customColumn
+        { name = "Data Types"
+        , viewData = dataTypesToString << .app_data_types
+        , sorter = Table.increasingOrDecreasingBy (dataTypesToString << .app_data_types)
+        }
+
+
+dataTypesToString : List Data.App.AppDataType -> String
+dataTypesToString types =
+    String.join ", " (List.map .name types)
+
+
 
 -- VIEW --
 
@@ -137,8 +152,9 @@ view model =
             String.toLower model.query
 
         appFilter app =
-            ((String.contains lowerQuery (app.app_name |> String.toLower))
-                || (String.contains lowerQuery (app.app_tags |> List.map .value |> String.join ", " |> String.toLower)))
+            ( (String.contains lowerQuery (app.app_name |> String.toLower))
+                || (String.contains lowerQuery (app.app_tags |> List.map .value |> String.join ", " |> String.toLower))
+                || (String.contains lowerQuery (app.app_data_types |> List.map .name |> String.join ", " |> String.toLower)) )
 
         acceptableApps =
             List.filter appFilter model.apps
