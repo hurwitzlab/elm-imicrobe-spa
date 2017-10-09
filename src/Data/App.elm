@@ -1,4 +1,4 @@
-module Data.App exposing (App, AppRun, FileBrowser, decoder, decoderAppRun, encodeAppRun)
+module Data.App exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -12,6 +12,7 @@ type alias App =
     { app_id : Int
     , app_name : String
     , is_active : Int
+    , app_tags : List AppTag
     }
 
 
@@ -21,6 +22,12 @@ type alias AppRun =
     , user_id : Int
     , app_ran_at : String
     , params : String
+    }
+
+
+type alias AppTag =
+    { app_tag_id : Int
+    , value : String
     }
 
 
@@ -42,6 +49,7 @@ decoder =
         |> required "app_id" Decode.int
         |> required "app_name" Decode.string
         |> optional "is_active" Decode.int 1
+        |> optional "app_tags" (Decode.list decoderAppTag) []
 
 
 decoderAppRun : Decoder AppRun
@@ -52,6 +60,13 @@ decoderAppRun =
         |> required "user_id" Decode.int
         |> optional "app_ran_at" Decode.string ""
         |> optional "params" Decode.string ""
+
+
+decoderAppTag : Decoder AppTag
+decoderAppTag =
+    decode AppTag
+        |> required "app_tag_id" Decode.int
+        |> required "value" Decode.string
 
 
 encodeAppRun : AppRun -> Encode.Value

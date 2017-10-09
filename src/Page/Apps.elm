@@ -76,6 +76,7 @@ config =
         , toMsg = SetTableState
         , columns =
             [ nameColumn
+            , tagColumn
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -105,6 +106,26 @@ nameLink app =
         ]
 
 
+tagColumn : Table.Column Data.App.App Msg
+tagColumn =
+    Table.veryCustomColumn
+        { name = "Tags"
+        , viewData = tagBadges
+        , sorter = Table.unsortable
+        }
+
+
+tagBadges : Data.App.App -> Table.HtmlDetails Msg
+tagBadges app =
+    Table.HtmlDetails []
+        (List.map tagBadge app.app_tags)
+
+
+tagBadge : Data.App.AppTag -> Html Msg
+tagBadge tag =
+    span [ class "badge margin-right" ] [ text tag.value ]
+
+
 
 -- VIEW --
 
@@ -115,10 +136,12 @@ view model =
         lowerQuery =
             String.toLower model.query
 
+        appFilter app =
+            ((String.contains lowerQuery (app.app_name |> String.toLower))
+                || (String.contains lowerQuery (app.app_tags |> List.map .value |> String.join ", " |> String.toLower)))
+
         acceptableApps =
-            List.filter
-                (String.contains lowerQuery << String.toLower << .app_name)
-                model.apps
+            List.filter appFilter model.apps
 
         numShowing =
             let
@@ -145,7 +168,7 @@ view model =
                 [ text (model.pageTitle ++ " ")
                 , numShowing
                 , small [ class "right" ]
-                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                    [ input [ placeholder "Search", onInput SetQuery ] [] ]
                 ]
             , Table.view config model.tableState acceptableApps
             ]
