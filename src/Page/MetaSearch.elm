@@ -88,7 +88,7 @@ update msg model =
     case msg of
         AddParamOption opt ->
             ( { model | selectedParams = addSelectedParam model opt }
-            , getParamValues opt model.optionValues model.params
+            , getParamValues opt model.optionValues model.possibleOptionValues model.params
             )
 
         RemoveOption opt ->
@@ -354,11 +354,11 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
                 "number" ->
                     [ td [ onInput (UpdateOptionValue minName) ]
                         [ text "Min: "
-                        , input [ type_ "text", placeholder minVal, name minName ] []
+                        , input [ type_ "text", name minName, placeholder minVal ] []
                         ]
                     , td [ onInput (UpdateOptionValue maxName) ]
                         [ text "Max: "
-                        , input [ type_ "text", placeholder maxVal, name maxName ] []
+                        , input [ type_ "text", name maxName, placeholder maxVal ] []
                         ]
                     ]
 
@@ -427,9 +427,10 @@ oneOfJsonType =
 
 serializeForm :
     Dict.Dict String (List String)
+    -> Dict.Dict String (List JsonType)
     -> Dict.Dict String String
     -> Encode.Value
-serializeForm optionValues paramTypes =
+serializeForm optionValues possibleOptionValues paramTypes =
     let
         mkFloats =
             List.filterMap (String.toFloat >> Result.toMaybe)
@@ -467,10 +468,46 @@ serializeForm optionValues paramTypes =
 
                 _ ->
                     enc Encode.string vals
+
+        encodeMinMax param vals =
+            let
+                possibleVals =
+                    case Dict.get param possibleOptionValues of
+                        Just v ->
+                            v
+
+                        _ ->
+                            []
+
+                minVal =
+                    case List.take 1 possibleVals of
+                        x :: [] ->
+                            unpackJsonType x
+
+                        _ ->
+                            ""
+
+                maxVal =
+                    case List.drop (List.length possibleVals - 1) possibleVals of
+                        x :: [] ->
+                            unpackJsonType x
+
+                        _ ->
+                            ""
+            in
+            mkFloats [minVal, maxVal] |> List.map Encode.float |> Encode.list
+
     in
-    Dict.toList optionValues
-        |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
-        |> Encode.object
+    case Dict.toList optionValues of
+        [] ->
+            Dict.toList possibleOptionValues
+                |> List.map (\( k, vs ) -> ( k, encodeMinMax k vs ))
+                |> Encode.object
+
+        _ ->
+            Dict.toList optionValues
+                |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
+                |> Encode.object
 
 
 --FIXME move to Request/MetaSearch.elm
@@ -481,7 +518,7 @@ doSearch model =
             apiBaseUrl ++ "/samples/search"
 
         body =
-            serializeForm model.optionValues model.params
+            serializeForm model.optionValues model.possibleOptionValues model.params
                 |> Http.jsonBody
 
         decoderDict =
@@ -499,9 +536,10 @@ doSearch model =
 getParamValues :
     String
     -> Dict.Dict String (List String)
+    -> Dict.Dict String (List JsonType)
     -> Dict.Dict String String
     -> Cmd Msg
-getParamValues optionName optionValues params =
+getParamValues optionName optionValues possibleOptionValues params =
     let
         url =
             apiBaseUrl ++ "/search_param_values"
@@ -512,7 +550,7 @@ getParamValues optionName optionValues params =
         body =
             Encode.object
                 [ ( "param", Encode.string optionName )
-                , ( "query", serializeForm optionValues params )
+                , ( "query", serializeForm optionValues possibleOptionValues params )
                 ]
                 |> Http.jsonBody
     in
