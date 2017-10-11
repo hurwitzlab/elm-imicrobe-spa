@@ -681,6 +681,14 @@ updatePage page msg model =
         SampleLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        SampleMsg subMsg ->
+            case page of
+                Sample id subModel ->
+                    toPage (Sample id) SampleMsg Sample.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         SamplesLoaded (Ok subModel) ->
             { model | pageState = Loaded (Samples subModel) } => Cmd.none
 

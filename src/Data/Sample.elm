@@ -1,4 +1,4 @@
-module Data.Sample exposing (Investigator, Ontology, Project, Sample, SampleFile, SampleFile2, SampleFileType, decoder, decoderSampleFile)
+module Data.Sample exposing (Investigator, Ontology, Attribute, AttributeType, AttributeTypeAlias, Project, Sample, SampleFile, SampleFile2, SampleFileType, decoder, decoderSampleFile)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -19,6 +19,33 @@ type alias Ontology =
     , label : String
     , ontology_type_id : Int
     , sample_to_ontology : SampleToOntology
+    }
+
+
+type alias Attribute =
+    { sample_attr_id : Int
+    , sample_attr_type_id : Int
+    , sample_id : Int
+    , attr_value : String
+    , unit : Maybe String
+    , sample_attr_type : AttributeType
+    }
+
+
+type alias AttributeType =
+    { sample_attr_type_id : Int
+    , type_ : String
+    , url_template : Maybe String
+    , description : Maybe String
+    , category : Maybe String
+    , sample_attr_type_aliases : List AttributeTypeAlias
+    }
+
+
+type alias AttributeTypeAlias =
+    { sample_attr_type_alias_id : Int
+    , sample_attr_type_id : Int
+    , alias_ : String
     }
 
 
@@ -58,6 +85,7 @@ type alias Sample =
     , investigators : List Investigator
     , sample_files : List SampleFile2
     , ontologies : List Ontology
+    , sample_attrs : List Attribute
     }
 
 
@@ -94,10 +122,12 @@ type alias SampleFileSample =
     , sample_name : String
     }
 
+
 type alias SampleFileType =
     { sample_file_type_id : Int
     , file_type : String
     }
+
 
 type alias SampleToOntology =
     { sample_to_ontology_id : Int
@@ -126,6 +156,36 @@ decoderOnt =
         |> optional "label" Decode.string "NA"
         |> optional "ontology_type_id" Decode.int 0
         |> required "sample_to_ontology" decoderSampleToOntology
+
+
+decoderAttribute : Decoder Attribute
+decoderAttribute =
+    decode Attribute
+        |> required "sample_attr_id" Decode.int
+        |> required "sample_attr_type_id" Decode.int
+        |> required "sample_id" Decode.int
+        |> required "attr_value" Decode.string
+        |> optional "unit" (Decode.nullable Decode.string) Nothing
+        |> required "sample_attr_type" decoderAttributeType
+
+
+decoderAttributeType : Decoder AttributeType
+decoderAttributeType =
+    decode AttributeType
+        |> required "sample_attr_type_id" Decode.int
+        |> required "type" Decode.string
+        |> optional "url_template" (Decode.nullable Decode.string) Nothing
+        |> optional "description" (Decode.nullable Decode.string) Nothing
+        |> optional "category" (Decode.nullable Decode.string) Nothing
+        |> optional "sample_attr_type_aliases" (Decode.list decoderAttributeTypeAlias) []
+
+
+decoderAttributeTypeAlias : Decoder AttributeTypeAlias
+decoderAttributeTypeAlias =
+    decode AttributeTypeAlias
+        |> required "sample_attr_type_alias_id" Decode.int
+        |> required "sample_attr_type_id" Decode.int
+        |> required "alias" Decode.string
 
 
 decoderProject : Decoder Project
@@ -167,6 +227,7 @@ decoder =
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "sample_files" (Decode.list decoderSampleFile2) []
         |> optional "ontologies" (Decode.list decoderOnt) []
+        |> optional "sample_attrs" (Decode.list decoderAttribute) []
 
 
 decoderSampleFile : Decoder SampleFile
