@@ -161,10 +161,7 @@ resultsTable model =
 
                         _ ->
                             List.filter
-                                (\v ->
-                                    List.member v.table_name
-                                        model.searchRestrictions
-                                )
+                                (\v -> List.member v.table_name model.searchRestrictions)
                                 data
 
                 numShowing =
@@ -211,7 +208,12 @@ resultsTable model =
                     , Table.view config model.tableState filtered
                     ]
             else
-                text ""
+                div []
+                    [ h2 []
+                        [ text "Results"
+                        ]
+                    , text "None"
+                    ]
 
         RemoteData.Loading ->
             text "Loading ..."
