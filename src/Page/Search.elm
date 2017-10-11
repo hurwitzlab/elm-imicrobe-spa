@@ -2,6 +2,7 @@ module Page.Search exposing (Model, Msg, init, update, view)
 
 import Data.Search
 import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
@@ -12,6 +13,7 @@ import Request.Search
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import Util exposing ((=>))
 
 
 
@@ -23,7 +25,6 @@ type alias Model =
     , query : String
     , tableState : Table.State
     , searchResults : WebData (List Data.Search.SearchResult)
-    , searchResultsMessage : Html Msg
     , searchResultTypes : List String
     , searchRestrictions : List String
     }
@@ -31,11 +32,10 @@ type alias Model =
 
 initialModel : Model
 initialModel =
-    { pageTitle = "Search Results"
+    { pageTitle = "General Search"
     , query = ""
     , tableState = Table.initialSort "Name"
     , searchResults = NotAsked
-    , searchResultsMessage = text ""
     , searchResultTypes = []
     , searchRestrictions = []
     }
@@ -91,46 +91,17 @@ update msg model =
 
         UpdateSearchResults response ->
             let
-                ( message, types ) =
+                types =
                     case response of
                         RemoteData.Success data ->
-                            let
-                                numFound =
-                                    List.length data
-
-                                myLocale =
-                                    { decimals = 0
-                                    , thousandSeparator = ","
-                                    , decimalSeparator = "."
-                                    }
-
-                                msg =
-                                    span []
-                                        [ text
-                                            ("Found "
-                                                ++ format myLocale (toFloat numFound)
-                                                ++ " for "
-                                            )
-                                        , em [] [ text model.query ]
-                                        ]
-
-                                types =
-                                    List.map .table_name data
-                                        |> List.sort
-                                        |> List.Extra.unique
-                            in
-                            ( msg, types )
+                            List.map .table_name data
+                                |> List.sort
+                                |> List.Extra.unique
 
                         _ ->
-                            ( text "", [] )
+                            []
             in
-            ( { model
-                | searchResults = response
-                , searchResultsMessage = message
-                , searchResultTypes = types
-              }
-            , Cmd.none
-            )
+            { model | searchResults = response, searchResultTypes = types } => Cmd.none
 
 
 doSearch : Model -> Cmd Msg
@@ -146,37 +117,22 @@ doSearch model =
 
 view : Model -> Html Msg
 view model =
-    let
-        restrict =
-            case List.length model.searchResultTypes of
-                0 ->
-                    text ""
-
-                _ ->
-                    fieldset []
-                        (text "Show: "
-                            :: List.map mkCheckbox model.searchResultTypes
-                        )
-    in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ div [ style [ ( "text-align", "center" ) ] ]
-                [ h2 [] [ text model.pageTitle ]
-                , div [ class "form-inline" ]
+            [ div [ class "page-header" ]
+                [ h1 [] [ text model.pageTitle ]
+                ]
+            , div [ class "form-inline" ]
                     [ Html.form
                         [ onSubmit DoSearch ]
                         [ input
-                            [ placeholder "Search for", class "form-control", size 30, onInput SetQuery ]
+                            [ placeholder "Enter search term", class "form-control margin-right", size 50, onInput SetQuery ]
                             []
                         , button
                             [ onClick DoSearch, class "btn btn-primary" ]
                             [ text "Search" ]
-                        , br [] []
-                        , model.searchResultsMessage
-                        , restrict
                         ]
                     ]
-                ]
             , div [] [ resultsTable model ]
             ]
         ]
@@ -184,9 +140,9 @@ view model =
 
 mkCheckbox : String -> Html Msg
 mkCheckbox val =
-    label []
+    label [ style [("padding-left", "1em")]]
         [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
-        , text val
+        , text (" " ++ val)
         ]
 
 
@@ -210,9 +166,50 @@ resultsTable model =
                                         model.searchRestrictions
                                 )
                                 data
+
+                numShowing =
+                    let
+                        myLocale =
+                            { usLocale | decimals = 0 }
+
+                        count =
+                            List.length filtered
+
+                        numStr =
+                            count |> toFloat |> format myLocale
+                    in
+                    case count of
+                        0 ->
+                            span [] []
+
+                        _ ->
+                            span [ class "badge" ] [ text numStr ]
+
+
+                restrict =
+                    case List.length model.searchResultTypes of
+                        0 ->
+                            text ""
+
+                        _ ->
+                            fieldset []
+                                (text "Types: "
+                                    :: List.map mkCheckbox model.searchResultTypes
+                                )
             in
             if List.length filtered > 0 then
-                Table.view config model.tableState filtered
+                div []
+                    [ h2 []
+                        [ text "Results "
+                        , numShowing
+                        ]
+                    , div [ class "panel panel-default" ]
+                        [ div [ class "panel-body" ]
+                            [ restrict
+                            ]
+                        ]
+                    , Table.view config model.tableState filtered
+                    ]
             else
                 text ""
 
@@ -239,16 +236,16 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table"
+    [ attribute "class" "table table-condensed"
     ]
 
 
 nameColumn : Table.Column Data.Search.SearchResult Msg
 nameColumn =
     Table.veryCustomColumn
-        { name = "Name"
+        { name = "Link"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .name
+        , sorter = Table.increasingOrDecreasingBy .table_name
         }
 
 
@@ -263,19 +260,14 @@ nameLink result =
                 "project" ->
                     Route.Project result.id
 
+                "publication" ->
+                    Route.Publication result.id
+
                 "sample" ->
                     Route.Sample result.id
 
                 _ ->
                     Route.Home
-
-        name =
-            case result.name of
-                "" ->
-                    "NA"
-
-                _ ->
-                    result.name
     in
     Table.HtmlDetails []
-        [ a [ Route.href route ] [ text name ] ]
+        [ a [ Route.href route ] [ text (Route.routeToString route) ] ]

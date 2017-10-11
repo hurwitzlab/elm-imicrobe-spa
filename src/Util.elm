@@ -1,4 +1,7 @@
-module Util exposing ((=>), truncate)
+module Util exposing ((=>), truncate, capitalize)
+
+import Char
+import String
 
 
 maxColumnWidth : Int
@@ -12,6 +15,14 @@ truncate string =
         string
     else
         String.left (maxColumnWidth - 3) string ++ "..."
+
+
+capitalize : String -> String
+capitalize string =
+    case String.uncons string of
+        Nothing -> ""
+        Just (head, tail) ->
+            String.cons (Char.toUpper head) tail
 
 
 -- toTuple

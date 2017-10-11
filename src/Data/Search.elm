@@ -7,7 +7,6 @@ import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 type alias SearchResult =
     { id : Int
     , table_name : String
-    , name : String
     }
 
 
@@ -20,4 +19,3 @@ decoder =
     decode SearchResult
         |> required "id" Decode.int
         |> required "table_name" Decode.string
-        |> required "name" Decode.string
