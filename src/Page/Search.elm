@@ -122,7 +122,7 @@ view model =
             [ div [ class "page-header" ]
                 [ h1 [] [ text model.pageTitle ]
                 ]
-            , div [ class "form-inline" ]
+            , div [ class "center form-inline" ]
                     [ Html.form
                         [ onSubmit DoSearch ]
                         [ input
