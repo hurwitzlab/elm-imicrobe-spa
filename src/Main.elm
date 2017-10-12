@@ -11,7 +11,6 @@ import Http
 import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
-import Page.About as About
 import Page.App as App
 import Page.Apps as Apps
 import Page.Assembly as Assembly
@@ -68,8 +67,7 @@ type alias Model =
 
 
 type Page
-    = About About.Model
-    | Blank
+    = Blank
     | Apps Apps.Model
     | App Int App.Model
     | Assemblies Assemblies.Model
@@ -112,9 +110,7 @@ type PageState
 
 
 type Msg
-    = AboutLoaded (Result PageLoadError About.Model)
-    | AboutMsg About.Msg
-    | AppLoaded Int (Result PageLoadError App.Model)
+    = AppLoaded Int (Result PageLoadError App.Model)
     | AppMsg App.Msg
     | AppsLoaded (Result PageLoadError Apps.Model)
     | AppsMsg Apps.Msg
@@ -198,9 +194,6 @@ setRoute maybeRoute model =
     case maybeRoute of
         Nothing ->
             { model | pageState = Loaded NotFound } => Cmd.none
-
-        Just Route.About ->
-            transition AboutLoaded About.init
 
         Just (Route.App id) ->
             transition (AppLoaded id) (App.init model.session id)
@@ -358,12 +351,6 @@ updatePage page msg model =
                     { session | token = "", profile = Nothing }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
-
-        AboutLoaded (Ok subModel) ->
-            { model | pageState = Loaded (About subModel) } => Cmd.none
-
-        AboutLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
 
         AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => Cmd.none
@@ -748,14 +735,6 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        AboutMsg subMsg ->
-            case page of
-                About subModel ->
-                    toPage About AboutMsg About.update subMsg subModel
-
-                _ ->
-                    model => Cmd.none
-
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
 
@@ -857,11 +836,6 @@ viewPage session isLoading page =
             -- data via HTTP. We could also render a spinner here.
             Html.text ""
                 |> layout Page.Other
-
-        About subModel ->
-            About.view subModel
-                |> layout Page.About
-                |> Html.map AboutMsg
 
         App id subModel ->
             App.view subModel

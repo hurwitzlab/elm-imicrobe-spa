@@ -11,7 +11,6 @@ import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, str
 
 type Route
     = Home
-    | About
     | Apps
     | App Int
     | Assemblies
@@ -46,8 +45,7 @@ type Route
 routeMather : Parser (Route -> a) a
 routeMather =
     oneOf
-        [ Url.map About (s "about")
-        , Url.map Apps (s "apps")
+        [ Url.map Apps (s "apps")
         , Url.map App (s "apps" </> Url.int)
         , Url.map Assemblies (s "assemblies")
         , Url.map Assembly (s "assemblies" </> Url.int)
@@ -92,9 +90,6 @@ routeToString page =
     let
         pagePath =
             case page of
-                About ->
-                    [ "about" ]
-
                 Apps ->
                     [ "apps" ]
 
