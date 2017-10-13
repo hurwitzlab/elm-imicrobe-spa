@@ -56,16 +56,6 @@ layout isLoading session page content =
 
 viewHeader : ActivePage -> Bool -> Session -> Html msg
 viewHeader page isLoading session =
-    navBar session
-
-
-viewFooter : Html msg
-viewFooter =
-    footer [] []
-
-
-navBar : Session -> Html msg
-navBar session =
     let
         profile = session.profile
 
@@ -132,10 +122,16 @@ navBar session =
                         ]
                     , loginMenuItem
                     ]
-                , searchBar
+--                , searchBar
                 ]
             ]
         ]
+
+
+viewFooter : Html msg
+viewFooter =
+    footer [] []
+
 
 searchBar : Html msg
 searchBar =
