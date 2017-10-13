@@ -11,6 +11,7 @@ require('../css/imicrobe.css');
 //require('../css/readable.min.css');
 require('../css/spinner.css');
 require('../node_modules/agave-file-browser/spinner.gif');
+require.context("../plugins/landing-page", true, /^\.\/.*\.(jpg|png|html|css)/);
 
 // Load config file
 var config = require('../config.json');

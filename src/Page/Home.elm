@@ -1,9 +1,10 @@
---module Page.Home exposing (ExternalMsg(..), Model, Msg, init, update, view)
 module Page.Home exposing (Model, Msg, init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Http
+import Json.Encode as Encode
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
 
@@ -25,10 +26,10 @@ init session =
         title =
             Task.succeed "Home Page"
 
-        body =
-            Task.succeed "Welcome to the homepage!"
+        loadBody =
+            Http.getString "main.html" |> Http.toTask
     in
-    Task.map2 Model title body
+    Task.map2 Model title loadBody
         |> Task.mapError Error.handleLoadError
 
 
@@ -53,9 +54,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , div [] [ text model.pageBody ]
-            ]
-        ]
+    div [  (Html.Attributes.property "innerHTML" (Encode.string model.pageBody)) ] []

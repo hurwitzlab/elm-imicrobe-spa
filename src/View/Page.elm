@@ -56,6 +56,16 @@ layout isLoading session page content =
 
 viewHeader : ActivePage -> Bool -> Session -> Html msg
 viewHeader page isLoading session =
+    navBar session
+
+
+viewFooter : Html msg
+viewFooter =
+    footer [] []
+
+
+navBar : Session -> Html msg
+navBar session =
     let
         profile = session.profile
 
@@ -75,18 +85,16 @@ viewHeader page isLoading session =
                             , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                             ]
                         ]
-
-
     in
-    nav [ class "navbar navbar-default navbar-static-top" ]
+    nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
         [ div [ class "container" ]
-            [ div [ class "navbar-collapse collapse" ]
+            [ div [ class "navbar-header" ]
+                [ a [ class "navbar-brand", Route.href Route.Home ]
+                    [ img [ src "/img/nav-header.png" ] [] ]
+                ]
+            , div [ class "navbar-collapse collapse" ]
                 [ ul [ class "nav navbar-nav" ]
-                    [ li []
-                        [ a [ Route.href Route.Home ]
-                            [ img [ src "/img/nav-header.png" ] [] ]
-                        ]
-                    , li [ class "dropdown" ]
+                    [ li [ class "dropdown" ]
                         [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
                             [ text "Search"
                             , span [ class "caret" ] []
@@ -120,21 +128,26 @@ viewHeader page isLoading session =
                         ]
                     , li []
                         [ a [ href "ftp://ftp.imicrobe.us" ]
-                            [ text "Downloads" ]
-                        ]
-                    , li []
-                        [ a [ Route.href Route.About ]
-                            [ text "About" ]
+                            [ text "Download" ]
                         ]
                     , loginMenuItem
                     ]
+                , searchBar
                 ]
             ]
         ]
 
-
-viewFooter : Html msg
-viewFooter =
-    footer []
-        [ div [] []
+searchBar : Html msg
+searchBar =
+    div [ class "col-sm-3 col-md-3 pull-right", style [("padding-top", "10px")] ]
+        [ Html.form [ class "navbar-form" ]
+            [ div [ class "input-group" ]
+                [ input [ class "form-control", placeholder "Search" ] []
+                , div [ class "input-group-btn" ]
+                    [ button [ class "btn btn-default", type_ "submit" ]
+                        [ i [ class "glyphicon glyphicon-search" ] []
+                        ]
+                    ]
+                ]
+            ]
         ]
