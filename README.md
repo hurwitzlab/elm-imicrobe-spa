@@ -11,6 +11,7 @@ This is basically a trimmed down version of the Elm [Real World](https://github.
 ```
 elm package install
 npm install
+git clone git@github.com:hurwitzlab/imicrobe-landing-page.git plugins/landing-page
 npm run build
 npm start
 ```

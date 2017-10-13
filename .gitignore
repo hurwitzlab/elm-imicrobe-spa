@@ -5,6 +5,7 @@ repl-temp-*
 
 dist/
 node_modules/
+plugins/
 *.swp
 js/
 elm.js
