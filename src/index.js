@@ -101,7 +101,7 @@ app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/tok
                 id: input.id,
                 username: input.username,
                 token: input.token,
-                path: files.map(f => f.id).join(',')
+                path: files.map(f => f.id).join(';')
             });
         });
     }

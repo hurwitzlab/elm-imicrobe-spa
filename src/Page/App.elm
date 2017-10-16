@@ -154,7 +154,7 @@ update session msg model =
                         Nothing
 
                 filesStr =
-                    List.filterMap match model.files |> String.join ", "
+                    List.filterMap match model.files |> String.join ";"
 
                 msg =
                     SetInput (Maybe.withDefault "" model.cartDialogInputId) filesStr
