@@ -152,9 +152,10 @@ view model =
             String.toLower model.query
 
         appFilter app =
-            ( (String.contains lowerQuery (app.app_name |> String.toLower))
-                || (String.contains lowerQuery (app.app_tags |> List.map .value |> String.join ", " |> String.toLower))
-                || (String.contains lowerQuery (app.app_data_types |> List.map .name |> String.join ", " |> String.toLower)) )
+            ( app.is_active == 1
+                && ((String.contains lowerQuery (app.app_name |> String.toLower))
+                    || (String.contains lowerQuery (app.app_tags |> List.map .value |> String.join ", " |> String.toLower))
+                    || (String.contains lowerQuery (app.app_data_types |> List.map .name |> String.join ", " |> String.toLower))) )
 
         acceptableApps =
             List.filter appFilter model.apps
