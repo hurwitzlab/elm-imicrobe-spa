@@ -8,8 +8,7 @@ import Data.Session as Session exposing (Session)
 
 
 type ActivePage
-    = About
-    | App
+    = App
     | Apps
     | Assembly
     | Assemblies
