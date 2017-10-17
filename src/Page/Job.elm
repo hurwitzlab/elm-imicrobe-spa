@@ -74,6 +74,10 @@ viewJob : Agave.Job -> Html msg
 viewJob job =
     table [ class "table" ]
         [ tr []
+            [ th [] [ text "ID" ]
+            , td [] [ text job.id ]
+            ]
+        , tr []
             [ th [] [ text "Name" ]
             , td [] [ text job.name ]
             ]
