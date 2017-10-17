@@ -22,6 +22,7 @@ type alias AppInput =
     { id : String
     , details : Details
     , value : InputValue
+    , semantics : Semantics
     }
 
 
@@ -37,12 +38,28 @@ type alias Details =
     }
 
 
-type alias InputValue =
-    { order : Int
-    , default : String
+type alias Semantics =
+    { filesTypes : List String
+    , minCardinality : Int
+    , maxCardinality : Int
+    , ontology : List String
     }
 
-type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/
+
+type alias InputValue =
+    { order : Int
+    , default : DefaultValue
+    , required : Bool
+    , visible : Bool
+    }
+
+
+type DefaultValue
+    = StringValue String
+    | ArrayValue (List String)
+
+
+type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/, see DefaultValue in this file as example
     { order : Int
     , type_ : String
     , default : String
@@ -115,6 +132,7 @@ decoderAppInput =
         |> required "id" Decode.string
         |> required "details" decoderDetails
         |> required "value" decoderInputValue
+        |> required "semantics" decoderSemantics
 
 
 decoderAppParameter : Decoder AppParameter
@@ -131,11 +149,29 @@ decoderDetails =
         |> required "label" Decode.string
 
 
+decoderSemantics : Decoder Semantics
+decoderSemantics =
+    decode Semantics
+        |> required "fileTypes" (Decode.list Decode.string)
+        |> optional "minCardinality" Decode.int 0
+        |> optional "maxCardinality" Decode.int 0
+        |> optional "ontology" (Decode.list Decode.string) []
+
+
 decoderInputValue : Decoder InputValue
 decoderInputValue =
     decode InputValue
         |> required "order" Decode.int
-        |> optional "default" Decode.string ""
+        |> optional "default" decoderDefaultValue (StringValue "")
+        |> optional "required" Decode.bool True
+        |> optional "visible" Decode.bool True
+
+
+-- FIXME this is workaround for Mash app having [""] default value where other apps use "".
+-- Need to properly support variable default type.
+decoderDefaultValue : Decoder DefaultValue
+decoderDefaultValue =
+    Decode.succeed (StringValue "")
 
 
 decoderParameterValue : Decoder ParameterValue

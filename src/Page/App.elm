@@ -53,8 +53,14 @@ init session id =
         loadAppFromAgave name =
             Request.Agave.getApp session.token name |> Http.toTask |> Task.map .result
 
+        default val =
+            case val of
+                Agave.StringValue val -> val
+
+                Agave.ArrayValue arr -> String.join ";" arr
+
         inputs app =
-            app.inputs |> List.map (\input -> (input.id, input.value.default)) |> Dict.fromList
+            app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> Dict.fromList
 
         params app =
             app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
@@ -95,6 +101,27 @@ update session msg model =
         SetInput id value ->
             let
                 newInputs = Dict.insert id value model.inputs
+
+--                exts =
+--                    String.split ";" value |> List.map (\a -> String.split "." a |> List.reverse |> List.head)
+--
+--                aliases =
+--                    List.map .alias_ model.app.app_data_types |> List.concatMap (String.split ",")
+--
+--                isSupported ext =
+--                    List.member ext aliases
+----                    case ext of
+----                        Nothing -> False
+----                        Just ext -> List.member ext aliases
+--
+--                unsupportedExt =
+--                    List.filter isSupported aliases
+--
+--                _ = Debug.log "unsupportedExt" unsupportedExt
+--
+--                _ = Debug.log "aliases" aliases
+--
+--                _ = Debug.log "ext" exts
             in
             { model | inputs = newInputs } => Cmd.none
 
@@ -112,8 +139,10 @@ update session msg model =
                 jobParameters =
                     Dict.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
 
+                jobName = "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
+
                 jobRequest =
-                    Agave.JobRequest "job name here" model.app.app_name False jobInputs jobParameters []
+                    Agave.JobRequest jobName model.app.app_name False jobInputs jobParameters []
 
                 cmd1 = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
@@ -300,8 +329,14 @@ viewAppInput input =
     [ th [] [ text agaveApp.details.label ]
     , td []
         [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
-        , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ] [ text "CyVerse" ]
-        , button [ class "btn btn-default btn-sm", onClick (OpenCart id) ] [ text "Cart" ]
+        , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ]
+            [ span [ class "gray gylphicon glyphicon-cloud" ] []
+            , text " CyVerse"
+            ]
+        , button [ class "btn btn-default btn-sm", onClick (OpenCart id) ]
+            [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
+            , text " Cart"
+            ]
         ]
     ]
 
