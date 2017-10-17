@@ -34,6 +34,7 @@ type alias AppTag =
 type alias AppDataType =
     { app_data_type_id : Int
     , name : String
+    , alias_ : String
     }
 
 
@@ -81,6 +82,7 @@ decoderAppDataType =
     decode AppDataType
         |> required "app_data_type_id" Decode.int
         |> required "name" Decode.string
+        |> optional "alias" Decode.string ""
 
 
 encodeAppRun : AppRun -> Encode.Value
