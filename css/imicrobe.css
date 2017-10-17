@@ -64,3 +64,11 @@ tr.padded > td {
     font-size: 1.75em;
     color: gray;
 }
+
+.gray {
+    color: gray;
+}
+
+.absolute {
+    position: absolute;
+}

@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Route exposing (Route)
 import Data.Session as Session exposing (Session)
+import Data.Cart as Cart exposing (size)
 
 
 
@@ -75,10 +76,15 @@ viewHeader page isLoading session =
                             ]
                         ]
 
+        numItemsInCart =
+            toString (Cart.size session.cart)
+
         cartButton =
             div [ class "pull-right", style [("padding-top", "21px")] ]
                 [ a [ Route.href Route.Cart ]
-                    [ span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] ]
+                    [ span [ class "icon-button glyphicon glyphicon-shopping-cart" ] []
+                    , span [ class "gray absolute" ] [ text numItemsInCart ]
+                    ]
                 ]
     in
     nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
