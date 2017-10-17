@@ -8,6 +8,7 @@ import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
 import Task exposing (Task)
+import Dict exposing (Dict)
 
 
 
@@ -66,6 +67,8 @@ view model =
                     ]
                 ]
             , viewJob model.job
+            , viewInputs model.job.inputs
+            , viewParameters model.job.parameters
             ]
         ]
 
@@ -97,4 +100,92 @@ viewJob job =
             [ th [] [ text "Status" ]
             , td [] [ text job.status ]
             ]
+        ]
+
+
+viewInputs : Dict String (List String) -> Html msg
+viewInputs inputs =
+    let
+        count =
+            Dict.size inputs
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (Dict.toList inputs |> List.map viewInput)
+    in
+    div []
+        [ h2 []
+            [ text "Inputs "
+            , label
+            ]
+        , body
+        ]
+
+
+viewInput : (String, List String) -> Html msg
+viewInput (id, values) =
+    tr []
+        [ th [] [ text id ]
+        , td [] [ text (String.join ", " values) ]
+        ]
+
+
+viewParameters : Dict String String -> Html msg
+viewParameters params =
+    let
+        count =
+            Dict.size params
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (Dict.toList params |> List.map viewParameter)
+    in
+    div []
+        [ h2 []
+            [ text "Parameters "
+            , label
+            ]
+        , body
+        ]
+
+
+viewParameter : (String, String) -> Html msg
+viewParameter (id, value) =
+    let
+        display =
+            "foo"
+    in
+    tr []
+        [ th [] [ text id ]
+        , td [] [ text value ]
         ]

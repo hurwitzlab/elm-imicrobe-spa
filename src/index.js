@@ -90,21 +90,22 @@ app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/tok
             authToken:   input.token,
             busyIconUrl: 'img/spinner.gif'
         });
-
-        dialog.find('button.btn-primary').click(function() {
-            var files = fileBrowser.getSelectedNodes();
-            console.log('selected:', files);
-
-            dialog.modal('hide');
-
-            app.ports.onFileSelect.send({
-                id: input.id,
-                username: input.username,
-                token: input.token,
-                path: files.map(f => f.id).join(';')
-            });
-        });
     }
+
+    // Needs to be redefined for each call as input changes
+    dialog.find('button.btn-primary').unbind().click(function() {
+        var files = fileBrowser.getSelectedNodes();
+        console.log('selected:', files);
+
+        dialog.modal('hide');
+
+        app.ports.onFileSelect.send({
+            id: input.id,
+            username: input.username,
+            token: input.token,
+            path: files.map(f => f.id).join(';')
+        });
+    });
 
     dialog.modal('show');
 });

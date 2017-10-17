@@ -4,6 +4,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode
 import Util exposing ((=>))
+import Dict exposing (Dict)
 
 
 
@@ -102,6 +103,8 @@ type alias Job =
     , startTime : String
     , endTime : String
     , status : String
+    , inputs : Dict String (List String)
+    , parameters : Dict String String
     }
 
 
@@ -198,6 +201,8 @@ decoderJob =
         |> optional "startTime" Decode.string ""
         |> optional "endTime" Decode.string ""
         |> optional "status" Decode.string ""
+        |> optional "inputs" (Decode.dict (Decode.list Decode.string)) Dict.empty
+        |> optional "parameters" (Decode.dict Decode.string) Dict.empty
 
 
 encodeJobRequest : JobRequest -> Encode.Value
