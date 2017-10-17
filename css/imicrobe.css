@@ -59,3 +59,8 @@ html {
 tr.padded > td {
     padding: 5px;
 }
+
+.icon-button {
+    font-size: 1.75em;
+    color: gray;
+}

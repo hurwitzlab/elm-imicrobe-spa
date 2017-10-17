@@ -74,6 +74,12 @@ viewHeader page isLoading session =
                             , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                             ]
                         ]
+
+        cartButton =
+            div [ class "pull-right", style [("padding-top", "21px")] ]
+                [ a [ Route.href Route.Cart ]
+                    [ span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] ]
+                ]
     in
     nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
         [ div [ class "container" ]
@@ -121,7 +127,8 @@ viewHeader page isLoading session =
                         ]
                     , loginMenuItem
                     ]
---                , searchBar
+                , cartButton
+                , searchBar
                 ]
             ]
         ]
@@ -134,7 +141,7 @@ viewFooter =
 
 searchBar : Html msg
 searchBar =
-    div [ class "col-sm-3 col-md-3 pull-right", style [("padding-top", "10px")] ]
+    div [ class "col-md-3 pull-right", style [("padding-top", "10px")] ]
         [ Html.form [ class "navbar-form" ]
             [ div [ class "input-group" ]
                 [ input [ class "form-control", placeholder "Search" ] []
