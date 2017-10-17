@@ -95,7 +95,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .app_name
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << .app_name)
         }
 
 
