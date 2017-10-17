@@ -77,14 +77,20 @@ viewHeader page isLoading session =
                         ]
 
         numItemsInCart =
-            toString (Cart.size session.cart)
+            Cart.size session.cart
 
         cartButton =
+            let
+                label =
+                    case numItemsInCart of
+                        0 -> []
+
+                        _ ->
+                            [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
+            in
             div [ class "pull-right", style [("padding-top", "21px")] ]
                 [ a [ Route.href Route.Cart ]
-                    [ span [ class "icon-button glyphicon glyphicon-shopping-cart" ] []
-                    , span [ class "gray absolute" ] [ text numItemsInCart ]
-                    ]
+                    (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
                 ]
     in
     nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
@@ -124,7 +130,7 @@ viewHeader page isLoading session =
                             , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                             , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
-                            , li [] [ a [ Route.href Route.Cart ] [ text ("Cart (" ++ numItemsInCart ++ ")") ] ]
+                            , li [] [ a [ Route.href Route.Cart ] [ text ("Cart (" ++ (toString numItemsInCart) ++ ")") ] ]
                             ]
                         ]
                     , li []
