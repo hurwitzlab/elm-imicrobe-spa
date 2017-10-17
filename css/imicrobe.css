@@ -14,6 +14,16 @@ a:hover {
     color: #2ab4bd;
 }
 
+h1, h2, h3 {
+    color: dimgray;
+    font-weight: bold;
+}
+
+/* Modify bootstrap styling */
+.badge {
+    background: #f4924a !important;
+}
+
 .content {
     padding: 40px 15px;
     text-align: center;
