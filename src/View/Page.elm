@@ -124,7 +124,7 @@ viewHeader page isLoading session =
                             , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                             , li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
-                            , li [] [ a [ Route.href Route.Cart ] [ text "Cart" ] ]
+                            , li [] [ a [ Route.href Route.Cart ] [ text ("Cart (" ++ numItemsInCart ++ ")") ] ]
                             ]
                         ]
                     , li []
