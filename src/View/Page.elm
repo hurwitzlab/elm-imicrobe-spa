@@ -16,6 +16,7 @@ type ActivePage
     | Cart
     | CombinedAssembly
     | CombinedAssemblies
+    | Contact
     | Domains
     | Domain
     | Files
@@ -88,9 +89,15 @@ viewHeader page isLoading session =
                         _ ->
                             [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
             in
-            div [ class "pull-right", style [("padding-top", "21px")] ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
                 [ a [ Route.href Route.Cart ]
                     (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
+                ]
+
+        helpButton =
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+                [ a [ Route.href Route.Contact ]
+                    [ span [ class "icon-button glyphicon glyphicon-question-sign" ] [] ]
                 ]
     in
     nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
@@ -139,6 +146,7 @@ viewHeader page isLoading session =
                         ]
                     , loginMenuItem
                     ]
+                , helpButton
                 , cartButton
                 , searchBar
                 ]
@@ -153,7 +161,7 @@ viewFooter =
 
 searchBar : Html msg
 searchBar =
-    div [ class "col-md-3 pull-right", style [("padding-top", "10px")] ]
+    div [ class "pull-right", style [("padding-top", "10px")] ]
         [ Html.form [ class "navbar-form" ]
             [ div [ class "input-group" ]
                 [ input [ class "form-control", placeholder "Search" ] []

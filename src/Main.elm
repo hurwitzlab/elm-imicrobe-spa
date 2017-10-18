@@ -18,6 +18,7 @@ import Page.Assemblies as Assemblies
 import Page.Cart as Cart
 import Page.CombinedAssembly as CombinedAssembly
 import Page.CombinedAssemblies as CombinedAssemblies
+import Page.Contact as Contact
 import Page.Domain as Domain
 import Page.Domains as Domains
 import Page.Files as Files
@@ -75,6 +76,7 @@ type Page
     | Cart Cart.Model
     | CombinedAssemblies CombinedAssemblies.Model
     | CombinedAssembly Int CombinedAssembly.Model
+    | Contact Contact.Model
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
@@ -126,6 +128,8 @@ type Msg
     | CombinedAssemblyMsg CombinedAssembly.Msg
     | CombinedAssembliesLoaded (Result PageLoadError CombinedAssemblies.Model)
     | CombinedAssembliesMsg CombinedAssemblies.Msg
+    | ContactLoaded (Result PageLoadError Contact.Model)
+    | ContactMsg Contact.Msg
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
@@ -215,6 +219,9 @@ setRoute maybeRoute model =
 
         Just Route.CombinedAssemblies ->
             transition CombinedAssembliesLoaded CombinedAssemblies.init
+
+        Just Route.Contact ->
+            transition ContactLoaded Contact.init
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
@@ -450,6 +457,20 @@ updatePage page msg model =
             case page of
                 CombinedAssemblies subModel ->
                     toPage CombinedAssemblies CombinedAssembliesMsg CombinedAssemblies.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
+        ContactLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Contact subModel) } => Cmd.none
+
+        ContactLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ContactMsg subMsg ->
+            case page of
+                Contact subModel ->
+                    toPage Contact ContactMsg Contact.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -871,6 +892,11 @@ viewPage session isLoading page =
             CombinedAssemblies.view subModel
                 |> layout Page.CombinedAssemblies
                 |> Html.map CombinedAssembliesMsg
+
+        Contact subModel ->
+            Contact.view subModel
+                |> layout Page.Contact
+                |> Html.map ContactMsg
 
         Domains subModel ->
             Domains.view subModel

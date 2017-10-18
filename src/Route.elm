@@ -18,6 +18,7 @@ type Route
     | Cart
     | CombinedAssemblies
     | CombinedAssembly Int
+    | Contact
     | Domains
     | Domain Int
     | Files
@@ -52,6 +53,7 @@ routeMather =
         , Url.map Cart (s "cart")
         , Url.map CombinedAssemblies (s "combined_assemblies")
         , Url.map CombinedAssembly (s "combined_assemblies" </> Url.int)
+        , Url.map Contact (s "contact")
         , Url.map Home (s "")
         , Url.map Domains (s "domains")
         , Url.map Domain (s "domains" </> Url.int)
@@ -110,6 +112,9 @@ routeToString page =
 
                 CombinedAssembly id ->
                     [ "combined_assemblies", toString id ]
+
+                Contact ->
+                    [ "contact" ]
 
                 Home ->
                     []
