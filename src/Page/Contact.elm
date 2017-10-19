@@ -1,5 +1,7 @@
 module Page.Contact exposing (Model, Msg, init, update, view)
 
+import Data.Profile as Profile exposing (Profile)
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -22,11 +24,12 @@ type alias Model =
     , name : String
     , email : String
     , message : String
+    , sent : Bool
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -34,8 +37,14 @@ init =
 
         blank =
             Task.succeed ""
+
+        email =
+            case session.profile of
+                Nothing -> blank
+
+                Just profile -> Task.succeed profile.email
     in
-    Task.map4 Model title blank blank blank
+    Task.map5 Model title blank email blank (Task.succeed False)
         |> Task.mapError Error.handleLoadError
 
 
@@ -70,7 +79,7 @@ update msg model =
             model => submit model
 
         SubmitDone response ->
-            model => Cmd.none
+            { model | sent = True } => Cmd.none
 
 
 submit : Model -> Cmd Msg
@@ -116,28 +125,37 @@ view model =
     let
         _ = Debug.log "model" model
     in
-    div [ class "container" ]
-        [ div [ class "row" ]
-            [ h1 []
-                [ text (model.pageTitle)
+    case model.sent of
+        True ->
+            div [ class "container" ]
+                [ div [ class "row center gray", style [("font-size","1.5em"), ("padding", "3em")] ]
+                    [ div [] [ text "We will respond to your message as soon as possible." ]
+                    , div [] [ text "Thanks for your feedback and for using iMicrobe!" ]
+                    ]
                 ]
-            ]
-        , div [ class "row" ]
-            [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
-            ]
-        , Html.form [ style [("padding-top", "2em")] ]
-            [ div [ class "form-group" ]
-                [ label [ attribute "for" "name" ] [ text "Your name" ]
-                , input [ type_ "text", class "form-control", placeholder "Enter your name", onInput SetName ] []
+
+        False ->
+            div [ class "container" ]
+                [ div [ class "row" ]
+                    [ h1 []
+                        [ text (model.pageTitle) ]
+                    ]
+                , div [ class "row" ]
+                    [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
+                    ]
+                , Html.form [ style [("padding-top", "2em")] ]
+                    [ div [ class "form-group" ]
+                        [ label [ attribute "for" "name" ] [ text "Your name" ]
+                        , input [ type_ "text", class "form-control", placeholder "Enter your name", onInput SetName ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [ attribute "for" "email" ] [ text "Your email" ]
+                        , input [ type_ "email", class "form-control", placeholder "Enter your email", value model.email, onInput SetEmail ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [ attribute "for" "message" ] [ text "Your message" ]
+                        , textarea [ class "form-control", rows 3, onInput SetMessage ] []
+                        ]
+                    , button [ type_ "submit", class "btn btn-primary", onClick Submit ] [ text "Submit" ]
+                    ]
                 ]
-            , div [ class "form-group" ]
-                [ label [ attribute "for" "email" ] [ text "Your email" ]
-                , input [ type_ "email", class "form-control", placeholder "Enter your email", onInput SetEmail ] []
-                ]
-            , div [ class "form-group" ]
-                [ label [ attribute "for" "message" ] [ text "Your message" ]
-                , textarea [ class "form-control", rows 3, onInput SetMessage ] []
-                ]
-            , button [ type_ "submit", class "btn btn-primary", onClick Submit ] [ text "Submit" ]
-            ]
-        ]

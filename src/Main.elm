@@ -221,7 +221,7 @@ setRoute maybeRoute model =
             transition CombinedAssembliesLoaded CombinedAssemblies.init
 
         Just Route.Contact ->
-            transition ContactLoaded Contact.init
+            transition ContactLoaded (Contact.init model.session)
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
