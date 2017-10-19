@@ -43,8 +43,14 @@ init session =
                 Nothing -> blank
 
                 Just profile -> Task.succeed profile.email
+
+        name =
+            case session.profile of
+                Nothing -> blank
+
+                Just profile -> Task.succeed (profile.first_name ++ " " ++ profile.last_name)
     in
-    Task.map5 Model title blank email blank (Task.succeed False)
+    Task.map5 Model title name email blank (Task.succeed False)
         |> Task.mapError Error.handleLoadError
 
 
@@ -146,7 +152,7 @@ view model =
                 , Html.form [ style [("padding-top", "2em")] ]
                     [ div [ class "form-group" ]
                         [ label [ attribute "for" "name" ] [ text "Your name" ]
-                        , input [ type_ "text", class "form-control", placeholder "Enter your name", onInput SetName ] []
+                        , input [ type_ "text", class "form-control", placeholder "Enter your name", value model.name, onInput SetName ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [ attribute "for" "email" ] [ text "Your email" ]
