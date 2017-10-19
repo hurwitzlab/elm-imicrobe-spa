@@ -73,4 +73,16 @@ view model =
                 , td [] [ text (profile.first_name ++ " " ++ profile.last_name) ]
                 ]
             ]
+        , div [ class "alert alert-info" ]
+            [ p []
+                [ text "The user information shown above was obtained from your "
+                , a [ href "http://www.cyverse.org/" ] [ text "CyVerse" ]
+                , text " account."
+                ]
+            , p []
+                [ text "For details please see the "
+                , a [ href "https://user.cyverse.org/" ] [ text "CyVerse User Portal" ]
+                , text "."
+                ]
+            ]
         ]
