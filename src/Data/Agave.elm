@@ -14,6 +14,7 @@ type alias App =
     , shortDescription : String
     , version : String
     , tags : List String
+    , isPublic : Bool
     , inputs : List AppInput
     , parameters : List AppParameter
     }
@@ -36,6 +37,8 @@ type alias AppParameter =
 
 type alias Details =
     { label : String
+    , argument : String
+    , description : String
     }
 
 
@@ -125,6 +128,7 @@ decoderApp =
         |> required "shortDescription" Decode.string
         |> required "version" Decode.string
         |> optional "tags" (Decode.list Decode.string) []
+        |> optional "isPublic" Decode.bool False
         |> required "inputs" (Decode.list decoderAppInput)
         |> required "parameters" (Decode.list decoderAppParameter)
 
@@ -150,6 +154,8 @@ decoderDetails : Decoder Details
 decoderDetails =
     decode Details
         |> required "label" Decode.string
+        |> optional "argument" Decode.string ""
+        |> required "description" Decode.string
 
 
 decoderSemantics : Decoder Semantics

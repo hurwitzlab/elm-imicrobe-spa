@@ -279,12 +279,12 @@ viewApp model =
         inputs =
             case agaveApp.inputs of
                 [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] (List.map viewAppInput (List.Extra.zip (List.sortBy .id agaveApp.inputs) (Dict.values model.inputs))) --FIXME simplify this
+                _  -> table [ class "table" ] [ tbody [] (List.map viewAppInput (List.Extra.zip (List.sortBy .id agaveApp.inputs) (Dict.values model.inputs))) ] --FIXME simplify this
 
         parameters =
             case agaveApp.parameters of
                 [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] (List.map viewAppParameter (List.Extra.zip (List.sortBy .id agaveApp.parameters) (Dict.values model.parameters))) --FIXME simplify this
+                _  -> table [ class "table" ] [ tbody [] (List.map viewAppParameter (List.Extra.zip (List.sortBy .id agaveApp.parameters) (Dict.values model.parameters))) ] --FIXME simplify this
     in
     div []
     [ table [ class "table" ]
@@ -319,14 +319,20 @@ viewApp model =
 viewAppInput : (Agave.AppInput, String) -> Html Msg
 viewAppInput input =
     let
-        agaveApp = Tuple.first input
+        agaveAppInput = Tuple.first input
 
         val = Tuple.second input
 
-        id = agaveApp.id
+        id = agaveAppInput.id
+
+        label =
+            case agaveAppInput.value.required of
+                True -> agaveAppInput.details.label ++ " *"
+
+                False -> agaveAppInput.details.label
     in
     tr []
-    [ th [] [ text agaveApp.details.label ]
+    [ th [] [ text label ]
     , td []
         [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
         , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ]
@@ -338,6 +344,7 @@ viewAppInput input =
             , text " Cart"
             ]
         ]
+    , td [] [ text agaveAppInput.details.description ]
     ]
 
 
@@ -361,9 +368,8 @@ viewAppParameter input =
     in
     tr []
     [ th [] [ text param.details.label ]
-    , td []
-        [ interface
-        ]
+    , td [] [ interface ]
+    , td [] [ text param.details.description ]
     ]
 
 
@@ -405,7 +411,7 @@ cartDialogConfig model =
         content =
             case List.length model.samples of
                 0 ->
-                    text "Cart is empty"
+                    text "Your cart is empty"
 
                 _ ->
                     viewCart model
@@ -429,7 +435,7 @@ cartDialogConfig model =
 viewCart : Model -> Html Msg
 viewCart model =
     case model.samples of
-        [] -> text "The cart is empty"
+        [] -> text "Your cart is empty"
 
         _ ->
             div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
