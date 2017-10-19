@@ -224,7 +224,7 @@ view model =
             [ h1 []
                 [ text (model.pageTitle ++ " ")
                 , numShowing
-                , small [ class "right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                 ]
             , div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]

@@ -163,7 +163,7 @@ view model =
                 [ text (model.pageTitle ++ " ")
                 , numShowing
                 , small [ class "right" ]
-                    [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+                    [ input [ placeholder "Search", onInput SetQuery ] [] ]
                 ]
             , Table.view config model.tableState acceptableProjects
             ]
