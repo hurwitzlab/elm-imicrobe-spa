@@ -1,4 +1,4 @@
-port module Ports exposing (storeSession, onSessionChange, createFileBrowser, onFileSelect, updateAnalytics)
+port module Ports exposing (..)
 
 import Data.App exposing (FileBrowser)
 
@@ -28,3 +28,10 @@ port onFileSelect : (FileBrowser -> msg) -> Sub msg
 
 
 port updateAnalytics : String -> Cmd msg
+
+
+
+---- Sequence Similarity Plots ----
+
+
+port createSimPlot : String -> Cmd msg

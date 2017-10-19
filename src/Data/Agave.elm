@@ -116,6 +116,13 @@ type alias JobStatus =
     }
 
 
+type alias JobOutput =
+    { name : String
+    , path : String
+    , type_ : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -209,6 +216,14 @@ decoderJob =
         |> optional "status" Decode.string ""
         |> optional "inputs" (Decode.dict (Decode.list Decode.string)) Dict.empty
         |> optional "parameters" (Decode.dict Decode.string) Dict.empty
+
+
+decoderJobOutput : Decoder JobOutput
+decoderJobOutput =
+    decode JobOutput
+        |> required "name" Decode.string
+        |> required "path" Decode.string
+        |> required "type" Decode.string
 
 
 encodeJobRequest : JobRequest -> Encode.Value

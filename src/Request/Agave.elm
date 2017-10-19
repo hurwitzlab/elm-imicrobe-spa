@@ -1,7 +1,7 @@
 module Request.Agave exposing (..)
 
 import Data.Profile as Profile exposing (Profile)
-import Data.Agave as Agave exposing (App, Job, JobRequest, JobStatus, encodeJobRequest)
+import Data.Agave as Agave exposing (..)
 import Http
 import HttpBuilder
 import Json.Decode as Decode exposing (Decoder, string)
@@ -85,6 +85,36 @@ getJob token id =
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJob))
+        |> HttpBuilder.toRequest
+
+
+getJobOutputs : String -> String -> Http.Request (Response (List JobOutput))
+getJobOutputs token id =
+    let
+        url =
+            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/listings"
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderJobOutput)))
+        |> HttpBuilder.toRequest
+
+
+getJobOutput : String -> String -> String -> Http.Request String
+getJobOutput token id path =
+    let
+        url =
+            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
 
 

@@ -530,7 +530,7 @@ updatePage page msg model =
         InvestigatorsMsg subMsg ->
             case page of
                 Investigators subModel ->
-                    ( toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel )
+                    toPage Investigators InvestigatorsMsg Investigators.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -544,7 +544,7 @@ updatePage page msg model =
         JobsMsg subMsg ->
             case page of
                 Jobs subModel ->
-                    ( toPage Jobs JobsMsg Jobs.update subMsg subModel )
+                    toPage Jobs JobsMsg Jobs.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -554,6 +554,14 @@ updatePage page msg model =
 
         JobLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
+
+        JobMsg subMsg ->
+            case page of
+                Job id subModel ->
+                    toPage (Job id) JobMsg (Job.update session) subMsg subModel
+
+                _ ->
+                    model => Cmd.none
 
         MetaSearchLoaded (Ok subModel) ->
             { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none

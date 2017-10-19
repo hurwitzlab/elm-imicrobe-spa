@@ -38,7 +38,7 @@ init session =
             Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
 
         tblState =
-            Task.succeed (Table.initialSort "Name")
+            Task.succeed (Table.initialSort "End")
 
         qry =
             Task.succeed ""
@@ -79,7 +79,7 @@ config =
             [ nameColumn
             , appColumn
             , Table.stringColumn "Start" .startTime
-            , Table.stringColumn "End" .endTime
+            , endColumn
             , Table.stringColumn "Status" .status
             ]
         , customizations =
@@ -123,6 +123,15 @@ appLink job =
     Table.HtmlDetails []
         [ text job.app_id
         ]
+
+
+endColumn : Table.Column Job Msg
+endColumn =
+    Table.customColumn
+        { name = "End"
+        , viewData = .endTime
+        , sorter = Table.decreasingOrIncreasingBy .endTime
+        }
 
 
 

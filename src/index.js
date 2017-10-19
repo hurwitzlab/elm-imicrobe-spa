@@ -2,6 +2,7 @@
 
 require("bootstrap-loader");
 import * as agave from '../node_modules/agave-file-browser/AgaveFileBrowser.js';
+import * as simplots from '../node_modules/sim-plots/heatmap.js';
 import 'jstree';
 
 // Require these files so they get copied to dist
@@ -131,4 +132,14 @@ app.ports.updateAnalytics.subscribe(function (page) {
     console.log("updateAnalytics:", page);
     ga('set', 'page', page);
     ga('send', 'pageview');
+});
+
+
+/*
+ * Define ports for Sequence Similarity Plots
+ */
+
+app.ports.createSimPlot.subscribe(function(data) {
+    //var div = $('#sim-plot');
+    simplots.heatmap(data);
 });
