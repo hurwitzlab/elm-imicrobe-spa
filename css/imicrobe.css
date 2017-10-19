@@ -6,7 +6,7 @@ html {
     margin: 0;
 }
 
-a {
+a, a:visited {
     color: #008d97;
 }
 
