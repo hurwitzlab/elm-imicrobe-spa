@@ -1,6 +1,6 @@
-module Request.Sample exposing (list, get, getSome, files)
+module Request.Sample exposing (list, get, getSome, files, proteins)
 
-import Data.Sample as Sample exposing (Sample, SampleFile, decoderSampleFile)
+import Data.Sample as Sample exposing (Sample, SampleFile, SampleUProC, decoderSampleFile, decoderSampleUProC)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
@@ -52,6 +52,20 @@ files id_list =
 
         decoder =
             Decode.list decoderSampleFile
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+proteins : Int -> Http.Request (List SampleUProC)
+proteins id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString id) ++ "/proteins"
+
+        decoder =
+            Decode.list decoderSampleUProC
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

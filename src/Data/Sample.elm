@@ -1,9 +1,10 @@
-module Data.Sample exposing (Investigator, Ontology, Attribute, AttributeType, AttributeTypeAlias, Project, Sample, SampleFile, SampleFile2, SampleFileType, decoder, decoderSampleFile)
+module Data.Sample exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
 import Util exposing ((=>))
+
 
 
 type alias Investigator =
@@ -133,6 +134,14 @@ type alias SampleToOntology =
     { sample_to_ontology_id : Int
     , sample_id : Int
     , ontology_id : Int
+    }
+
+
+type alias SampleUProC =
+    { sample_uproc_id : Int
+    , sample_id : Int
+    , uproc_id : String
+    , count : Int
     }
 
 
@@ -279,6 +288,15 @@ decoderSampleToOntology =
         |> required "sample_to_ontology_id" Decode.int
         |> required "sample_id" Decode.int
         |> required "ontology_id" Decode.int
+
+
+decoderSampleUProC : Decoder SampleUProC
+decoderSampleUProC =
+    decode SampleUProC
+        |> required "sample_uproc_id" Decode.int
+        |> required "sample_id" Decode.int
+        |> required "uproc_id" Decode.string
+        |> required "count" Decode.int
 
 
 encode : Sample -> Value

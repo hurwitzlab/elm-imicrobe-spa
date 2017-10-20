@@ -1,9 +1,10 @@
 module Page.Sample exposing (Model, Msg, init, update, view)
 
-import Data.Sample
+import Data.Sample as Sample exposing (Sample, SampleFile, SampleFile2, Ontology, SampleUProC)
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onClick)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
@@ -13,6 +14,7 @@ import Route
 import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
+import Util exposing ((=>))
 
 
 
@@ -22,29 +24,39 @@ import Table exposing (defaultCustomizations)
 type alias Model =
     { pageTitle : String
     , sample_id : Int
-    , sample : Data.Sample.Sample
-    , tableState : Table.State
-    , query : String
+    , sample : Sample
+    , loadingProteins : Bool
+    , loadedProteins : Bool
+    , proteins : List SampleUProC
+    , attrTableState : Table.State
+    , proteinTableState : Table.State
+    , attrQuery : String
+    , proteinQuery : String
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : Session -> Int -> Task PageLoadError Model
+init session id =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Sample"
-
         loadSample =
             Request.Sample.get id |> Http.toTask
-
-        tblState =
-            Task.succeed (Table.initialSort "Name")
-
-        qry =
-            Task.succeed ""
     in
-    Task.map5 Model title (Task.succeed id) loadSample tblState qry
+    loadSample
+        |> Task.andThen
+            (\sample ->
+                Task.succeed
+                    { pageTitle = "Sample"
+                    , sample_id = id
+                    , sample = sample
+                    , loadingProteins = False
+                    , loadedProteins = False
+                    , proteins = []
+                    , attrTableState = Table.initialSort "Name"
+                    , proteinTableState = Table.initialSort "Read Count"
+                    , attrQuery = ""
+                    , proteinQuery = ""
+                    }
+            )
         |> Task.mapError Error.handleLoadError
 
 
@@ -53,22 +65,57 @@ init id =
 
 
 type Msg
-    = SetQuery String
-    | SetTableState Table.State
+    = SetAttrQuery String
+    | SetProteinQuery String
+    | SetAttrTableState Table.State
+    | SetProteinTableState Table.State
+    | GetProteins
+    | SetProteins (List SampleUProC)
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
-        SetQuery newQuery ->
-            ( { model | query = newQuery }
+        SetAttrQuery newQuery ->
+            ( { model | attrQuery = newQuery }
             , Cmd.none
             )
 
-        SetTableState newState ->
-            ( { model | tableState = newState }
+        SetProteinQuery newQuery ->
+            ( { model | proteinQuery = newQuery }
             , Cmd.none
             )
+
+        SetAttrTableState newState ->
+            ( { model | attrTableState = newState }
+            , Cmd.none
+            )
+
+        SetProteinTableState newState ->
+            ( { model | proteinTableState = newState }
+            , Cmd.none
+            )
+
+        GetProteins ->
+            let
+                loadProteins =
+                    Request.Sample.proteins model.sample_id |> Http.toTask
+
+                handleProteins proteins =
+                    case proteins of
+                        Ok proteins ->
+                            SetProteins proteins
+
+                        Err _ ->
+                            let
+                                _ = Debug.log "Error" "could not retrieve proteins"
+                            in
+                            SetProteins []
+            in
+            { model | loadingProteins = True } => Task.attempt handleProteins loadProteins
+
+        SetProteins proteins ->
+            { model | loadedProteins = True, proteins = proteins } => Cmd.none
 
 
 
@@ -90,11 +137,12 @@ view model =
             , viewFiles model.sample.sample_files
             , viewOntologies model.sample.ontologies
             , viewAttributes model
+            , viewProteins model
             ]
         ]
 
 
-viewSample : Data.Sample.Sample -> Html msg
+viewSample : Sample -> Html msg
 viewSample sample =
     let
         numFiles =
@@ -125,7 +173,7 @@ viewSample sample =
         ]
 
 
-viewFiles : List Data.Sample.SampleFile2 -> Html msg
+viewFiles : List SampleFile2 -> Html msg
 viewFiles files =
     let
         numFiles =
@@ -159,7 +207,7 @@ viewFiles files =
         ]
 
 
-viewFile : Data.Sample.SampleFile2 -> Html msg
+viewFile : SampleFile2 -> Html msg
 viewFile file =
     tr []
         [ td []
@@ -168,7 +216,7 @@ viewFile file =
         ]
 
 
-viewOntologies : List Data.Sample.Ontology -> Html msg
+viewOntologies : List Ontology -> Html msg
 viewOntologies ontologies =
     let
         numOntologies =
@@ -202,7 +250,7 @@ viewOntologies ontologies =
         ]
 
 
-viewOntology : Data.Sample.Ontology -> Html msg
+viewOntology : Ontology -> Html msg
 viewOntology ont =
     let
         display =
@@ -222,11 +270,11 @@ viewOntology ont =
         ]
 
 
-attrTableConfig : Table.Config Data.Sample.Attribute Msg
+attrTableConfig : Table.Config Sample.Attribute Msg
 attrTableConfig =
     Table.customConfig
         { toId = toString << .sample_attr_id
-        , toMsg = SetTableState
+        , toMsg = SetAttrTableState
         , columns =
             [ typeColumn
             , aliasColumn
@@ -243,7 +291,7 @@ toTableAttrs =
     ]
 
 
-typeColumn : Table.Column Data.Sample.Attribute Msg
+typeColumn : Table.Column Sample.Attribute Msg
 typeColumn =
     Table.customColumn
         { name = "Type"
@@ -252,7 +300,7 @@ typeColumn =
         }
 
 
-aliasColumn : Table.Column Data.Sample.Attribute Msg
+aliasColumn : Table.Column Sample.Attribute Msg
 aliasColumn =
     Table.customColumn
         { name = "Aliases"
@@ -261,12 +309,12 @@ aliasColumn =
         }
 
 
-aliasesToString : List Data.Sample.AttributeTypeAlias -> String
+aliasesToString : List Sample.AttributeTypeAlias -> String
 aliasesToString aliases =
     String.join ", " (List.map .alias_ aliases)
 
 
-valueColumn : Table.Column Data.Sample.Attribute Msg
+valueColumn : Table.Column Sample.Attribute Msg
 valueColumn =
     Table.customColumn
         { name = "Value"
@@ -278,11 +326,8 @@ valueColumn =
 viewAttributes : Model -> Html Msg
 viewAttributes model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.attrQuery
 
         attrFilter attr =
             ( (String.contains lowerQuery (String.toLower attr.attr_value))
@@ -316,7 +361,7 @@ viewAttributes model =
                     text "None"
 
                 _ ->
-                    Table.view attrTableConfig model.tableState acceptableAttributes
+                    Table.view attrTableConfig model.attrTableState acceptableAttributes
 
     in
     div [ class "container" ]
@@ -325,8 +370,128 @@ viewAttributes model =
                 [ text "Attributes "
                 , numShowing
                 , small [ class "right" ]
-                    [ input [ placeholder "Search", onInput SetQuery ] [] ]
+                    [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
                 ]
             , display
+            ]
+        ]
+
+
+proteinTableConfig : Table.Config SampleUProC Msg
+proteinTableConfig =
+    Table.customConfig
+        { toId = toString << .sample_uproc_id
+        , toMsg = SetProteinTableState
+        , columns =
+            [ uprocIdColumn
+            , countColumn
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
+
+
+uprocIdColumn : Table.Column SampleUProC Msg
+uprocIdColumn =
+    Table.veryCustomColumn
+        { name = "ID"
+        , viewData = uprocIdLink
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << .uproc_id)
+        }
+
+
+uprocIdLink : SampleUProC -> Table.HtmlDetails Msg
+uprocIdLink protein =
+    let
+        url =
+            "http://pfam.xfam.org/family/" ++ protein.uproc_id
+    in
+    Table.HtmlDetails []
+        [ a [ href url ] [ text protein.uproc_id ]
+        ]
+
+
+countColumn : Table.Column SampleUProC Msg
+countColumn =
+    Table.veryCustomColumn
+        { name = "Read Count"
+        , viewData = viewCount
+        , sorter = Table.decreasingBy .count
+        }
+
+
+viewCount : SampleUProC -> Table.HtmlDetails Msg
+viewCount protein =
+    Table.HtmlDetails []
+        [ text (toString protein.count) ]
+
+
+viewProteins : Model -> Html Msg
+viewProteins model =
+    let
+        lowerQuery =
+            String.toLower model.proteinQuery
+
+        proteinFilter protein =
+            ( (String.contains lowerQuery (String.toLower protein.uproc_id))
+                || (String.contains lowerQuery (String.toLower (toString protein.count))) )
+
+        acceptableProteins =
+            List.filter proteinFilter model.proteins
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length acceptableProteins
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
+
+        searchBar =
+            case model.proteins of
+                [] ->
+                    span [] []
+
+                _ ->
+                    small [ class "right" ]
+                        [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
+
+        body =
+          case model.loadedProteins of
+                True ->
+                    case acceptableProteins of
+                        [] ->
+                            text "None"
+
+                        _ ->
+                            Table.view proteinTableConfig model.proteinTableState acceptableProteins
+
+                False ->
+                    case model.loadingProteins of
+                        True ->
+                            table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                        False ->
+                            table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
+    in
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 []
+                [ text "Proteins "
+                , numShowing
+                , searchBar
+                ]
+            , body
             ]
         ]

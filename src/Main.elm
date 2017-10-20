@@ -278,7 +278,7 @@ setRoute maybeRoute model =
             transition ProjectGroupsLoaded ProjectGroups.init
 
         Just (Route.Sample id) ->
-            transition (SampleLoaded id) (Sample.init id)
+            transition (SampleLoaded id) (Sample.init model.session id)
 
         Just Route.Samples ->
             transition SamplesLoaded (Samples.init model.session)
@@ -700,7 +700,7 @@ updatePage page msg model =
         SampleMsg subMsg ->
             case page of
                 Sample id subModel ->
-                    toPage (Sample id) SampleMsg Sample.update subMsg subModel
+                    toPage (Sample id) SampleMsg (Sample.update session) subMsg subModel
 
                 _ ->
                     model => Cmd.none
