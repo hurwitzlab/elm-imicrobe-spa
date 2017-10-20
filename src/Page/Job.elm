@@ -231,24 +231,20 @@ viewOutputs model =
                 "FINISHED" ->
                     case model.outputs of
                         [] ->
-                            let
-                                element =
-                                    case model.loadingOutputs of
-                                        False -> button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ]
+                            case model.loadingOutputs of
+                                False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
 
-                                        True -> div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
-                            in
-                            [ element
-                            ]
+                                True -> [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ]
 
+                        _ -> (List.map viewOutput model.outputs)
 
-                        _ -> [ table [ class "table" ] [ tbody [] (List.map viewOutput model.outputs) ] ]
-
-                _ -> [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ]
+                _ -> [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
     in
     div []
         [ h2 [] [ text "Outputs" ]
-        , div [] body
+        , table [ class "table" ]
+            [ tbody [] body
+            ]
         ]
 
 
@@ -280,6 +276,14 @@ viewResults model =
     in
     div []
         [ h2 [] [ text "Results" ]
-        , div [] [ body ]
-        , div [ id "sim-plot" ] [] -- has to be located here for accessibility from heatmap.js
+        , table [ class "table" ]
+            [ tbody []
+                [ tr []
+                    [ td []
+                        [ div [] [ body ]
+                        , div [ id "sim-plot" ] [] -- has to be located here for accessibility from heatmap.js
+                        ]
+                    ]
+                ]
+            ]
         ]
