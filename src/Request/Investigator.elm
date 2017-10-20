@@ -4,8 +4,6 @@ import Data.Investigator as Investigator exposing (Investigator)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Json.Encode as Encode
-import Json.Encode.Extra as EncodeExtra
 import Config exposing (apiBaseUrl)
 
 

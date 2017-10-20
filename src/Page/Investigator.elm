@@ -99,6 +99,10 @@ viewInvestigator inv =
             [ th [] [ text "Institution" ]
             , td [] [ text institution ]
             ]
+        , tr []
+            [ th [] [ text "Link" ]
+            , td [] [ a [ href inv.url ] [ text inv.url ] ]
+            ]
         ]
 
 
