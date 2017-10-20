@@ -416,7 +416,7 @@ countColumn =
     Table.veryCustomColumn
         { name = "Read Count"
         , viewData = viewCount
-        , sorter = Table.decreasingBy .count
+        , sorter = Table.decreasingOrIncreasingBy .count
         }
 
 
