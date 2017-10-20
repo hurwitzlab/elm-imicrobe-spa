@@ -445,7 +445,17 @@ viewProteins model =
                     { usLocale | decimals = 0 }
 
                 count =
-                    List.length acceptableProteins
+                    case acceptableProteins of
+                        [] ->
+                            case model.proteinQuery of
+                                 "" ->
+                                    model.sample.protein_count
+
+                                 _ ->
+                                    0
+
+                        _ ->
+                            List.length acceptableProteins
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -468,22 +478,27 @@ viewProteins model =
                         [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
 
         body =
-          case model.loadedProteins of
-                True ->
-                    case acceptableProteins of
-                        [] ->
-                            text "None"
+            case model.sample.protein_count of
+                0 ->
+                    text "None"
 
-                        _ ->
-                            Table.view proteinTableConfig model.proteinTableState acceptableProteins
-
-                False ->
-                    case model.loadingProteins of
+                _ ->
+                    case model.loadedProteins of
                         True ->
-                            table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                            case acceptableProteins of
+                                [] ->
+                                    text "None"
+
+                                _ ->
+                                    Table.view proteinTableConfig model.proteinTableState acceptableProteins
 
                         False ->
-                            table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
+                            case model.loadingProteins of
+                                True ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                                False ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
     in
     div [ class "container" ]
         [ div [ class "row" ]

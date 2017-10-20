@@ -87,6 +87,7 @@ type alias Sample =
     , sample_files : List SampleFile2
     , ontologies : List Ontology
     , sample_attrs : List Attribute
+    , protein_count : Int
     }
 
 
@@ -237,6 +238,7 @@ decoder =
         |> optional "sample_files" (Decode.list decoderSampleFile2) []
         |> optional "ontologies" (Decode.list decoderOnt) []
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
+        |> optional "protein_count" Decode.int 0
 
 
 decoderSampleFile : Decoder SampleFile
