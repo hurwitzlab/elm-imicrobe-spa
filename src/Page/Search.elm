@@ -72,7 +72,12 @@ update msg model =
             )
 
         DoSearch ->
-            ( model, doSearch model )
+            case model.query of
+                "" ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( model, doSearch model )
 
         SelectOption value bool ->
             let
