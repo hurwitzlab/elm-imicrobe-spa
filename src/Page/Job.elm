@@ -120,6 +120,8 @@ view model =
                     [ text (model.pageTitle ++ " ")
                     , small []
                         [ text model.job.name ]
+                    , small [ class "pull-right", style [("padding-top","0.6em")] ]
+                        [ text ("Status: " ++ model.job.status) ]
                     ]
                 ]
             , viewJob model.job
@@ -170,15 +172,18 @@ viewInputs inputs =
         body =
             case count of
                 0 ->
-                    text "None"
+                    [ tr [] [ td [] [ text "None" ] ] ]
 
                 _ ->
-                    table [ class "table" ]
-                        [ tbody [] (Dict.toList inputs |> List.map viewInput) ]
+                    Dict.toList inputs |> List.map viewInput
     in
     div []
         [ h2 [] [ text "Inputs" ]
-        , body
+        , table [ class "table" ]
+            [ colgroup []
+                [ col [ class "col-md-3" ] [] ]
+            , tbody [] body
+            ]
         ]
 
 
@@ -199,15 +204,18 @@ viewParameters params =
         body =
             case count of
                 0 ->
-                    text "None"
+                    [ tr [] [ td [] [ text "None" ] ] ]
 
                 _ ->
-                    table [ class "table" ]
-                        [ tbody [] (Dict.toList params |> List.map viewParameter) ]
+                    Dict.toList params |> List.map viewParameter
     in
     div []
         [ h2 [] [ text "Parameters" ]
-        , body
+        , table [ class "table" ]
+            [ colgroup []
+                [ col [ class "col-md-3" ] [] ]
+            , tbody [] body
+            ]
         ]
 
 
@@ -238,7 +246,11 @@ viewOutputs model =
 
                         _ -> (List.map viewOutput model.outputs)
 
-                _ -> [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
+                "FAILED" ->
+                    [ tr [] [ td [] [ text "None" ] ] ]
+
+                _ ->
+                    [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
     in
     div []
         [ h2 [] [ text "Outputs" ]
@@ -269,10 +281,13 @@ viewResults model =
 
                                 True -> div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-
                         _ -> div [] []
 
-                _ -> div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ]
+                "FAILED" ->
+                    tr [] [ td [] [ text "None" ] ]
+
+                _ ->
+                    div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ]
     in
     div []
         [ h2 [] [ text "Results" ]
