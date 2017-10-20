@@ -74,12 +74,14 @@ view model =
 viewProjectGroup : Data.ProjectGroup.ProjectGroup -> Html msg
 viewProjectGroup group =
     table [ class "table" ]
-        [ tr []
-            [ th [ class "nowrap" ] [ text "Group Name" ]
+        [ colgroup []
+            [ col [ class "col-md-1" ] [] ]
+        , tr []
+            [ th [] [ text "Group Name" ]
             , td [] [ text group.group_name ]
             ]
         , tr []
-            [ th [] [ text "Description" ]
+            [ th [ class "top" ] [ text "Description" ]
             , td [] [ text group.description ]
             ]
         , tr []
