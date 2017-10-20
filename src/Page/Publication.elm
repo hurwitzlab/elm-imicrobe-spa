@@ -96,7 +96,7 @@ viewPublication pub =
                         ]
                         [ text <| toString pub.pubmed_id ]
     in
-    table []
+    table [ class "table" ]
         [ tr []
             [ th [] [ text "Title" ]
             , td [] [ text pub.title ]
