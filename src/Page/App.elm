@@ -288,7 +288,9 @@ viewApp model =
     in
     div []
     [ table [ class "table" ]
-        [ tr []
+        [ colgroup []
+                [ col [ class "col-md-2" ] [] ]
+        , tr []
             [ th [] [ text "Name" ]
             , td [] [ text app.app_name ]
             ]
