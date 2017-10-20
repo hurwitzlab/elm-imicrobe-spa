@@ -85,7 +85,7 @@ config =
             , Table.stringColumn "Genus" .genus
             , Table.stringColumn "Species" .species
             , Table.stringColumn "Strain" .strain
-            , Table.stringColumn "PCR Amp" .pcr_amp
+            , pcrColumn
             , annoColumn
             , cdsColumn
             , ntColumn
@@ -172,8 +172,31 @@ annoColumn =
 
 annoLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 annoLink assembly =
-    Table.HtmlDetails []
+    Table.HtmlDetails [ style [("min-width","4em")] ] -- min-width is to prevent column header from wrapping
         [ text (annoText assembly) ]
+
+
+pcrText : Data.CombinedAssembly.CombinedAssembly -> String
+pcrText assembly =
+    case assembly.pcr_amp of
+        "" -> "No"
+
+        _ -> "Yes"
+
+
+pcrColumn : Table.Column Data.CombinedAssembly.CombinedAssembly Msg
+pcrColumn =
+    Table.veryCustomColumn
+        { name = "PCR Amp"
+        , viewData = pcrLink
+        , sorter = Table.increasingOrDecreasingBy pcrText
+        }
+
+
+pcrLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
+pcrLink assembly =
+    Table.HtmlDetails [ style [("min-width","4em")] ] -- min-width is to prevent column header from wrapping
+        [ text (pcrText assembly) ]
 
 
 cdsText : Data.CombinedAssembly.CombinedAssembly -> String
@@ -195,7 +218,7 @@ cdsColumn =
 
 cdsLink : Data.CombinedAssembly.CombinedAssembly -> Table.HtmlDetails Msg
 cdsLink assembly =
-    Table.HtmlDetails []
+    Table.HtmlDetails [ style [("min-width","4em")] ] -- min-width is to prevent column header from wrapping
         [ text (cdsText assembly) ]
 
 

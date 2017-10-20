@@ -91,7 +91,9 @@ viewInvestigator inv =
             List.length inv.samples
     in
     table [ class "table" ]
-        [ tr []
+        [ colgroup []
+            [ col [ class "col-md-2" ] [] ]
+        , tr []
             [ th [] [ text "Name" ]
             , td [] [ text inv.investigator_name ]
             ]

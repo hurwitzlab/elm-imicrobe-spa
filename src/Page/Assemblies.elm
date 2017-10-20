@@ -165,7 +165,7 @@ cdsColumn =
 
 cdsLink : Data.Assembly.Assembly -> Table.HtmlDetails Msg
 cdsLink assembly =
-    Table.HtmlDetails []
+    Table.HtmlDetails [ style [("min-width","3em")] ] -- min-width is to prevent column header from wrapping
         [ text (cdsText assembly) ]
 
 
