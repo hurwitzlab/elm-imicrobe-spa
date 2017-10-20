@@ -34,4 +34,4 @@ port updateAnalytics : String -> Cmd msg
 ---- Sequence Similarity Plots ----
 
 
-port createSimPlot : String -> Cmd msg
+port createSimPlot : (String, String) -> Cmd msg

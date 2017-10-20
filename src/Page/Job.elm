@@ -105,7 +105,7 @@ update session msg model =
             { model | loadingResults = True } => Task.attempt handleResults loadResults
 
         SetResults results ->
-            { model | results = results } => Ports.createSimPlot results
+            { model | results = results } => Ports.createSimPlot ("sim-plot", results)
 
 
 -- VIEW --
@@ -274,11 +274,12 @@ viewResults model =
                                 True -> div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
 
-                        _ -> text ""
+                        _ -> div [] []
 
                 _ -> div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ]
     in
     div []
         [ h2 [] [ text "Results" ]
         , div [] [ body ]
+        , div [ id "sim-plot" ] [] -- has to be located here for accessibility from heatmap.js
         ]

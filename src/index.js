@@ -139,7 +139,6 @@ app.ports.updateAnalytics.subscribe(function (page) {
  * Define ports for Sequence Similarity Plots
  */
 
-app.ports.createSimPlot.subscribe(function(data) {
-    //var div = $('#sim-plot');
-    simplots.heatmap(data);
+app.ports.createSimPlot.subscribe(function(args) {
+    simplots.heatmap(args[0], args[1]);
 });
