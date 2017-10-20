@@ -420,7 +420,7 @@ cartDialogConfig model =
 
         footer =
             button
-                [ class "btn btn-success"
+                [ class "btn btn-primary"
                 , onClick CloseCartDialog
                 ]
                 [ text "OK" ]
