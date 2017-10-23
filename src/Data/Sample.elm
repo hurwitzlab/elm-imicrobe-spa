@@ -69,6 +69,18 @@ type alias Project =
     }
 
 
+type alias Assembly =
+    { assembly_id : Int
+    , assembly_name : String
+    }
+
+
+type alias CombinedAssembly =
+    { combined_assembly_id : Int
+    , assembly_name : String
+    }
+
+
 type alias Sample =
     { sample_id : Int
     , project_id : Int
@@ -85,6 +97,8 @@ type alias Sample =
     , project : Project
     , investigators : List Investigator
     , sample_files : List SampleFile2
+    , assemblies : List Assembly
+    , combined_assemblies : List CombinedAssembly
     , ontologies : List Ontology
     , sample_attrs : List Attribute
     , protein_count : Int
@@ -218,6 +232,20 @@ decoderProject =
         |> optional "nt_file" Decode.string "NA"
 
 
+decoderAssembly : Decoder Assembly
+decoderAssembly =
+    decode Assembly
+        |> required "assembly_id" Decode.int
+        |> required "assembly_name" Decode.string
+
+
+decoderCombinedAssembly : Decoder CombinedAssembly
+decoderCombinedAssembly =
+    decode CombinedAssembly
+        |> required "combined_assembly_id" Decode.int
+        |> optional "assembly_name" Decode.string ""
+
+
 decoder : Decoder Sample
 decoder =
     decode Sample
@@ -236,6 +264,8 @@ decoder =
         |> required "project" decoderProject
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "sample_files" (Decode.list decoderSampleFile2) []
+        |> optional "assemblies" (Decode.list decoderAssembly) []
+        |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
         |> optional "ontologies" (Decode.list decoderOnt) []
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0

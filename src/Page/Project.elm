@@ -1,6 +1,6 @@
 module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Project
+import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
@@ -21,7 +21,7 @@ import Util exposing ((=>))
 type alias Model =
     { pageTitle : String
     , project_id : Int
-    , project : Data.Project.Project
+    , project : Project
     , cart : Cart.Model
     }
 
@@ -88,11 +88,13 @@ view model =
             , viewInvestigators model.project.investigators
             , viewPubs model.project.publications
             , viewSamples model.cart model.project.samples
+            , viewAssemblies model.project.assemblies
+            , viewCombinedAssemblies model.project.combined_assemblies
             ]
         ]
 
 
-viewProject : Data.Project.Project -> Html msg
+viewProject : Project -> Html msg
 viewProject project =
     let
         numDomains =
@@ -129,7 +131,7 @@ viewProject project =
             ]
         ]
 
-viewInvestigator : Data.Project.Investigator -> Html msg
+viewInvestigator : Investigator -> Html msg
 viewInvestigator investigator =
     tr []
         [ td []
@@ -139,7 +141,7 @@ viewInvestigator investigator =
         ]
 
 
-viewInvestigators : List Data.Project.Investigator -> Html msg
+viewInvestigators : List Investigator -> Html msg
 viewInvestigators investigators =
     let
         numInvs =
@@ -173,12 +175,12 @@ viewInvestigators investigators =
         ]
 
 
-viewDomain : Data.Project.Domain -> Html msg
+viewDomain : Domain -> Html msg
 viewDomain domain =
     text domain.domain_name
 
 
-viewDomains : List Data.Project.Domain -> List (Html msg)
+viewDomains : List Domain -> List (Html msg)
 viewDomains domains =
     case List.length domains of
         0 ->
@@ -188,7 +190,7 @@ viewDomains domains =
             List.intersperse (text ", ") (List.map viewDomain domains)
 
 
-viewPublication : Data.Project.Publication -> Html msg
+viewPublication : Publication -> Html msg
 viewPublication pub =
     let
         authorList =
@@ -205,7 +207,7 @@ viewPublication pub =
     text (pub.title ++ authorList)
 
 
-viewSamples : Cart.Model -> List Data.Project.Sample -> Html Msg
+viewSamples : Cart.Model -> List Sample -> Html Msg
 viewSamples cart samples =
     let
         numSamples =
@@ -244,7 +246,7 @@ viewSamples cart samples =
         ]
 
 
-viewSample : Cart.Model -> Data.Project.Sample -> Html Msg
+viewSample : Cart.Model -> Sample -> Html Msg
 viewSample cart sample =
     tr []
         [ td []
@@ -256,7 +258,93 @@ viewSample cart sample =
         ]
 
 
-viewPubs : List Data.Project.Publication -> Html msg
+viewAssemblies : List Assembly -> Html msg
+viewAssemblies assemblies =
+    let
+        count =
+            List.length assemblies
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewAssembly assemblies)
+    in
+    div []
+        [ h2 []
+            [ text "Assemblies "
+            , label
+            ]
+        , body
+        ]
+
+
+viewAssembly : Assembly -> Html msg
+viewAssembly assembly =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.Assembly assembly.assembly_id) ] [ text assembly.assembly_name ]
+            ]
+        ]
+
+
+viewCombinedAssemblies : List CombinedAssembly -> Html msg
+viewCombinedAssemblies assemblies =
+    let
+        count =
+            List.length assemblies
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewCombinedAssembly assemblies)
+    in
+    div []
+        [ h2 []
+            [ text "Combined Assemblies "
+            , label
+            ]
+        , body
+        ]
+
+
+viewCombinedAssembly : CombinedAssembly -> Html msg
+viewCombinedAssembly assembly =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.CombinedAssembly assembly.combined_assembly_id) ] [ text assembly.assembly_name ]
+            ]
+        ]
+
+
+viewPubs : List Publication -> Html msg
 viewPubs pubs =
     let
         numPubs =
@@ -289,7 +377,7 @@ viewPubs pubs =
         ]
 
 
-pubRow : Data.Project.Publication -> Html msg
+pubRow : Publication -> Html msg
 pubRow pub =
     tr []
         [ td []
@@ -299,13 +387,13 @@ pubRow pub =
         ]
 
 
-viewProjectGroup : Data.Project.ProjectGroup -> Html msg
+viewProjectGroup : ProjectGroup -> Html msg
 viewProjectGroup group =
     a [ Route.href (Route.ProjectGroup group.project_group_id) ]
         [ text group.group_name ]
 
 
-viewProjectGroups : List Data.Project.ProjectGroup -> List (Html msg)
+viewProjectGroups : List ProjectGroup -> List (Html msg)
 viewProjectGroups groups =
     case List.length groups of
         0 ->

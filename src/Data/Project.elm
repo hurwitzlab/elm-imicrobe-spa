@@ -1,4 +1,4 @@
-module Data.Project exposing (Domain, Investigator, Project, ProjectGroup, Publication, Sample, decoder, encode)
+module Data.Project exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -34,6 +34,8 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
+    , assemblies : List Assembly
+    , combined_assemblies : List CombinedAssembly
     , project_groups : List ProjectGroup
     }
 
@@ -78,6 +80,18 @@ type alias Sample =
     }
 
 
+type alias Assembly =
+    { assembly_id : Int
+    , assembly_name : String
+    }
+
+
+type alias CombinedAssembly =
+    { combined_assembly_id : Int
+    , assembly_name : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -99,6 +113,8 @@ decoder =
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
+        |> optional "assemblies" (Decode.list decoderAssembly) []
+        |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
 
 
@@ -159,6 +175,20 @@ decoderSample =
         |> optional "url" Decode.string "NA"
         |> optional "latitude" Decode.string ""
         |> optional "longitude" Decode.string ""
+
+
+decoderAssembly : Decoder Assembly
+decoderAssembly =
+    decode Assembly
+        |> required "assembly_id" Decode.int
+        |> required "assembly_name" Decode.string
+
+
+decoderCombinedAssembly : Decoder CombinedAssembly
+decoderCombinedAssembly =
+    decode CombinedAssembly
+        |> required "combined_assembly_id" Decode.int
+        |> optional "assembly_name" Decode.string ""
 
 
 encode : Project -> Value

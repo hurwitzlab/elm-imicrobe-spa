@@ -1,6 +1,6 @@
 module Page.Sample exposing (Model, Msg, init, update, view)
 
-import Data.Sample as Sample exposing (Sample, SampleFile, SampleFile2, Ontology, SampleUProC)
+import Data.Sample as Sample exposing (Sample, SampleFile, SampleFile2, Ontology, Assembly, CombinedAssembly, SampleUProC)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -135,6 +135,8 @@ view model =
                 ]
             , viewSample model.sample
             , viewFiles model.sample.sample_files
+            , viewAssemblies model.sample.assemblies
+            , viewCombinedAssemblies model.sample.combined_assemblies
             , viewOntologies model.sample.ontologies
             , viewAttributes model
             , viewProteins model
@@ -212,6 +214,92 @@ viewFile file =
     tr []
         [ td []
             [ a [ href (dataCommonsUrl ++ file.file) ] [ text file.file ]
+            ]
+        ]
+
+
+viewAssemblies : List Assembly -> Html msg
+viewAssemblies assemblies =
+    let
+        count =
+            List.length assemblies
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewAssembly assemblies)
+    in
+    div []
+        [ h2 []
+            [ text "Assemblies "
+            , label
+            ]
+        , body
+        ]
+
+
+viewAssembly : Assembly -> Html msg
+viewAssembly assembly =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.Assembly assembly.assembly_id) ] [ text assembly.assembly_name ]
+            ]
+        ]
+
+
+viewCombinedAssemblies : List CombinedAssembly -> Html msg
+viewCombinedAssemblies assemblies =
+    let
+        count =
+            List.length assemblies
+
+        label =
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString count)
+                        ]
+
+        body =
+            case count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        (List.map viewCombinedAssembly assemblies)
+    in
+    div []
+        [ h2 []
+            [ text "Combined Assemblies "
+            , label
+            ]
+        , body
+        ]
+
+
+viewCombinedAssembly : CombinedAssembly -> Html msg
+viewCombinedAssembly assembly =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.CombinedAssembly assembly.combined_assembly_id) ] [ text assembly.assembly_name ]
             ]
         ]
 
