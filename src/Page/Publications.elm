@@ -37,7 +37,7 @@ init =
             Request.Publication.list |> Http.toTask
 
         tblState =
-            Task.succeed (Table.initialSort "Name")
+            Task.succeed (Table.initialSort "Title")
 
         qry =
             Task.succeed ""
@@ -93,7 +93,7 @@ toTableAttrs =
 authorColumn : Table.Column Data.Publication.Publication Msg
 authorColumn =
     Table.veryCustomColumn
-        { name = "Name"
+        { name = "Author(s)"
         , viewData = authorLink
         , sorter = Table.increasingOrDecreasingBy .author
         }
@@ -107,7 +107,7 @@ authorLink pub =
 nameColumn : Table.Column Data.Publication.Publication Msg
 nameColumn =
     Table.veryCustomColumn
-        { name = "Name"
+        { name = "Title"
         , viewData = nameLink
         , sorter = Table.increasingOrDecreasingBy .title
         }
@@ -134,7 +134,7 @@ projectName pub =
 projectColumn : Table.Column Data.Publication.Publication Msg
 projectColumn =
     Table.veryCustomColumn
-        { name = "Projects"
+        { name = "Project(s)"
         , viewData = projectLink
         , sorter = Table.increasingOrDecreasingBy projectName
         }

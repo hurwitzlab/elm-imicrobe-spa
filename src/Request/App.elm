@@ -35,7 +35,7 @@ run : Int -> Int -> String -> Http.Request AppRun
 run app_id user_id params =
     let
         url =
-            apiBaseUrl ++ "/apps/run"
+            apiBaseUrl ++ "/apps/runs"
 
         body =
             Encode.object

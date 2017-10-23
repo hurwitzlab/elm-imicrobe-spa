@@ -19,7 +19,6 @@ type alias Ontology =
     , ontology_acc : String
     , label : String
     , ontology_type_id : Int
-    , sample_to_ontology : SampleToOntology
     }
 
 
@@ -145,13 +144,6 @@ type alias SampleFileType =
     }
 
 
-type alias SampleToOntology =
-    { sample_to_ontology_id : Int
-    , sample_id : Int
-    , ontology_id : Int
-    }
-
-
 type alias SampleUProC =
     { sample_uproc_id : Int
     , sample_id : Int
@@ -179,7 +171,6 @@ decoderOnt =
         |> required "ontology_acc" Decode.string
         |> optional "label" Decode.string "NA"
         |> optional "ontology_type_id" Decode.int 0
-        |> required "sample_to_ontology" decoderSampleToOntology
 
 
 decoderAttribute : Decoder Attribute
@@ -312,14 +303,6 @@ decoderSampleFileSample =
     decode SampleFileSample
         |> required "sample_id" Decode.int
         |> required "sample_name" Decode.string
-
-
-decoderSampleToOntology : Decoder SampleToOntology
-decoderSampleToOntology =
-    decode SampleToOntology
-        |> required "sample_to_ontology_id" Decode.int
-        |> required "sample_id" Decode.int
-        |> required "ontology_id" Decode.int
 
 
 decoderSampleUProC : Decoder SampleUProC
