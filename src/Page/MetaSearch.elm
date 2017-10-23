@@ -1,5 +1,7 @@
-module Page.MetaSearch exposing (Model, Msg, init, update, view)
+module Page.MetaSearch exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
+import Data.Session as Session exposing (Session)
+import Data.Cart
 import Dict
 import Exts.Dict as EDict
 import FormatNumber exposing (format)
@@ -20,6 +22,8 @@ import Set
 import String.Extra as SE
 import Task exposing (Task)
 import Config exposing (apiBaseUrl)
+import View.Cart as Cart
+import Util exposing ((=>))
 
 
 
@@ -42,11 +46,12 @@ type alias Model =
     , searchResults : WebData (List (Dict.Dict String JsonType))
     , possibleOptionValues : Dict.Dict String (List JsonType)
     , restrictedParams : Dict.Dict String String
+    , cart : Cart.Model
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         loadParams =
             Request.MetaSearch.getParams |> Http.toTask
@@ -62,6 +67,7 @@ init =
                 , searchResults = NotAsked
                 , possibleOptionValues = Dict.empty
                 , restrictedParams = Dict.empty
+                , cart = Cart.init session.cart Cart.Editable
                 }
         )
         loadParams
@@ -81,15 +87,21 @@ type Msg
     | Search
     | UpdateSearchResults (WebData (List (Dict.Dict String JsonType)))
     | SetQuery String
+    | CartMsg Cart.Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update session msg model =
     case msg of
         AddParamOption opt ->
-            ( { model | selectedParams = addSelectedParam model opt }
-            , getParamValues opt model.optionValues model.possibleOptionValues model.params
-            )
+            { model | selectedParams = addSelectedParam model opt }
+            => getParamValues opt model.optionValues model.possibleOptionValues model.params
+            => NoOp
 
         RemoveOption opt ->
             let
@@ -100,50 +112,57 @@ update msg model =
                             rmOptionValue model.optionValues opt
                     }
             in
-            ( newModel, doSearch newModel )
+            newModel => doSearch newModel => NoOp
 
         Search ->
-            ( model, doSearch model )
+            model => doSearch model => NoOp
 
         UpdateOptionValue opt val ->
-            ( { model
+            { model
                 | optionValues = Dict.insert opt [ val ] model.optionValues
-              }
-            , Cmd.none
-            )
+            }
+            => Cmd.none
+            => NoOp
 
         UpdateMultiOptionValue opt vals ->
-            ( { model
+            { model
                 | optionValues = Dict.insert opt vals model.optionValues
-              }
-            , Cmd.none
-            )
+            }
+            => Cmd.none
+            => NoOp
 
         UpdateSearchResults response ->
-            ( { model
+            { model
                 | searchResults = response
                 , restrictedParams = mkRestrictedParams model.params response
 
                 -- , restrictedOptionValues = mkRestrictedOptionValues response
-              }
-            , Cmd.none
-            )
+            }
+            => Cmd.none
+            => NoOp
 
         UpdatePossibleOptionValues (Err err) ->
-            ( model, Cmd.none )
+            model => Cmd.none => NoOp
 
         UpdatePossibleOptionValues (Ok response) ->
-            ( { model
+            { model
                 | possibleOptionValues =
                     Dict.union response model.possibleOptionValues
-              }
-            , Cmd.none
-            )
+            }
+            => Cmd.none
+            => NoOp
 
         SetQuery newQuery ->
-            ( { model | query = newQuery }
-            , Cmd.none
-            )
+            { model | query = newQuery } => Cmd.none => NoOp
+
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "MetaSearch.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
 
 
@@ -163,29 +182,7 @@ view model =
                 ]
             , div [] [ showResults model ]
             ]
-
-            {--
-            , div [] [ text ("restrictedParams = " ++ toString model.restrictedParams) ]
-            , div [] [ text ("optionValues = " ++ toString model.optionValues) ]
-            , div [] [ text ("searchResults = " ++ toString model.searchResults) ]
-            , div [] [ text ("possibleOptionValues" ++ toString model.possibleOptionValues) ]
-            --}
         ]
-
-
-
-{--
-config : Table.Config Data.Search.SearchResult Msg
-config =
-    Table.config
-        { toId = toString << .id
-        , toMsg = SetTableState
-        , columns =
-            [ Table.stringColumn "Type" .table_name
-            , nameColumn
-            ]
-        }
-        --}
 
 
 mkParamsSelect : Model -> Html Msg
@@ -576,11 +573,11 @@ showResults model =
                     text "No results"
 
                 _ ->
-                    resultsTable model.selectedParams model.query data
+                    resultsTable model.cart model.selectedParams model.query data
 
 
-resultsTable : List ( String, String ) -> String -> List (Dict.Dict String JsonType) -> Html Msg
-resultsTable fieldList query results =
+resultsTable : Cart.Model -> List ( String, String ) -> String -> List (Dict.Dict String JsonType) -> Html Msg
+resultsTable cart fieldList query results =
     let
         mkTh fld =
             th [] [ text (prettyName fld) ]
@@ -588,13 +585,16 @@ resultsTable fieldList query results =
         fieldNames =
             List.map Tuple.first fieldList
 
+        cartTh =
+            th [] [ text "Cart" ]
+
         headerRow =
-            [ tr [] (List.map mkTh ("specimen__sample_name" :: fieldNames)) ]
+            [ tr [] ((List.map mkTh ("specimen__sample_name" :: fieldNames)) ++ [cartTh]) ]
 
         resultRows =
             results
                 |> List.filter (\result -> String.contains (String.toLower query) (String.toLower (getVal "specimen__sample_name" result)))
-                |> List.map (mkResultRow fieldList)
+                |> List.map (mkResultRow cart fieldList)
 
         numShowing =
             let
@@ -624,8 +624,8 @@ resultsTable fieldList query results =
         ]
 
 
-mkResultRow : List ( String, String ) -> Dict.Dict String JsonType -> Html msg
-mkResultRow fieldList result =
+mkResultRow : Cart.Model -> List ( String, String ) -> Dict.Dict String JsonType -> Html Msg
+mkResultRow cart fieldList result =
     let
         mkTd : ( String, String ) -> Html msg
         mkTd ( fldName, dataType ) =
@@ -654,10 +654,22 @@ mkResultRow fieldList result =
             in
             td [ style [ ( "text-align", "left" ) ] ] [ sampleLink ]
 
+        cartCol =
+            let
+                sampleId =
+                    case String.toInt (getVal "specimen__sample_id" result) of
+                        Ok sampleId ->
+                            sampleId
+
+                        Err _ ->
+                            0
+            in
+            td [ class "col-md-1" ] [ Cart.addToCartButton cart sampleId |> Html.map CartMsg ]
+
         otherCols =
             List.map mkTd fieldList
     in
-    tr [] (nameCol :: otherCols)
+    tr [] (nameCol :: otherCols ++ [cartCol])
 
 
 getVal : String -> Dict.Dict String JsonType -> String

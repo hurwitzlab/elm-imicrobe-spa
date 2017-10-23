@@ -1,6 +1,8 @@
-module Page.Project exposing (Model, Msg, init, update, view)
+module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Project
+import Data.Session as Session exposing (Session)
+import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -8,6 +10,8 @@ import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Route
 import Task exposing (Task)
+import View.Cart as Cart
+import Util exposing ((=>))
 
 
 
@@ -18,11 +22,12 @@ type alias Model =
     { pageTitle : String
     , project_id : Int
     , project : Data.Project.Project
+    , cart : Cart.Model
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : Session -> Int -> Task PageLoadError Model
+init session id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -30,8 +35,11 @@ init id =
 
         loadProject =
             Request.Project.get id |> Http.toTask
+
+        cart =
+            Task.succeed (Cart.init session.cart Cart.Editable)
     in
-    Task.map3 Model title (Task.succeed id) loadProject
+    Task.map4 Model title (Task.succeed id) loadProject cart
         |> Task.mapError Error.handleLoadError
 
 
@@ -40,14 +48,25 @@ init id =
 
 
 type Msg
-    = Todo
+    = CartMsg Cart.Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update session msg model =
     case msg of
-        Todo ->
-            ( model, Cmd.none )
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
 
 
@@ -68,7 +87,7 @@ view model =
             , viewProject model.project
             , viewInvestigators model.project.investigators
             , viewPubs model.project.publications
-            , viewSamples model.project.samples
+            , viewSamples model.cart model.project.samples
             ]
         ]
 
@@ -186,8 +205,8 @@ viewPublication pub =
     text (pub.title ++ authorList)
 
 
-viewSamples : List Data.Project.Sample -> Html msg
-viewSamples samples =
+viewSamples : Cart.Model -> List Data.Project.Sample -> Html Msg
+viewSamples cart samples =
     let
         numSamples =
             List.length samples
@@ -203,10 +222,10 @@ viewSamples samples =
                         ]
         cols =
             tr []
-                (List.map (\s -> th [] [ text s ]) [ "Name", "Type" ])
+                (List.map (\s -> th [] [ text s ]) [ "Name", "Type", "Cart" ])
 
         rows =
-            List.map viewSample samples
+            List.map (viewSample cart) samples
 
         body =
             case numSamples of
@@ -225,14 +244,15 @@ viewSamples samples =
         ]
 
 
-viewSample : Data.Project.Sample -> Html msg
-viewSample sample =
+viewSample : Cart.Model -> Data.Project.Sample -> Html Msg
+viewSample cart sample =
     tr []
         [ td []
             [ a [ Route.href (Route.Sample sample.sample_id) ]
                 [ text sample.sample_name ]
             ]
         , td [] [ text sample.sample_type ]
+        , td [ class "col-md-1" ] [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg ]
         ]
 
 

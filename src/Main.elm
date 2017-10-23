@@ -266,7 +266,7 @@ setRoute maybeRoute model =
             transition ProfileLoaded (Profile.init model.session)
 
         Just (Route.Project id) ->
-            transition (ProjectLoaded id) (Project.init id)
+            transition (ProjectLoaded id) (Project.init model.session id)
 
         Just Route.Projects ->
             transition ProjectsLoaded Projects.init
@@ -284,7 +284,7 @@ setRoute maybeRoute model =
             transition SamplesLoaded (Samples.init model.session)
 
         Just Route.MetaSearch ->
-            transition MetaSearchLoaded MetaSearch.init
+            transition MetaSearchLoaded (MetaSearch.init model.session)
 
         Just Route.Search ->
             transition SearchLoaded Search.init
@@ -572,7 +572,27 @@ updatePage page msg model =
         MetaSearchMsg subMsg ->
             case page of
                 MetaSearch subModel ->
-                    toPage MetaSearch MetaSearchMsg MetaSearch.update subMsg subModel
+                    let
+                        _ = Debug.log "Main.MetaSearchMsg" (toString subMsg)
+
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            MetaSearch.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                MetaSearch.NoOp ->
+                                    model
+
+                                MetaSearch.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (MetaSearch pageModel) }
+                        => Cmd.map MetaSearchMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -670,6 +690,34 @@ updatePage page msg model =
 
         ProjectLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ProjectMsg subMsg ->
+            case page of
+                Project id subModel ->
+                    let
+                        _ = Debug.log "Main.ProjectMsg" (toString subMsg)
+
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            Project.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                Project.NoOp ->
+                                    model
+
+                                Project.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (Project id pageModel) }
+                        => Cmd.map ProjectMsg cmd
+
+                _ ->
+                    model => Cmd.none
 
         ProjectGroupLoaded id (Ok subModel) ->
             { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
