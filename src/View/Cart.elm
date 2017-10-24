@@ -200,10 +200,10 @@ addToCartButton2 : Model -> Int -> Html Msg
 addToCartButton2 model id =
     case (Set.member id model.cart.contents) of
         True ->
-            button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove from Cart" ]
+            button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ text "Remove from Cart" ]
 
         False ->
-            button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add to Cart" ]
+            button [ class "btn btn-default", onClick (AddToCart id) ] [ text "Add to Cart" ]
 
 
 selectInCartColumn : Table.Column Sample Msg
