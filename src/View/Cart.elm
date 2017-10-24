@@ -1,4 +1,4 @@
-module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, size, CartType(..))
+module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, addToCartButton2, size, CartType(..))
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
@@ -193,6 +193,17 @@ addToCartButton model id =
 
         False ->
             button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
+
+
+-- Kludge
+addToCartButton2 : Model -> Int -> Html Msg
+addToCartButton2 model id =
+    case (Set.member id model.cart.contents) of
+        True ->
+            button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove from Cart" ]
+
+        False ->
+            button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add to Cart" ]
 
 
 selectInCartColumn : Table.Column Sample Msg

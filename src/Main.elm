@@ -748,7 +748,27 @@ updatePage page msg model =
         SampleMsg subMsg ->
             case page of
                 Sample id subModel ->
-                    toPage (Sample id) SampleMsg (Sample.update session) subMsg subModel
+                    let
+                        _ = Debug.log "Main.SampleMsg" (toString subMsg)
+
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            Sample.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                Sample.NoOp ->
+                                    model
+
+                                Sample.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (Sample id pageModel) }
+                        => Cmd.map SampleMsg cmd
 
                 _ ->
                     model => Cmd.none

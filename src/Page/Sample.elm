@@ -1,7 +1,8 @@
-module Page.Sample exposing (Model, Msg, init, update, view)
+module Page.Sample exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Sample as Sample exposing (Sample, SampleFile, SampleFile2, Ontology, Assembly, CombinedAssembly, SampleUProC)
 import Data.Session as Session exposing (Session)
+import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -14,6 +15,7 @@ import Route
 import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
+import View.Cart as Cart
 import Util exposing ((=>))
 
 
@@ -32,6 +34,7 @@ type alias Model =
     , proteinTableState : Table.State
     , attrQuery : String
     , proteinQuery : String
+    , cart : Cart.Model
     }
 
 
@@ -55,6 +58,7 @@ init session id =
                     , proteinTableState = Table.initialSort "Read Count"
                     , attrQuery = ""
                     , proteinQuery = ""
+                    , cart = Cart.init session.cart Cart.Editable
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -71,30 +75,28 @@ type Msg
     | SetProteinTableState Table.State
     | GetProteins
     | SetProteins (List SampleUProC)
+    | CartMsg Cart.Msg
 
 
-update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
         SetAttrQuery newQuery ->
-            ( { model | attrQuery = newQuery }
-            , Cmd.none
-            )
+            { model | attrQuery = newQuery } => Cmd.none => NoOp
 
         SetProteinQuery newQuery ->
-            ( { model | proteinQuery = newQuery }
-            , Cmd.none
-            )
+            { model | proteinQuery = newQuery } => Cmd.none => NoOp
 
         SetAttrTableState newState ->
-            ( { model | attrTableState = newState }
-            , Cmd.none
-            )
+            { model | attrTableState = newState } => Cmd.none => NoOp
 
         SetProteinTableState newState ->
-            ( { model | proteinTableState = newState }
-            , Cmd.none
-            )
+            { model | proteinTableState = newState } => Cmd.none => NoOp
 
         GetProteins ->
             let
@@ -112,10 +114,19 @@ update session msg model =
                             in
                             SetProteins []
             in
-            { model | loadingProteins = True } => Task.attempt handleProteins loadProteins
+            { model | loadingProteins = True } => Task.attempt handleProteins loadProteins => NoOp
 
         SetProteins proteins ->
-            { model | loadedProteins = True, proteins = proteins } => Cmd.none
+            { model | loadedProteins = True, proteins = proteins } => Cmd.none => NoOp
+
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "Sample.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
 
 
@@ -131,6 +142,8 @@ view model =
                     [ text (model.pageTitle ++ " ")
                     , small []
                         [ text model.sample.sample_name ]
+                    , div [ class "pull-right" ]
+                        [ Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg ]
                     ]
                 ]
             , viewSample model.sample
