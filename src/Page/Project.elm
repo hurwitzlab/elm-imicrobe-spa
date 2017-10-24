@@ -103,10 +103,10 @@ viewProject project =
         domainText =
             case numDomains of
                 1 ->
-                    "Domain (1)"
+                    "Domain"
 
                 _ ->
-                    "Domains (" ++ toString numDomains ++ ")"
+                    "Domains"
     in
     table [ class "table" ]
         [ tr []
@@ -230,12 +230,19 @@ viewSamples cart samples =
             List.map (viewSample cart) samples
 
         body =
-            case numSamples of
-                0 ->
-                    text "NA"
-
-                _ ->
+            let
+                tbl =
                     table [ class "table table-condensed" ] [ tbody [] (cols :: rows) ]
+            in
+            if numSamples == 0 then
+                text "None"
+
+            else if numSamples < 50 then
+                tbl
+
+            else
+                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
+
     in
     div []
         [ h2 []
@@ -275,13 +282,19 @@ viewAssemblies assemblies =
                         ]
 
         body =
-            case count of
-                0 ->
-                    text "None"
-
-                _ ->
+            let
+                tbl =
                     table [ class "table" ]
                         (List.map viewAssembly assemblies)
+            in
+            if count == 0 then
+                text "None"
+
+            else if count < 50 then
+                tbl
+
+            else
+                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
     in
     div []
         [ h2 []
@@ -317,14 +330,21 @@ viewCombinedAssemblies assemblies =
                         [ text (toString count)
                         ]
 
-        body =
-            case count of
-                0 ->
-                    text "None"
 
-                _ ->
+        body =
+            let
+                tbl =
                     table [ class "table" ]
                         (List.map viewCombinedAssembly assemblies)
+            in
+            if count == 0 then
+                text "None"
+
+            else if count < 50 then
+                tbl
+
+            else
+                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
     in
     div []
         [ h2 []
