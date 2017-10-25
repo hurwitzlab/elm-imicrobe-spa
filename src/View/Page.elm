@@ -68,7 +68,7 @@ viewHeader page isLoading session =
                 Just profile ->
                     li [ class "dropdown" ]
                         [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
-                            [ text (profile.first_name ++ " " ++ profile.last_name)
+                            [ text "My Account"
                             , span [ class "caret" ] []
                             ]
                         , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
