@@ -94,6 +94,14 @@ viewHeader page isLoading session =
                     (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
                 ]
 
+        cartLabel =
+            case numItemsInCart of
+                0 ->
+                    "(Empty)"
+
+                _ ->
+                    "(" ++ (toString numItemsInCart) ++ ")"
+
         helpButton =
             div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
                 [ a [ Route.href Route.Contact ]
@@ -146,7 +154,7 @@ viewHeader page isLoading session =
                             [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
                             [ li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
                             , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
-                            , li [] [ a [ Route.href Route.Cart ] [ text ("Cart (" ++ (toString numItemsInCart) ++ ")") ] ]
+                            , li [] [ a [ Route.href Route.Cart ] [ text ("Cart " ++ cartLabel) ] ]
                             ]
                         ]
                     , li []
