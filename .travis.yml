@@ -12,6 +12,7 @@ before_install:
 install:
 - pwd
 - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
+- git clone https://github.com/hurwitzlab/imicrobe-landing-page.git plugins/landing-page
 - cp config.json.default config.json
 - cp src/ConfigDefault.elm src/Config.elm
 - elm package install -y
