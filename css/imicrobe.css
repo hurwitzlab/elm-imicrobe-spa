@@ -107,14 +107,20 @@ tr.padded > td {
     background: #f4924a !important;
 }
 
-.btn-primary, .btn-primary:focus {
+.btn-primary, .btn-primary:focus, .btn-primary:active:focus {
     background-color: #008d97;
     border-color: #008d97;
 }
 
-.btn-primary:hover {
+.btn-primary:hover, .btn-primary:active  {
     background-color: #2ab4bd;
     border-color: #2ab4bd;
+}
+
+.btn-primary:disabled, .btn-primary:hover:disabled {
+    background-color: #008d97;
+    border-color: #008d97;
+    opacity: 50%;
 }
 
 .progress-bar {
