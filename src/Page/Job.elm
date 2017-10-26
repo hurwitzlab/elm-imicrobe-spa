@@ -13,6 +13,7 @@ import Task exposing (Task)
 import Dict exposing (Dict)
 import Util exposing ((=>))
 import Time exposing (Time)
+import String.Extra
 
 
 
@@ -122,9 +123,7 @@ update session msg model =
                 model => Cmd.none
             else
                 let
-                    id = model.job.id
-
-                    _ = Debug.log "Job.Poll" ("polling job " ++ (toString id))
+                    _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
 
                     startTime =
                         case model.startTime of
@@ -145,7 +144,7 @@ update session msg model =
                         time - lastPollTime
 
                     loadJob =
-                        Request.Agave.getJob session.token id |> Http.toTask |> Task.map .result
+                        Request.Agave.getJob session.token model.job.id |> Http.toTask |> Task.map .result
 
                     handleJob job =
                         case job of
@@ -209,7 +208,11 @@ view model =
 viewJob : Agave.Job -> Html msg
 viewJob job =
     table [ class "table" ]
-        [ tr []
+        [ colgroup []
+            [ col [ class "col-md-1" ] []
+            , col [ class "col-md-3" ] []
+            ]
+        , tr []
             [ th [] [ text "ID" ]
             , td [] [ text job.id ]
             ]
@@ -232,36 +235,38 @@ viewJob job =
         , tr []
             [ th [ class "top" ] [ text "Status" ]
             , td [] [ viewStatus job.status ]
-            , td [ class "col-md-6" ] []
+            , td [] []
             ]
         ]
 
 
 viewStatus : String -> Html msg
 viewStatus status =
--- FIXME
---    let
---        progressBar pct =
---            div [ class "progress" ]
---                [ div [ class "progress-bar progress-bar-striped active", style [("width", "45%")],
---                        attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
---                    [ text status ]
---                ]
---    in
+    let
+        progressBar pct =
+            let
+                label = String.Extra.replace "_" " " status -- replace _ with space
+            in
+            div [ class "progress" ]
+                [ div [ class "progress-bar progress-bar-striped active", style [("width", ((toString pct) ++ "%"))],
+                        attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
+                    [ text label ]
+                ]
+    in
     case String.toUpper status of
---        "CREATED" -> progressBar 10
---        "PENDING" -> progressBar 20
---        "PROCESSING_INPUTS" -> progressBar 30
---        "STAGING_INPUTS" -> progressBar 40
---        "STAGING_JOB" -> progressBar 45
---        "STAGED" -> progressBar 50
---        "QUEUED" -> progressBar 55
---        "SUBMITTING" -> progressBar 60
---        "RUNNING" -> progressBar 70
---        "CLEANING_UP" -> progressBar 80
---        "ARCHIVING" -> progressBar 90
---        "ARCHIVING_FINISHED" -> progressBar 95
---        "FINISHED" -> progressBar 100
+        "CREATED" -> progressBar 10
+        "PENDING" -> progressBar 20
+        "PROCESSING_INPUTS" -> progressBar 30
+        "STAGING_INPUTS" -> progressBar 40
+        "STAGING_JOB" -> progressBar 45
+        "STAGED" -> progressBar 50
+        "QUEUED" -> progressBar 55
+        "SUBMITTING" -> progressBar 60
+        "RUNNING" -> progressBar 70
+        "CLEANING_UP" -> progressBar 80
+        "ARCHIVING" -> progressBar 90
+        "ARCHIVING_FINISHED" -> progressBar 95
+        "FINISHED" -> progressBar 100
         _ -> text status
 
 
