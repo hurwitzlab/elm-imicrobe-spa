@@ -266,7 +266,6 @@ viewStatus status =
         "CLEANING_UP" -> progressBar 80
         "ARCHIVING" -> progressBar 90
         "ARCHIVING_FINISHED" -> progressBar 95
-        "FINISHED" -> progressBar 100
         _ -> text status
 
 
