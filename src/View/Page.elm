@@ -109,7 +109,7 @@ viewHeader page isLoading session =
                 ]
     in
     div []
-        [ div [ class "center border-bottom", style [("background-color", "#ffb84d"), ("color", "white")] ] [ text "Note: This is a new beta version and still currently under development! Please ", a [ href "#/contact" ] [ text "let us know" ], text " of any issues or suggestions." ]
+        [ div [ class "center border-bottom", style [("background-color", "#ffb84d"), ("color", "white")] ] [ text "Note: This is a new beta version and still currently under development.  Please ", a [ href "#/contact" ] [ text "let us know" ], text " of any issues or suggestions!" ]
         , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
             [ div [ class "container" ]
                 [ div [ class "navbar-header" ]
