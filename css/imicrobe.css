@@ -10,7 +10,7 @@ a, a:visited {
     color: #008d97;
 }
 
-a:hover {
+a:hover, a:active {
     color: #2ab4bd;
 }
 

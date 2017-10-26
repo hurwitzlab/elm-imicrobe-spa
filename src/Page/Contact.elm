@@ -1,6 +1,5 @@
 module Page.Contact exposing (Model, Msg, init, update, view)
 
-import Data.Profile as Profile exposing (Profile)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -80,9 +79,9 @@ update msg model =
 
         Submit ->
             let
-                _ = Debug.log "submit" model
+                _ = Debug.log "Contact.Submit" model
             in
-            model => submit model
+            { model | sent = True } => submit model
 
         SubmitDone response ->
             { model | sent = True } => Cmd.none
@@ -95,10 +94,7 @@ submit model =
             apiBaseUrl ++ "/contact"
     in
     Http.send SubmitDone
-        (Http.post url
-            (encodeContact model)
-            decoderContact
-        )
+        (Http.post url (encodeContact model) decoderContact)
 
 
 encodeContact : Model -> Http.Body
@@ -128,9 +124,6 @@ decoderContact =
 
 view : Model -> Html Msg
 view model =
-    let
-        _ = Debug.log "model" model
-    in
     case model.sent of
         True ->
             div [ class "container" ]
@@ -149,7 +142,7 @@ view model =
                 , div [ class "row" ]
                     [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
                     ]
-                , Html.form [ style [("padding-top", "2em")] ]
+                , div [ style [("padding-top", "2em")] ]
                     [ div [ class "form-group" ]
                         [ label [ attribute "for" "name" ] [ text "Your name" ]
                         , input [ type_ "text", class "form-control", placeholder "Enter your name", value model.name, onInput SetName ] []
@@ -162,6 +155,6 @@ view model =
                         [ label [ attribute "for" "message" ] [ text "Your message" ]
                         , textarea [ class "form-control", rows 3, onInput SetMessage ] []
                         ]
-                    , button [ type_ "submit", class "btn btn-primary", onClick Submit ] [ text "Submit" ]
+                    , button [ class "btn btn-primary", onClick Submit ] [ text "Submit" ]
                     ]
                 ]
