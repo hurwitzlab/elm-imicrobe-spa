@@ -1,4 +1,4 @@
-module Page.Job exposing (Model, Msg, init, update, view)
+module Page.Job exposing (Model, Msg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Data.Agave as Agave
@@ -12,6 +12,7 @@ import Ports
 import Task exposing (Task)
 import Dict exposing (Dict)
 import Util exposing ((=>))
+import Time exposing (Time)
 
 
 
@@ -26,6 +27,8 @@ type alias Model =
     , outputs : List Agave.JobOutput
     , loadingResults : Bool
     , results : String
+    , startTime : Maybe Time
+    , lastPollTime : Maybe Time
     }
 
 
@@ -46,6 +49,8 @@ init session id =
                     , outputs = []
                     , loadingResults = False
                     , results = ""
+                    , startTime = Nothing
+                    , lastPollTime = Nothing
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -60,6 +65,8 @@ type Msg
     | SetOutputs (List Agave.JobOutput)
     | GetResults
     | SetResults String
+    | SetJob Agave.Job
+    | PollJob Time
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -106,6 +113,72 @@ update session msg model =
 
         SetResults results ->
             { model | results = results } => Ports.createSimPlot ("sim-plot", results)
+
+        SetJob job ->
+            { model | job = job } => Cmd.none
+
+        PollJob time ->
+            if model.job.status == "FINISHED" || model.job.status == "FAILED" || model.job.status == "STOPPED" then
+                model => Cmd.none
+            else
+                let
+                    id = model.job.id
+
+                    _ = Debug.log "Job.Poll" ("polling job " ++ (toString id))
+
+                    startTime =
+                        case model.startTime of
+                            Nothing -> time
+
+                            Just t -> t
+
+                    lastPollTime =
+                        case model.lastPollTime of
+                            Nothing -> time
+
+                            Just t -> t
+
+                    timeSinceStart =
+                        time - startTime
+
+                    timeSinceLastPoll =
+                        time - lastPollTime
+
+                    loadJob =
+                        Request.Agave.getJob session.token id |> Http.toTask |> Task.map .result
+
+                    handleJob job =
+                        case job of
+                            Ok job ->
+                                SetJob job
+
+                            Err error ->
+                                let
+                                    _ = Debug.log "Error" ("could not poll job" ++ (toString error))
+                                in
+                                SetJob model.job
+
+                    doPoll =
+                        -- Poll every 10 seconds if job has been running less than 15 minutes
+                        if timeSinceStart < (15 * Time.minute) && timeSinceLastPoll >= (10 * Time.second) then
+                            True
+                        -- Poll every 30 seconds if job has been running less than 30 minutes
+                        else if timeSinceStart < (30 * Time.minute) && timeSinceLastPoll >= (30 * Time.second) then
+                            True
+                        -- Poll every 60 seconds if job has been running longer than 30 minutes
+                        else if timeSinceStart >= (30 * Time.minute) && timeSinceLastPoll >= (60 * Time.second) then
+                            True
+                        else
+                            False
+
+                    cmd =
+                        case doPoll of
+                            True -> Task.attempt handleJob loadJob
+
+                            False -> Cmd.none
+                in
+                    { model | startTime = Just startTime, lastPollTime = Just time } => cmd
+
 
 
 -- VIEW --
@@ -157,10 +230,39 @@ viewJob job =
             , td [] [ text job.endTime ]
             ]
         , tr []
-            [ th [] [ text "Status" ]
-            , td [] [ text job.status ]
+            [ th [ class "top" ] [ text "Status" ]
+            , td [] [ viewStatus job.status ]
+            , td [ class "col-md-6" ] []
             ]
         ]
+
+
+viewStatus : String -> Html msg
+viewStatus status =
+-- FIXME
+--    let
+--        progressBar pct =
+--            div [ class "progress" ]
+--                [ div [ class "progress-bar progress-bar-striped active", style [("width", "45%")],
+--                        attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
+--                    [ text status ]
+--                ]
+--    in
+    case String.toUpper status of
+--        "CREATED" -> progressBar 10
+--        "PENDING" -> progressBar 20
+--        "PROCESSING_INPUTS" -> progressBar 30
+--        "STAGING_INPUTS" -> progressBar 40
+--        "STAGING_JOB" -> progressBar 45
+--        "STAGED" -> progressBar 50
+--        "QUEUED" -> progressBar 55
+--        "SUBMITTING" -> progressBar 60
+--        "RUNNING" -> progressBar 70
+--        "CLEANING_UP" -> progressBar 80
+--        "ARCHIVING" -> progressBar 90
+--        "ARCHIVING_FINISHED" -> progressBar 95
+--        "FINISHED" -> progressBar 100
+        _ -> text status
 
 
 viewInputs : Dict String (List String) -> Html msg
@@ -191,7 +293,7 @@ viewInput : (String, List String) -> Html msg
 viewInput (id, values) =
     tr []
         [ th [] [ text id ]
-        , td [] [ text (String.join ", " values) ]
+        , td [] [ text (String.join "; " values) ]
         ]
 
 

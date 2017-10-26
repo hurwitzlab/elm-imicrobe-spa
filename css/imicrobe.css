@@ -116,3 +116,7 @@ tr.padded > td {
     background-color: #2ab4bd;
     border-color: #2ab4bd;
 }
+
+.progress-bar {
+    background-color: #2ab4bd;
+}

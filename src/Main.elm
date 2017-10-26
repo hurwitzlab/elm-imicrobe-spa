@@ -47,6 +47,7 @@ import Request.Agave
 import Request.Login
 import Ports
 import Task
+import Time exposing (Time)
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
 
@@ -177,6 +178,7 @@ type Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
+    | TimerTick Time
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -892,6 +894,18 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        TimerTick time ->
+            case page of
+                Job id subModel ->
+                    let
+                        (pageModel, cmd) =
+                                Job.update session (Job.PollJob time) subModel
+                    in
+                    { model | pageState = Loaded (Job id pageModel) } => Cmd.map JobMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
         _ ->
             case page of
                 NotFound ->
@@ -1094,6 +1108,7 @@ subscriptions model =
         [--pageSubscriptions (getPage model.pageState)
           Sub.map SetSession sessionChange
         , Ports.onFileSelect SelectFile
+        , Time.every (10 * Time.second) TimerTick
         ]
 
 
