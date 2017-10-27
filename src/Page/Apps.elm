@@ -138,7 +138,7 @@ dataTypeColumn =
 
 dataTypesToString : List Data.App.AppDataType -> String
 dataTypesToString types =
-    String.join ", " (List.map .name types)
+    List.map .name types |> List.sort |> String.join ", "
 
 
 
