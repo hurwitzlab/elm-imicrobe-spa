@@ -112,7 +112,7 @@ type alias SampleFile =
     , num_seqs : Int
     , num_bp : Int
     , avg_len : Int
-    , pct_gc : Int
+    , pct_gc : Float
     , sample_file_type : SampleFileType
     , sample : SampleFileSample
     }
@@ -127,7 +127,7 @@ type alias SampleFile2 =
     , num_seqs : Int
     , num_bp : Int
     , avg_len : Int
-    , pct_gc : Int
+    , pct_gc : Float
 --    , sample_file_type : SampleFileType
     }
 
@@ -272,7 +272,7 @@ decoderSampleFile =
         |> optional "num_seqs" Decode.int 0
         |> optional "num_bp" Decode.int 0
         |> optional "avg_len" Decode.int 0
-        |> optional "pct_gc" Decode.int 0
+        |> optional "pct_gc" Decode.float 0
         |> required "sample_file_type" decoderSampleFileType
         |> required "sample" decoderSampleFileSample
 
@@ -287,7 +287,7 @@ decoderSampleFile2 =
         |> optional "num_seqs" Decode.int 0
         |> optional "num_bp" Decode.int 0
         |> optional "avg_len" Decode.int 0
-        |> optional "pct_gc" Decode.int 0
+        |> optional "pct_gc" Decode.float 0
 --        |> required "sample_file_type" decoderSampleFileType
 
 
