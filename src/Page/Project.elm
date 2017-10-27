@@ -224,7 +224,10 @@ viewSamples cart samples =
                         ]
         cols =
             tr []
-                (List.map (\s -> th [] [ text s ]) [ "Name", "Type", "Cart" ])
+                [ th [] [ text "Name" ]
+                , th [] [ text "Type" ]
+                , th [ class "nowrap" ] [ Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg ]
+                ]
 
         rows =
             List.map (viewSample cart) samples

@@ -586,7 +586,7 @@ resultsTable cart fieldList query results =
             List.map Tuple.first fieldList
 
         cartTh =
-            th [] [ text "Cart" ]
+            th [ class "nowrap" ] [ Cart.addAllToCartButton cart sampleIds |> Html.map CartMsg ]
 
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__sample_name" :: fieldNames)) ++ [cartTh]) ]
@@ -613,12 +613,23 @@ resultsTable cart fieldList query results =
 
                 _ ->
                     span [ class "badge" ] [ text numStr ]
+
+        sampleIdFromResult result =
+            case String.toInt (getVal "specimen__sample_id" result) of
+                Ok sampleId ->
+                    sampleId
+
+                Err _ ->
+                    0
+
+        sampleIds =
+            List.map sampleIdFromResult results
     in
     div []
         [ h2 []
             [ text "Results "
             , numShowing
-            , small [ class "right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
+            , small [ class "pull-right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
             ]
         , table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]
         ]

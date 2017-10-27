@@ -1,4 +1,4 @@
-module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, addToCartButton2, size, CartType(..))
+module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButton, addToCartButton2, addAllToCartButton, size, CartType(..))
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
@@ -38,6 +38,8 @@ init cart cartType =
 type Msg
     = AddToCart Int
     | RemoveFromCart Int
+    | AddAllToCart (List Int)
+    | RemoveAllFromCart (List Int)
     | SelectInCart Int
     | SetTableState Table.State
     | SetSession Session
@@ -54,7 +56,7 @@ update session msg model =
         AddToCart id ->
             let
                 newCart =
-                    Cart.add id model.cart
+                    Cart.add model.cart id
 
                 newSession =
                     { session | cart = newCart }
@@ -64,7 +66,27 @@ update session msg model =
         RemoveFromCart id ->
             let
                 newCart =
-                    Cart.remove id model.cart
+                    Cart.remove model.cart id
+
+                newSession =
+                    { session | cart = newCart }
+            in
+            { model | cart = newCart } => Session.store newSession => SetCart newCart
+
+        AddAllToCart ids ->
+            let
+                newCart =
+                    Cart.addList model.cart ids
+
+                newSession =
+                    { session | cart = newCart }
+            in
+            { model | cart = newCart } => Session.store newSession => SetCart newCart
+
+        RemoveAllFromCart ids ->
+            let
+                newCart =
+                    Cart.removeList model.cart ids
 
                 newSession =
                     { session | cart = newCart }
@@ -74,7 +96,7 @@ update session msg model =
         SelectInCart id ->
             let
                 selected =
-                    Cart.add id model.selected
+                    Cart.add model.selected id
             in
             { model | selected = selected } => Cmd.none => NoOp
 
@@ -204,6 +226,20 @@ addToCartButton2 model id =
 
         False ->
             button [ class "btn btn-default", onClick (AddToCart id) ] [ text "Add to Cart" ]
+
+
+addAllToCartButton : Model -> List Int -> Html Msg
+addAllToCartButton model ids =
+    let
+        intersection =
+            Set.intersect (Set.fromList ids) model.cart.contents |> Set.toList
+    in
+    case intersection of
+        [] ->
+            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text "Add all" ]
+
+        _ ->
+            button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text "Remove all" ]
 
 
 selectInCartColumn : Table.Column Sample Msg

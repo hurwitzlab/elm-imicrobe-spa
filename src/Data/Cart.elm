@@ -1,4 +1,4 @@
-module Data.Cart exposing (Cart, empty, size, add, remove, decoder, encode)
+module Data.Cart exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -23,8 +23,8 @@ size cart =
     Set.size cart.contents
 
 
-add : Int -> Cart -> Cart
-add id cart =
+add : Cart -> Int -> Cart
+add cart id =
     let
         newContents =
             Set.insert id cart.contents
@@ -32,11 +32,29 @@ add id cart =
     { cart | contents = newContents }
 
 
-remove : Int -> Cart -> Cart
-remove id cart =
+addList : Cart -> List Int -> Cart
+addList cart ids =
+    let
+        newContents =
+            Set.union (Set.fromList ids) cart.contents
+    in
+    { cart | contents = newContents }
+
+
+remove : Cart -> Int -> Cart
+remove cart id =
     let
         newContents =
             Set.remove id cart.contents
+    in
+    { cart | contents = newContents }
+
+
+removeList : Cart -> List Int -> Cart
+removeList cart ids =
+    let
+        newContents =
+            Set.diff cart.contents (Set.fromList ids)
     in
     { cart | contents = newContents }
 
