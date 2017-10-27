@@ -119,7 +119,7 @@ tagColumn =
 tagBadges : Data.App.App -> Table.HtmlDetails Msg
 tagBadges app =
     Table.HtmlDetails []
-        (List.map tagBadge app.app_tags)
+        (List.sortBy .value app.app_tags |> List.map tagBadge)
 
 
 tagBadge : Data.App.AppTag -> Html Msg
