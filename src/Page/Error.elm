@@ -77,7 +77,7 @@ view : PageLoadError -> Html msg
 view (PageLoadError model) =
     main_ [ id "content", class "container", tabindex -1 ]
         [ div [ class "page-header" ]
-            [ h1 [] [ text "Page Error" ] ]
+            [ h1 [] [ text "Error" ] ]
         , div [ class "row" ]
             [ div [ class "alert alert-danger" ] [ text (errorMessage model.error) ] ]
         ]
