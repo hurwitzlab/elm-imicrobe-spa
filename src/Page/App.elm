@@ -59,11 +59,13 @@ init session id =
 
                 Agave.ArrayValue arr -> String.join ";" arr
 
+                Agave.BoolValue bool -> ""
+
         inputs app =
             app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> Dict.fromList
 
         params app =
-            app.parameters |> List.map (\param -> (param.id, param.value.default)) |> Dict.fromList
+            app.parameters |> List.map (\param -> (param.id, default param.value.default)) |> Dict.fromList
 
         cart =
             Cart.init session.cart Cart.Selectable
@@ -308,7 +310,7 @@ viewApp model =
             ]
         , tr []
             [ th [] [ text "Tags" ]
-            , td [] [ text (List.map .value app.app_tags |> String.join ", ") ]
+            , td [] [ text (List.map .value app.app_tags |> List.sort |> String.join ", ") ]
             ]
         ]
     , h3 [] [ text "Inputs" ]
