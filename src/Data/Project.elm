@@ -43,14 +43,6 @@ type alias Project =
 type alias ProjectGroup =
     { project_group_id : Int
     , group_name : String
-    , project_to_project_group : ProjectToGroup
-    }
-
-
-type alias ProjectToGroup =
-    { project_to_project_group_id : Int
-    , project_id : Int
-    , project_group_id : Int
     }
 
 
@@ -123,7 +115,6 @@ decoderProjectGroup =
     decode ProjectGroup
         |> required "project_group_id" Decode.int
         |> required "group_name" Decode.string
-        |> required "project_to_project_group" decoderProjectToGroup
 
 
 decoderInv : Decoder Investigator
@@ -139,14 +130,6 @@ decoderDomain =
     decode Domain
         |> required "domain_id" Decode.int
         |> required "domain_name" Decode.string
-
-
-decoderProjectToGroup : Decoder ProjectToGroup
-decoderProjectToGroup =
-    decode ProjectToGroup
-        |> required "project_to_project_group_id" Decode.int
-        |> required "project_id" Decode.int
-        |> required "project_group_id" Decode.int
 
 
 decoderPub : Decoder Publication
