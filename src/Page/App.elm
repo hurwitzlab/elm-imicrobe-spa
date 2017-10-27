@@ -308,7 +308,7 @@ viewApp model =
             ]
         , tr []
             [ th [] [ text "Tags" ]
-            , td [] [ text (String.join ", " agaveApp.tags) ]
+            , td [] [ text (List.map .value app.app_tags |> String.join ", ") ]
             ]
         ]
     , h3 [] [ text "Inputs" ]
