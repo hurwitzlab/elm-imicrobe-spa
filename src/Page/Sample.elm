@@ -152,7 +152,7 @@ view model =
             , viewCombinedAssemblies model.sample.combined_assemblies
             , viewOntologies model.sample.ontologies
             , viewAttributes model
-            , viewProteins model
+--            , viewProteins model
             ]
         ]
 
