@@ -336,8 +336,8 @@ viewAppInput input =
                 False -> agaveAppInput.details.label
     in
     tr []
-    [ th [] [ text label ]
-    , td []
+    [ th [ class "nowrap" ] [ text label ]
+    , td [ class "nowrap" ]
         [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
         , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ]
             [ span [ class "gray gylphicon glyphicon-cloud" ] []
@@ -371,8 +371,8 @@ viewAppParameter input =
                         (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
     in
     tr []
-    [ th [] [ text param.details.label ]
-    , td [] [ interface ]
+    [ th [ class "nowrap" ] [ text param.details.label ]
+    , td [ class "nowrap" ] [ interface ]
     , td [] [ text param.details.description ]
     ]
 
