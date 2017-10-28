@@ -366,7 +366,7 @@ viewAppParameter input =
         interface =
             case param.value.enum_values of
                 Nothing ->
-                    Html.input [ type_ "text", size 40, name id, value val, onInput (SetParameter id) ] []
+                    Html.input [ class "form-control", type_ "text", size 40, name id, value val, onInput (SetParameter id) ] []
 
                 Just enum ->
                     select [ onInput (SetParameter id) ]
@@ -423,11 +423,14 @@ cartDialogConfig model =
                     viewCart model
 
         footer =
-            button
-                [ class "btn btn-primary"
-                , onClick CloseCartDialog
+            div []
+                [ button [ class "btn btn-default pull-left", onClick Cart.SelectAllInCart ]
+                    [ text "Select All" ] |> Html.map CartMsg
+                , button [ class "btn btn-default pull-left", onClick Cart.UnselectAllInCart ]
+                    [ text "Unselect All" ] |> Html.map CartMsg
+                , button [ class "btn btn-primary" , onClick CloseCartDialog ]
+                    [ text "OK" ]
                 ]
-                [ text "OK" ]
 
     in
     { closeMessage = Nothing
@@ -444,4 +447,4 @@ viewCart model =
         [] -> text "Your cart is empty"
 
         _ ->
-            div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+            div [ style [("overflow-y", "scroll"), ("max-height", "25em")] ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]

@@ -169,13 +169,7 @@ toTableAttrs =
 
 viewCart : Model -> List Sample -> Html Msg
 viewCart model samples =
-    div []
-        [ div [ style [("overflow-y", "scroll"), ("max-height", "25em")] ]
-            [ Table.view (config model) model.tableState (samplesInCart model.cart samples)
-            ]
-        , button [ class "btn btn-default btn-xs", onClick SelectAllInCart ] [ text "Select All" ]
-        , button [ class "btn btn-default btn-xs", onClick UnselectAllInCart ] [ text "Unselect All" ]
-        ]
+    Table.view (config model) model.tableState (samplesInCart model.cart samples)
 
 
 selectInCartColumn : Model -> Table.Column Sample Msg
