@@ -373,7 +373,7 @@ viewAppParameter input =
                         (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
     in
     tr []
-    [ th [ class "nowrap" ] [ text param.details.label ]
+    [ th [ class "col-md-3" ] [ text param.details.label ]
     , td [ class "nowrap" ] [ interface ]
     , td [] [ text param.details.description ]
     ]
