@@ -40,7 +40,9 @@ type Msg
     | RemoveFromCart Int
     | AddAllToCart (List Int)
     | RemoveAllFromCart (List Int)
-    | SelectInCart Int
+    | ToggleSelectInCart Int
+    | SelectAllInCart
+    | UnselectAllInCart
     | SetTableState Table.State
     | SetSession Session
 
@@ -93,10 +95,28 @@ update session msg model =
             in
             { model | cart = newCart } => Session.store newSession => SetCart newCart
 
-        SelectInCart id ->
+        ToggleSelectInCart id ->
             let
                 selected =
-                    Cart.add model.selected id
+                    case Cart.contains model.selected id of
+                        True ->
+                            Cart.remove model.selected id
+
+                        False ->
+                            Cart.add model.selected id
+            in
+            { model | selected = selected } => Cmd.none => NoOp
+
+        SelectAllInCart ->
+            let
+                selected =
+                    Cart.addList model.selected (Set.toList model.cart.contents)
+            in
+            { model | selected = selected } => Cmd.none => NoOp
+
+        UnselectAllInCart ->
+            let
+                selected = Cart.empty
             in
             { model | selected = selected } => Cmd.none => NoOp
 
@@ -127,7 +147,7 @@ config model =
                     ]
 
                 Selectable ->
-                    [ selectInCartColumn
+                    [ selectInCartColumn model
                     , projectColumn
                     , nameColumn
                     ]
@@ -149,24 +169,38 @@ toTableAttrs =
 
 viewCart : Model -> List Sample -> Html Msg
 viewCart model samples =
-    div [] [ Table.view (config model) model.tableState (samplesInCart model.cart samples) ]
+    div []
+        [ div [ style [("overflow-y", "scroll"), ("max-height", "25em")] ]
+            [ Table.view (config model) model.tableState (samplesInCart model.cart samples)
+            ]
+        , button [ class "btn btn-default btn-xs", onClick SelectAllInCart ] [ text "Select All" ]
+        , button [ class "btn btn-default btn-xs", onClick UnselectAllInCart ] [ text "Unselect All" ]
+        ]
 
 
-nameColumn : Table.Column Sample Msg
-nameColumn =
+selectInCartColumn : Model -> Table.Column Sample Msg
+selectInCartColumn model =
     Table.veryCustomColumn
-        { name = "Sample"
-        , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy (String.toLower << .sample_name)
+        { name = ""
+        , viewData = (\s -> selectInCartLink model s)
+        , sorter = Table.unsortable
         }
 
 
-nameLink : Sample -> Table.HtmlDetails Msg
-nameLink sample =
+selectInCartLink : Model -> Sample -> Table.HtmlDetails Msg
+selectInCartLink model sample =
+    let
+        isChecked =
+            Set.member sample.sample_id model.selected.contents
+    in
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Sample sample.sample_id) ]
-            [ text <| Util.truncate sample.sample_name ]
+        [ selectInCartCheckbox sample.sample_id isChecked -- |> Html.map (\_ -> ToggleSelectInCart sample.sample_id)
         ]
+
+
+selectInCartCheckbox : Int -> Bool -> Html Msg
+selectInCartCheckbox id isChecked =
+    input [ type_ "checkbox", checked isChecked, onClick (ToggleSelectInCart id) ] []
 
 
 projectColumn : Table.Column Sample Msg
@@ -183,6 +217,23 @@ projectLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project sample.project_id) ]
             [ text <| Util.truncate sample.project.project_name ]
+        ]
+
+
+nameColumn : Table.Column Sample Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Sample"
+        , viewData = nameLink
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << .sample_name)
+        }
+
+
+nameLink : Sample -> Table.HtmlDetails Msg
+nameLink sample =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Sample sample.sample_id) ]
+            [ text <| Util.truncate sample.sample_name ]
         ]
 
 
@@ -240,27 +291,6 @@ addAllToCartButton model ids =
 
         _ ->
             button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text "Remove all" ]
-
-
-selectInCartColumn : Table.Column Sample Msg
-selectInCartColumn =
-    Table.veryCustomColumn
-        { name = ""
-        , viewData = selectInCartLink
-        , sorter = Table.unsortable
-        }
-
-
-selectInCartLink : Sample -> Table.HtmlDetails Msg
-selectInCartLink sample =
-    Table.HtmlDetails []
-        [ selectInCartCheckbox sample.sample_id |> Html.map (\_ -> SelectInCart sample.sample_id)
-        ]
-
-
-selectInCartCheckbox : Int -> Html Msg
-selectInCartCheckbox id =
-    input [ type_ "checkbox", onClick (SelectInCart id) ] []
 
 
 samplesInCart : Cart -> List Sample -> List Sample

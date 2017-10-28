@@ -23,6 +23,11 @@ size cart =
     Set.size cart.contents
 
 
+contains : Cart -> Int -> Bool
+contains cart id =
+    Set.member id cart.contents
+
+
 add : Cart -> Int -> Cart
 add cart id =
     let
