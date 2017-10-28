@@ -337,15 +337,17 @@ viewAppInput input =
     in
     tr []
     [ th [ class "nowrap" ] [ text label ]
-    , td [ class "nowrap" ]
-        [ Html.input [ class "margin-right", type_ "text", size 40, name id, value val, onInput (SetInput id) ] []
-        , button [ class "margin-right btn btn-default btn-sm", onClick (OpenFileBrowser id) ]
-            [ span [ class "gray gylphicon glyphicon-cloud" ] []
-            , text " CyVerse"
-            ]
-        , button [ class "btn btn-default btn-sm", onClick (OpenCart id) ]
-            [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
-            , text " Cart"
+    , td []
+        [ div [ style [("display","flex")] ]
+            [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput id) ] []
+            , button [ class "margin-right btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenFileBrowser id) ]
+                [ span [ class "gray gylphicon glyphicon-cloud" ] []
+                , text " CyVerse"
+                ]
+            , button [ class "btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenCart id) ]
+                [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
+                , text " Cart"
+                ]
             ]
         ]
     , td [] [ text agaveAppInput.details.description ]
