@@ -336,7 +336,7 @@ viewAppInput input =
                 False -> agaveAppInput.details.label
     in
     tr []
-    [ th [ class "nowrap" ] [ text label ]
+    [ th [ class "col-md-3" ] [ text label ]
     , td []
         [ div [ style [("display","flex")] ]
             [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput id) ] []
