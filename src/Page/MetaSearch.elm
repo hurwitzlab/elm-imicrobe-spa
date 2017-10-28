@@ -2,7 +2,7 @@ module Page.MetaSearch exposing (Model, Msg(..), ExternalMsg(..), init, update, 
 
 import Data.Session as Session exposing (Session)
 import Data.Cart
-import Dict
+import Dict exposing (Dict)
 import Exts.Dict as EDict
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
@@ -40,12 +40,12 @@ type JsonType
 type alias Model =
     { pageTitle : String
     , query : String
-    , params : Dict.Dict String String
+    , params : Dict String String
     , selectedParams : List ( String, String )
-    , optionValues : Dict.Dict String (List String)
-    , searchResults : WebData (List (Dict.Dict String JsonType))
-    , possibleOptionValues : Dict.Dict String (List JsonType)
-    , restrictedParams : Dict.Dict String String
+    , optionValues : Dict String (List String)
+    , searchResults : WebData (List (Dict String JsonType))
+    , possibleOptionValues : Dict String (List JsonType)
+    , restrictedParams : Dict String String
     , cart : Cart.Model
     }
 
@@ -83,9 +83,9 @@ type Msg
     | RemoveOption String
     | UpdateOptionValue String String
     | UpdateMultiOptionValue String (List String)
-    | UpdatePossibleOptionValues (Result Http.Error (Dict.Dict String (List JsonType)))
+    | UpdatePossibleOptionValues (Result Http.Error (Dict String (List JsonType)))
     | Search
-    | UpdateSearchResults (WebData (List (Dict.Dict String JsonType)))
+    | UpdateSearchResults (WebData (List (Dict String JsonType)))
     | SetQuery String
     | CartMsg Cart.Msg
 
@@ -108,11 +108,10 @@ update session msg model =
                 newModel =
                     { model
                         | selectedParams = rmParam model.selectedParams opt
-                        , optionValues =
-                            rmOptionValue model.optionValues opt
+                        , optionValues = rmOptionValue model.optionValues opt
                     }
             in
-            newModel => doSearch newModel => NoOp
+            newModel => doSearch newModel  => NoOp
 
         Search ->
             model => doSearch model => NoOp
@@ -135,7 +134,6 @@ update session msg model =
             { model
                 | searchResults = response
                 , restrictedParams = mkRestrictedParams model.params response
-
                 -- , restrictedOptionValues = mkRestrictedOptionValues response
             }
             => Cmd.none
@@ -145,9 +143,33 @@ update session msg model =
             model => Cmd.none => NoOp
 
         UpdatePossibleOptionValues (Ok response) ->
+            let
+                opt =
+                    case Dict.toList response |> List.head of
+                        Nothing -> ""
+
+                        Just opt ->
+                            Tuple.first opt
+
+                (minVal, maxVal) =
+                    maxMinForOpt opt response
+
+                dataType =
+                    case Dict.get opt (Dict.fromList model.selectedParams) of
+                        Nothing -> ""
+
+                        Just dataType -> dataType
+
+                optionValues =
+                    case dataType of
+                        "number" ->
+                            Dict.fromList [ (("max__" ++ opt), [maxVal]), (("min__" ++ opt) , [minVal]) ]
+
+                        _ -> Dict.fromList []
+            in
             { model
-                | possibleOptionValues =
-                    Dict.union response model.possibleOptionValues
+                | possibleOptionValues = Dict.union response model.possibleOptionValues
+                , optionValues = Dict.union optionValues model.optionValues
             }
             => Cmd.none
             => NoOp
@@ -157,8 +179,6 @@ update session msg model =
 
         CartMsg subMsg ->
             let
-                _ = Debug.log "MetaSearch.CartMsg" (toString subMsg)
-
                 ( ( newCart, subCmd ), msgFromPage ) =
                     Cart.update session subMsg model.cart
             in
@@ -293,7 +313,7 @@ unpackJsonType v =
             toString x
 
 
-mkOptionRow : Dict.Dict String (List JsonType) -> ( String, String ) -> Html Msg
+mkOptionRow : Dict String (List JsonType) -> ( String, String ) -> Html Msg
 mkOptionRow possibleOptionValues ( optionName, dataType ) =
     let
         title =
@@ -307,21 +327,8 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
                 _ ->
                     []
 
-        minVal =
-            case List.take 1 vals of
-                x :: [] ->
-                    unpackJsonType x
-
-                _ ->
-                    ""
-
-        maxVal =
-            case List.drop (List.length vals - 1) vals of
-                x :: [] ->
-                    unpackJsonType x
-
-                _ ->
-                    ""
+        (minVal, maxVal) =
+            maxMinForOpt optionName possibleOptionValues
 
         strVals =
             let
@@ -371,6 +378,36 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
     tr [ class "padded border-top border-bottom", style [("padding", "10px")] ] (title ++ el ++ buttons)
 
 
+maxMinForOpt : String -> Dict String (List JsonType) -> (String, String)
+maxMinForOpt optionName possibleOptionValues =
+    let
+        vals =
+            case Dict.get optionName possibleOptionValues of
+                Just v ->
+                    v
+
+                _ ->
+                    []
+
+        minVal =
+            case List.take 1 vals of
+                x :: [] ->
+                    unpackJsonType x
+
+                _ ->
+                    ""
+
+        maxVal =
+            case List.drop (List.length vals - 1) vals of
+                x :: [] ->
+                    unpackJsonType x
+
+                _ ->
+                    ""
+   in
+   (minVal, maxVal)
+
+
 mkMultiSelect : String -> List JsonType -> Html Msg
 mkMultiSelect optionName vals =
     let
@@ -393,7 +430,7 @@ rmParam paramsList optToRemove =
     List.filter (\( k, v ) -> k /= optToRemove) paramsList
 
 
-rmOptionValue : Dict.Dict String (List String) -> String -> Dict.Dict String (List String)
+rmOptionValue : Dict String (List String) -> String -> Dict String (List String)
 rmOptionValue optionValues optToRemove =
     let
         names =
@@ -423,9 +460,9 @@ oneOfJsonType =
 
 
 serializeForm :
-    Dict.Dict String (List String)
-    -> Dict.Dict String (List JsonType)
-    -> Dict.Dict String String
+    Dict String (List String)
+    -> Dict String (List JsonType)
+    -> Dict String String
     -> Encode.Value
 serializeForm optionValues possibleOptionValues paramTypes =
     let
@@ -465,46 +502,10 @@ serializeForm optionValues possibleOptionValues paramTypes =
 
                 _ ->
                     enc Encode.string vals
-
-        encodeMinMax param vals =
-            let
-                possibleVals =
-                    case Dict.get param possibleOptionValues of
-                        Just v ->
-                            v
-
-                        _ ->
-                            []
-
-                minVal =
-                    case List.take 1 possibleVals of
-                        x :: [] ->
-                            unpackJsonType x
-
-                        _ ->
-                            ""
-
-                maxVal =
-                    case List.drop (List.length possibleVals - 1) possibleVals of
-                        x :: [] ->
-                            unpackJsonType x
-
-                        _ ->
-                            ""
-            in
-            mkFloats [minVal, maxVal] |> List.map Encode.float |> Encode.list
-
     in
-    case Dict.toList optionValues of
-        [] ->
-            Dict.toList possibleOptionValues
-                |> List.map (\( k, vs ) -> ( k, encodeMinMax k vs ))
-                |> Encode.object
-
-        _ ->
-            Dict.toList optionValues
-                |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
-                |> Encode.object
+    Dict.toList optionValues
+        |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
+        |> Encode.object
 
 
 --FIXME move to Request/MetaSearch.elm
@@ -532,9 +533,9 @@ doSearch model =
 --FIXME move to Request/MetaSearch.elm
 getParamValues :
     String
-    -> Dict.Dict String (List String)
-    -> Dict.Dict String (List JsonType)
-    -> Dict.Dict String String
+    -> Dict String (List String)
+    -> Dict String (List JsonType)
+    -> Dict String String
     -> Cmd Msg
 getParamValues optionName optionValues possibleOptionValues params =
     let
@@ -576,7 +577,7 @@ showResults model =
                     resultsTable model.cart model.selectedParams model.query data
 
 
-resultsTable : Cart.Model -> List ( String, String ) -> String -> List (Dict.Dict String JsonType) -> Html Msg
+resultsTable : Cart.Model -> List ( String, String ) -> String -> List (Dict String JsonType) -> Html Msg
 resultsTable cart fieldList query results =
     let
         mkTh fld =
@@ -635,7 +636,7 @@ resultsTable cart fieldList query results =
         ]
 
 
-mkResultRow : Cart.Model -> List ( String, String ) -> Dict.Dict String JsonType -> Html Msg
+mkResultRow : Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
 mkResultRow cart fieldList result =
     let
         mkTd : ( String, String ) -> Html msg
@@ -683,7 +684,7 @@ mkResultRow cart fieldList result =
     tr [] (nameCol :: otherCols ++ [cartCol])
 
 
-getVal : String -> Dict.Dict String JsonType -> String
+getVal : String -> Dict String JsonType -> String
 getVal fldName result =
     case Dict.get fldName result of
         Just (StrType s) ->
@@ -703,9 +704,9 @@ getVal fldName result =
 
 
 mkRestrictedParams :
-    Dict.Dict String String
-    -> WebData (List (Dict.Dict String JsonType))
-    -> Dict.Dict String String
+    Dict String String
+    -> WebData (List (Dict String JsonType))
+    -> Dict String String
 mkRestrictedParams curParams searchResults =
     case searchResults of
         Success data ->
