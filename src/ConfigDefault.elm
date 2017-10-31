@@ -4,7 +4,7 @@ module Config exposing (..)
 
 apiBaseUrl : String
 apiBaseUrl =
-    "http://spa.imicrobe.us/api/v1"
+    "http://www.imicrobe.us/api/v1"
 
 
 agaveBaseUrl : String
