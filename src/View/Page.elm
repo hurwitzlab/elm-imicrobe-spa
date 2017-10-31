@@ -1,11 +1,5 @@
 module View.Page exposing (ActivePage(..))
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Route exposing (Route)
-import Data.Session as Session exposing (Session)
-import Data.Cart as Cart exposing (size)
-
 
 
 type ActivePage
