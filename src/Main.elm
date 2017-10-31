@@ -4,9 +4,12 @@ import Config as Config
 import Data.Session as Session exposing (Session)
 import Data.Profile
 import Data.App
+import Data.Cart
 import Debug exposing (log)
 import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput, onClick)
 import Http
 import Navigation exposing (Location)
 import OAuth
@@ -50,6 +53,7 @@ import Task
 import Time exposing (Time)
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
+import Events exposing (onKeyDown)
 
 
 
@@ -64,6 +68,7 @@ type alias Model =
         , clientId : String
         , redirectUri : String
         }
+    , query : String
     , error : Maybe String
     }
 
@@ -100,7 +105,7 @@ type Page
     | Publications Publications.Model
     | Sample Int Sample.Model
     | Samples Samples.Model
-    | Search Search.Model
+    | Search String Search.Model
 
 
 type PageState
@@ -173,12 +178,15 @@ type Msg
     | SampleMsg Sample.Msg
     | SamplesLoaded (Result PageLoadError Samples.Model)
     | SamplesMsg Samples.Msg
-    | SearchLoaded (Result PageLoadError Search.Model)
+    | SearchLoaded String (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
     | TimerTick Time
+    | SearchBarInput String
+    | SearchBarKeyDown Int
+    | SearchBarQuery
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -288,8 +296,8 @@ setRoute maybeRoute model =
         Just Route.MetaSearch ->
             transition MetaSearchLoaded (MetaSearch.init model.session)
 
-        Just Route.Search ->
-            transition SearchLoaded Search.init
+        Just (Route.Search query) ->
+            transition (SearchLoaded query) (Search.init query)
 
         Just (Route.Map lat lng) ->
             transition (MapLoaded lat lng) (Map.init lat lng)
@@ -809,24 +817,21 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        SearchLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Search subModel) } => Cmd.none
+        SearchLoaded query (Ok subModel) ->
+            { model | pageState = Loaded (Search query subModel) } => Cmd.none
 
-        SearchLoaded (Err error) ->
+        SearchLoaded query (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         SearchMsg subMsg ->
             case page of
-                Search subModel ->
-                    toPage Search SearchMsg Search.update subMsg subModel
+                Search query subModel ->
+                    toPage (Search query) SearchMsg Search.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
 
         HomeMsg subMsg ->
-            let
-                x = Debug.log (toString subMsg)
-            in
             case page of
                 Home subModel ->
                     toPage Home HomeMsg Home.update subMsg subModel
@@ -906,6 +911,23 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        SearchBarInput query ->
+            { model | query = query } => Cmd.none
+
+        SearchBarKeyDown key ->
+            if key == 13 then -- enter key
+                update SearchBarQuery model
+            else
+                model => Cmd.none
+
+        SearchBarQuery ->
+            case model.query of
+                "" ->
+                    model => Cmd.none
+
+                _ ->
+                    model => Route.modifyUrl (Route.Search model.query)
+
         _ ->
             case page of
                 NotFound ->
@@ -936,67 +958,67 @@ viewPage : Session -> Bool -> Page -> Html Msg
 viewPage session isLoading page =
     let
         layout =
-            Page.layout isLoading session
+            pageLayout isLoading session
     in
     case page of
         NotFound ->
             layout Page.Other NotFound.view
 
         Blank ->
-            -- This is for the very intial page load, while we are loading
+            -- This is for the very initial page load, while we are loading
             -- data via HTTP. We could also render a spinner here.
             Html.text ""
                 |> layout Page.Other
 
         App id subModel ->
             App.view subModel
-                |> layout Page.App
                 |> Html.map AppMsg
+                |> layout Page.App
 
         Apps subModel ->
             Apps.view subModel
-                |> layout Page.Apps
                 |> Html.map AppsMsg
+                |> layout Page.Apps
 
         Assembly id subModel ->
             Assembly.view subModel
-                |> layout Page.Assembly
                 |> Html.map AssemblyMsg
+                |> layout Page.Assembly
 
         Assemblies subModel ->
             Assemblies.view subModel
-                |> layout Page.Assemblies
                 |> Html.map AssembliesMsg
+                |> layout Page.Assemblies
 
         Cart subModel ->
             Cart.view subModel
-                |> layout Page.Cart
                 |> Html.map CartMsg
+                |> layout Page.Cart
 
         CombinedAssembly id subModel ->
             CombinedAssembly.view subModel
-                |> layout Page.CombinedAssembly
                 |> Html.map CombinedAssemblyMsg
+                |> layout Page.CombinedAssembly
 
         CombinedAssemblies subModel ->
             CombinedAssemblies.view subModel
-                |> layout Page.CombinedAssemblies
                 |> Html.map CombinedAssembliesMsg
+                |> layout Page.CombinedAssemblies
 
         Contact subModel ->
             Contact.view subModel
-                |> layout Page.Contact
                 |> Html.map ContactMsg
+                |> layout Page.Contact
 
         Domains subModel ->
             Domains.view subModel
-                |> layout Page.Domains
                 |> Html.map DomainsMsg
+                |> layout Page.Domains
 
         Domain id subModel ->
             Domain.view subModel
-                |> layout Page.Domain
                 |> Html.map DomainMsg
+                |> layout Page.Domain
 
         Error subModel ->
             Error.view subModel
@@ -1004,98 +1026,249 @@ viewPage session isLoading page =
 
         Files subModel ->
             Files.view subModel
-                |> layout Page.Files
                 |> Html.map FilesMsg
+                |> layout Page.Files
 
         Home subModel ->
-            Home.view subModel -- session subModel
-                |> layout Page.Home
+            Home.view subModel
                 |> Html.map HomeMsg
+                |> layout Page.Home
 
         Investigator id subModel ->
             Investigator.view subModel
-                |> layout Page.Investigator
                 |> Html.map InvestigatorMsg
+                |> layout Page.Investigator
 
         Investigators subModel ->
             Investigators.view subModel
-                |> layout Page.Investigators
                 |> Html.map InvestigatorsMsg
+                |> layout Page.Investigators
 
         Job id subModel ->
             Job.view subModel
-                |> layout Page.Job
                 |> Html.map JobMsg
+                |> layout Page.Job
 
         Jobs subModel ->
             Jobs.view subModel
-                |> layout Page.Jobs
                 |> Html.map JobsMsg
+                |> layout Page.Jobs
 
         Map lat lng subModel ->
             Map.view subModel
-                |> layout Page.Map
                 |> Html.map MapMsg
+                |> layout Page.Map
 
         MetaSearch subModel ->
             MetaSearch.view subModel
-                |> layout Page.MetaSearch
                 |> Html.map MetaSearchMsg
+                |> layout Page.MetaSearch
 
         Publication id subModel ->
             Publication.view subModel
-                |> layout Page.Publication
                 |> Html.map PublicationMsg
+                |> layout Page.Publication
 
         Publications subModel ->
             Publications.view subModel
-                |> layout Page.Publications
                 |> Html.map PublicationsMsg
+                |> layout Page.Publications
 
         Profile subModel ->
             Profile.view subModel
-                |> layout Page.Profile
                 |> Html.map ProfileMsg
+                |> layout Page.Profile
 
         Project id subModel ->
             Project.view subModel
-                |> layout Page.Project
                 |> Html.map ProjectMsg
+                |> layout Page.Project
 
         Projects subModel ->
             Projects.view subModel
-                |> layout Page.Projects
                 |> Html.map ProjectsMsg
+                |> layout Page.Projects
 
         ProjectGroup id subModel ->
             ProjectGroup.view subModel
-                |> layout Page.ProjectGroup
                 |> Html.map ProjectGroupMsg
+                |> layout Page.ProjectGroup
 
         ProjectGroups subModel ->
             ProjectGroups.view subModel
-                |> layout Page.ProjectGroups
                 |> Html.map ProjectGroupsMsg
+                |> layout Page.ProjectGroups
 
         Pubchase subModel ->
             Pubchase.view subModel
-                |> layout Page.Pubchase
                 |> Html.map PubchaseMsg
+                |> layout Page.Pubchase
 
         Sample id subModel ->
             Sample.view subModel
-                |> layout Page.Sample
                 |> Html.map SampleMsg
+                |> layout Page.Sample
 
         Samples subModel ->
             Samples.view subModel
-                |> layout Page.Samples
                 |> Html.map SamplesMsg
+                |> layout Page.Samples
 
-        Search subModel ->
+        Search query subModel ->
             Search.view subModel
-                |> layout Page.Search
                 |> Html.map SearchMsg
+                |> layout Page.Search
+
+
+{-| Take a page's Html and layout it with a header and footer.
+    isLoading can be used to show loading indicator during slow transitions
+    MDB 10/30/17: moved from Page.elm in support of header search bar
+-}
+pageLayout : Bool -> Session -> ActivePage -> Html Msg -> Html Msg
+pageLayout isLoading session page content =
+    div []
+        [ viewHeader page isLoading session
+        , div [] [ content ]
+--        , viewFooter
+        ]
+
+
+viewHeader : ActivePage -> Bool -> Session -> Html Msg
+viewHeader page isLoading session =
+    let
+        profile = session.profile
+
+        loginMenuItem =
+            case profile of
+                Nothing ->
+                    li [] [ a [ Route.href Route.Login ] [ text "Login" ] ]
+
+                Just profile ->
+                    li [ class "dropdown" ]
+                        [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                            [ text "My Account"
+                            , span [ class "caret" ] []
+                            ]
+                        , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+                            [ li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
+                            , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
+                            ]
+                        ]
+
+        numItemsInCart =
+            Data.Cart.size session.cart
+
+        cartButton =
+            let
+                label =
+                    case numItemsInCart of
+                        0 -> []
+
+                        _ ->
+                            [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
+            in
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+                [ a [ Route.href Route.Cart ]
+                    (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
+                ]
+
+        cartLabel =
+            case numItemsInCart of
+                0 ->
+                    "(Empty)"
+
+                _ ->
+                    "(" ++ (toString numItemsInCart) ++ ")"
+
+        helpButton =
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+                [ a [ Route.href Route.Contact ]
+                    [ span [ class "icon-button glyphicon glyphicon-question-sign" ] [] ]
+                ]
+
+        searchBar =
+            div [ class "pull-right", style [("padding-top", "10px")] ]
+                [ div [ class "navbar-form" ]
+                    [ div [ class "input-group" ]
+                        [ input [ class "form-control", placeholder "Search", onInput SearchBarInput, onKeyDown SearchBarKeyDown ] []
+                        , div [ class "input-group-btn" ]
+                            [ button [ class "btn btn-default", onClick SearchBarQuery ]
+                                [ i [ class "glyphicon glyphicon-search" ] []
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+    in
+    div []
+        [ div [ class "center border-bottom", style [("background-color", "#ffb84d"), ("color", "white")] ] [ text "Note: This is a new beta version and still currently under development.  Please ", a [ Html.Attributes.href "#/contact" ] [ text "let us know" ], text " of any issues or suggestions!" ]
+        , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
+            [ div [ class "container" ]
+                [ div [ class "navbar-header" ]
+                    [ a [ class "navbar-brand", Route.href Route.Home ]
+                        [ img [ src "/img/nav-header.png" ] [] ]
+                    ]
+                , div [ class "navbar-collapse collapse" ]
+                    [ ul [ class "nav navbar-nav" ]
+                        [ li [ class "dropdown" ]
+                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                                [ text "Search"
+                                , span [ class "caret" ] []
+                                ]
+                            , ul
+                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+--                                [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
+                                [ li [] [ a [ Route.href Route.MetaSearch ] [ text "Sample Search" ] ]
+                                ]
+                            ]
+                        , li [ class "dropdown" ]
+                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                                [ text "Browse"
+                                , span [ class "caret" ] []
+                                ]
+                            , ul
+                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+                                [ li [] [ a [ Route.href Route.Investigators ] [ text "Investigators" ] ]
+                                , li [] [ a [ Route.href Route.Projects ] [ text "Projects" ] ]
+--                                , li [] [ a [ Route.href Route.ProjectGroups ] [ text "Project Groups" ] ]
+--                                , li [] [ a [ Route.href Route.Domains ] [ text "Domains" ] ]
+--                                , li [] [ a [ Route.href Route.Assemblies ] [ text "Assemblies" ] ]
+--                                , li [] [ a [ Route.href Route.CombinedAssemblies ] [ text "CombinedAssemblies" ] ]
+                                , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
+                                , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
+                                , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
+                                ]
+                            ]
+                        , li [ class "dropdown" ]
+                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                                [ text "Tools"
+                                , span [ class "caret" ] []
+                                ]
+                            , ul
+                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+                                [ li [] [ a [ Route.href Route.Apps ] [ text "Apps" ] ]
+                                , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
+                                , li [] [ a [ Route.href Route.Cart ] [ text ("Cart " ++ cartLabel) ] ]
+                                ]
+                            ]
+                        , li []
+                            [ a [ Html.Attributes.href "ftp://ftp.imicrobe.us" ]
+                                [ text "Download" ]
+                            ]
+                        , loginMenuItem
+                        ]
+                    , helpButton
+                    , cartButton
+                    , searchBar
+                    ]
+                ]
+            ]
+        ]
+
+
+--viewFooter : Html msg
+--viewFooter =
+--    footer [] []
 
 
 
@@ -1161,6 +1334,7 @@ init flags location =
                 , redirectUri = location.origin --location.origin ++ location.pathname
                 }
             , session = session
+            , query = ""
             , error = Nothing
             , pageState = Loaded initialPage
             }

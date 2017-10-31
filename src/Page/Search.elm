@@ -3,17 +3,16 @@ module Page.Search exposing (Model, Msg, init, update, view)
 import Data.Search
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
+import List.Extra
+import Http
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
-import List.Extra
 import Page.Error as Error exposing (PageLoadError)
-import RemoteData exposing (..)
 import Request.Search
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
-import Util exposing ((=>))
 
 
 
@@ -24,26 +23,34 @@ type alias Model =
     { pageTitle : String
     , query : String
     , tableState : Table.State
-    , searchResults : WebData (List Data.Search.SearchResult)
+    , searchResults : List Data.Search.SearchResult --WebData (List Data.Search.SearchResult)
     , searchResultTypes : List String
     , searchRestrictions : List String
     }
 
 
-initialModel : Model
-initialModel =
-    { pageTitle = "General Search"
-    , query = ""
-    , tableState = Table.initialSort "Name"
-    , searchResults = NotAsked
-    , searchResultTypes = []
-    , searchRestrictions = []
-    }
-
-
-init : Task PageLoadError Model
-init =
-    Task.succeed initialModel
+init : String -> Task PageLoadError Model
+init query =
+    let
+        doSearch =
+            Request.Search.get query |> Http.toTask
+--            Request.Search.get model.query
+--                |> RemoteData.sendRequest
+--                |> Cmd.map UpdateSearchResults
+    in
+    doSearch
+        |> Task.andThen
+            (\results ->
+                Task.succeed
+                    { pageTitle = "Search Results"
+                    , query = query
+                    , tableState = Table.initialSort "Name"
+                    , searchResults = results
+                    , searchResultTypes = []
+                    , searchRestrictions = []
+                    }
+            )
+        |> Task.mapError Error.handleLoadError
 
 
 
@@ -51,33 +58,26 @@ init =
 
 
 type Msg
-    = SetQuery String
-    | SetTableState Table.State
-    | DoSearch
-    | UpdateSearchResults (WebData (List Data.Search.SearchResult))
+    = SetTableState Table.State
+--    | DoSearch
     | SelectOption String Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetQuery newQuery ->
-            ( { model | query = newQuery }
-            , Cmd.none
-            )
-
         SetTableState newState ->
             ( { model | tableState = newState }
             , Cmd.none
             )
 
-        DoSearch ->
-            case model.query of
-                "" ->
-                    ( model, Cmd.none )
-
-                _ ->
-                    ( model, doSearch model )
+--        DoSearch ->
+--            case model.query of
+--                "" ->
+--                    ( model, Cmd.none )
+--
+--                _ ->
+--                    ( model, doSearch model )
 
         SelectOption value bool ->
             let
@@ -94,27 +94,6 @@ update msg model =
             in
             ( { model | searchRestrictions = newOpts }, Cmd.none )
 
-        UpdateSearchResults response ->
-            let
-                types =
-                    case response of
-                        RemoteData.Success data ->
-                            List.map .table_name data
-                                |> List.sort
-                                |> List.Extra.unique
-
-                        _ ->
-                            []
-            in
-            { model | searchResults = response, searchResultTypes = types } => Cmd.none
-
-
-doSearch : Model -> Cmd Msg
-doSearch model =
-    Request.Search.get model.query
-        |> RemoteData.sendRequest
-        |> Cmd.map UpdateSearchResults
-
 
 
 -- VIEW --
@@ -124,22 +103,7 @@ view : Model -> Html Msg
 view model =
     div [ class "container" ]
         [ div [ class "row" ]
-            [ div [ class "page-header" ]
-                [ h1 [] [ text model.pageTitle ]
-                ]
-            , div [ class "center form-inline" ]
-                    [ Html.form
-                        [ onSubmit DoSearch ]
-                        [ input
-                            [ placeholder "Enter search term", class "form-control margin-right", size 50, onInput SetQuery ]
-                            []
-                        , button
-                            [ onClick DoSearch, class "btn btn-primary" ]
-                            [ text "Search" ]
-                        ]
-                    ]
-            , div [] [ resultsTable model ]
-            ]
+            [ resultsTable model ]
         ]
 
 
@@ -153,78 +117,75 @@ mkCheckbox val =
 
 resultsTable : Model -> Html Msg
 resultsTable model =
-    case model.searchResults of
-        RemoteData.Failure err ->
-            text ("Error: " ++ toString err)
+    let
+        filtered =
+            case List.length model.searchRestrictions of
+                0 ->
+                    model.searchResults
 
-        RemoteData.Success data ->
+                _ ->
+                    List.filter
+                        (\v -> List.member v.table_name model.searchRestrictions)
+                        model.searchResults
+
+        numShowing =
             let
-                filtered =
-                    case List.length model.searchRestrictions of
-                        0 ->
-                            data
+                myLocale =
+                    { usLocale | decimals = 0 }
 
-                        _ ->
-                            List.filter
-                                (\v -> List.member v.table_name model.searchRestrictions)
-                                data
+                count =
+                    List.length filtered
 
-                numShowing =
-                    let
-                        myLocale =
-                            { usLocale | decimals = 0 }
-
-                        count =
-                            List.length filtered
-
-                        numStr =
-                            count |> toFloat |> format myLocale
-                    in
-                    case count of
-                        0 ->
-                            span [] []
-
-                        _ ->
-                            span [ class "badge" ] [ text numStr ]
-
-
-                restrict =
-                    case List.length model.searchResultTypes of
-                        0 ->
-                            text ""
-
-                        _ ->
-                            fieldset []
-                                (text "Types: "
-                                    :: List.map mkCheckbox model.searchResultTypes
-                                )
+                numStr =
+                    count |> toFloat |> format myLocale
             in
-            if List.length filtered > 0 then
-                div []
-                    [ h2 []
-                        [ text "Results "
-                        , numShowing
-                        ]
-                    , div [ class "panel panel-default" ]
-                        [ div [ class "panel-body" ]
-                            [ restrict
-                            ]
-                        ]
-                    , Table.view config model.tableState filtered
-                    ]
-            else
-                div []
-                    [ h2 []
-                        [ text "Results"
-                        ]
-                    , text "None"
-                    ]
+            case count of
+                0 ->
+                    span [] []
 
-        RemoteData.Loading ->
-            text "Loading ..."
+                _ ->
+                    span [ class "badge" ] [ text numStr ]
 
-        RemoteData.NotAsked ->
-            text ""
+        types = List.map .table_name model.searchResults
+                    |> List.sort
+                    |> List.Extra.unique
+
+
+        restrict =
+            case List.length types of
+                0 ->
+                    text ""
+
+                _ ->
+                    fieldset []
+                        (text "Types: "
+                            :: List.map mkCheckbox types
+                        )
+    in
+    if List.length filtered > 0 then
+        div []
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , numShowing
+                    ]
+                ]
+            , div [ class "panel panel-default" ]
+                    [ div [ class "panel-body" ]
+                        [ restrict
+                        ]
+                    ]
+            , Table.view config model.tableState filtered
+            ]
+    else
+        div []
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text model.pageTitle
+                    ]
+                ]
+            , text "None"
+            ]
 
 
 config : Table.Config Data.Search.SearchResult Msg

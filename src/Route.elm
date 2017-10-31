@@ -39,7 +39,7 @@ type Route
     | Sample Int
     | Samples
     | MetaSearch
-    | Search
+    | Search String
     | Map String String
 
 
@@ -75,7 +75,7 @@ routeMather =
         , Url.map Sample (s "samples" </> Url.int)
         , Url.map Samples (s "samples")
         , Url.map MetaSearch (s "metasearch")
-        , Url.map Search (s "search")
+        , Url.map Search (s "search" </> Url.string)
         , Url.map Map (s "map" </> Url.string </> Url.string)
 
         --    When needing parameters on the form base/item/3
@@ -182,8 +182,8 @@ routeToString page =
                 Samples ->
                     [ "samples" ]
 
-                Search ->
-                    [ "search" ]
+                Search query ->
+                    [ "search", query ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->
