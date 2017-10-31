@@ -287,8 +287,10 @@ viewAssemblies assemblies =
         body =
             let
                 tbl =
-                    table [ class "table" ]
-                        (List.map viewAssembly assemblies)
+                    table [ class "table table-condensed" ]
+                        [ tbody []
+                            (List.map viewAssembly assemblies)
+                        ]
             in
             if count == 0 then
                 text "None"
@@ -299,13 +301,17 @@ viewAssemblies assemblies =
             else
                 div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
     in
-    div []
-        [ h2 []
-            [ text "Assemblies "
-            , label
-            ]
-        , body
-        ]
+    case count of
+        0 -> text ""
+
+        _ ->
+            div []
+                [ h2 []
+                    [ text "Assemblies "
+                    , label
+                    ]
+                , body
+                ]
 
 
 viewAssembly : Assembly -> Html msg
@@ -337,8 +343,10 @@ viewCombinedAssemblies assemblies =
         body =
             let
                 tbl =
-                    table [ class "table" ]
-                        (List.map viewCombinedAssembly assemblies)
+                    table [ class "table table-condensed" ]
+                        [ tbody []
+                            (List.map viewCombinedAssembly assemblies)
+                        ]
             in
             if count == 0 then
                 text "None"
@@ -349,13 +357,17 @@ viewCombinedAssemblies assemblies =
             else
                 div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
     in
-    div []
-        [ h2 []
-            [ text "Combined Assemblies "
-            , label
-            ]
-        , body
-        ]
+    case count of
+        0 -> text ""
+
+        _ ->
+            div []
+                [ h2 []
+                    [ text "Combined Assemblies "
+                    , label
+                    ]
+                , body
+                ]
 
 
 viewCombinedAssembly : CombinedAssembly -> Html msg
