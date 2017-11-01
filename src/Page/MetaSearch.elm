@@ -166,12 +166,14 @@ update session msg model =
                             Dict.fromList [ (("max__" ++ opt), [maxVal]), (("min__" ++ opt) , [minVal]) ]
 
                         _ -> Dict.fromList []
+
+                newModel = { model
+                                | possibleOptionValues = Dict.union response model.possibleOptionValues
+                                , optionValues = Dict.union optionValues model.optionValues
+                            }
             in
-            { model
-                | possibleOptionValues = Dict.union response model.possibleOptionValues
-                , optionValues = Dict.union optionValues model.optionValues
-            }
-            => Cmd.none
+            --update session Search newModel--Cmd.none
+            newModel => doSearch newModel
             => NoOp
 
         SetQuery newQuery ->
@@ -281,20 +283,19 @@ mkOptionTable model =
         rows =
             List.map (mkOptionRow model.possibleOptionValues) options
 
-        searchButtonRow =
-            [ tr []
-                [ td [ colspan 4, style [ ( "text-align", "center" ) ] ]
-                    [ button [ class "padded btn btn-primary", onClick Search ] [ text "Search" ] ]
-                ]
-            ]
+--        searchButtonRow =
+--            [ tr []
+--                [ td [ colspan 4, style [ ( "text-align", "center" ) ] ]
+--                    [ button [ class "padded btn btn-primary", onClick Search ] [ text "Search" ] ]
+--                ]
+--            ]
     in
     case rows of
         [] ->
             text ""
 
         _ ->
-            table [ style [ ( "width", "100%" ) ] ]
-                (rows ++ searchButtonRow)
+            table [ style [ ( "width", "100%" ) ] ] rows
 
 
 unpackJsonType : JsonType -> String
@@ -626,7 +627,7 @@ resultsTable cart fieldList query results =
         sampleIds =
             List.map sampleIdFromResult results
     in
-    div []
+    div [ style [("padding-top", "1em")] ]
         [ h2 []
             [ text "Results "
             , numShowing

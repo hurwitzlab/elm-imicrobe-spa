@@ -183,7 +183,8 @@ type Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
-    | TimerTick Time
+    | PollTimerTick Time
+    | InputTimerTick Time
     | SearchBarInput String
     | SearchBarKeyDown Int
     | SearchBarQuery
@@ -899,7 +900,7 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        TimerTick time ->
+        PollTimerTick time ->
             case page of
                 Job id subModel ->
                     let
@@ -907,6 +908,18 @@ updatePage page msg model =
                                 Job.update session (Job.PollJob time) subModel
                     in
                     { model | pageState = Loaded (Job id pageModel) } => Cmd.map JobMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
+        InputTimerTick time ->
+            case page of
+                Samples subModel ->
+                    let
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                                Samples.update session (Samples.DelayedSearch time) subModel
+                    in
+                    { model | pageState = Loaded (Samples pageModel) } => Cmd.map SamplesMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -1210,18 +1223,18 @@ viewHeader page isLoading session =
                     ]
                 , div [ class "navbar-collapse collapse" ]
                     [ ul [ class "nav navbar-nav" ]
+--                      [ li [ class "dropdown" ]
+--                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+--                                [ text "Search"
+--                                , span [ class "caret" ] []
+--                                ]
+--                            , ul
+--                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+----                                [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
+--                                [ li [] [ a [ Route.href Route.MetaSearch ] [ text "Sample Search" ] ]
+--                                ]
+--                            ]
                         [ li [ class "dropdown" ]
-                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
-                                [ text "Search"
-                                , span [ class "caret" ] []
-                                ]
-                            , ul
-                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
---                                [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
-                                [ li [] [ a [ Route.href Route.MetaSearch ] [ text "Sample Search" ] ]
-                                ]
-                            ]
-                        , li [ class "dropdown" ]
                             [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
                                 [ text "Browse"
                                 , span [ class "caret" ] []
@@ -1281,7 +1294,8 @@ subscriptions model =
         [--pageSubscriptions (getPage model.pageState)
           Sub.map SetSession sessionChange
         , Ports.onFileSelect SelectFile
-        , Time.every (10 * Time.second) TimerTick
+        , Time.every (10 * Time.second) PollTimerTick
+        , Time.every (1 * Time.second) InputTimerTick
         ]
 
 
