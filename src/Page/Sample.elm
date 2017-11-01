@@ -256,13 +256,17 @@ viewAssemblies assemblies =
                     table [ class "table" ]
                         (List.map viewAssembly assemblies)
     in
-    div []
-        [ h2 []
-            [ text "Assemblies "
-            , label
-            ]
-        , body
-        ]
+    case count of
+        0 -> text ""
+
+        _ ->
+            div []
+                [ h2 []
+                    [ text "Assemblies "
+                    , label
+                    ]
+                , body
+                ]
 
 
 viewAssembly : Assembly -> Html msg
@@ -299,13 +303,17 @@ viewCombinedAssemblies assemblies =
                     table [ class "table" ]
                         (List.map viewCombinedAssembly assemblies)
     in
-    div []
-        [ h2 []
-            [ text "Combined Assemblies "
-            , label
-            ]
-        , body
-        ]
+    case count of
+        0 -> text ""
+
+        _ ->
+            div []
+                [ h2 []
+                    [ text "Combined Assemblies "
+                    , label
+                    ]
+                , body
+                ]
 
 
 viewCombinedAssembly : CombinedAssembly -> Html msg
