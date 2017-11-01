@@ -204,6 +204,12 @@ viewFiles files =
                         [ text (toString numFiles)
                         ]
 
+        cols =
+            tr []
+                [ th [] [ text "Path" ]
+                , th [] [ text "Type" ]
+                ]
+
         body =
             case numFiles of
                 0 ->
@@ -211,7 +217,7 @@ viewFiles files =
 
                 _ ->
                     table [ class "table" ]
-                        (List.map viewFile files)
+                        [ tbody [] (cols :: (List.map viewFile files)) ]
     in
     div []
         [ h2 []
@@ -227,6 +233,9 @@ viewFile file =
     tr []
         [ td []
             [ a [ href (dataCommonsUrl ++ file.file) ] [ text file.file ]
+            ]
+        , td []
+            [ text file.sample_file_type.file_type
             ]
         ]
 
@@ -348,7 +357,7 @@ viewOntologies ontologies =
 
                 _ ->
                     table [ class "table" ]
-                        (List.map viewOntology ontologies)
+                        [ tbody [] (List.map viewOntology ontologies) ]
     in
     div []
         [ h2 []
