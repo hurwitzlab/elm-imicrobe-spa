@@ -236,6 +236,12 @@ nameLink result =
 
                 _ ->
                     Route.Home
+
+        name =
+            case result.object_name of
+                "" -> (Route.routeToString route)
+
+                _ -> result.object_name
     in
     Table.HtmlDetails []
-        [ a [ Route.href route ] [ text (Route.routeToString route) ] ]
+        [ a [ Route.href route ] [ text name ] ]
