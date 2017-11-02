@@ -414,19 +414,28 @@ runDialogConfig model =
 cartDialogConfig : Model -> Dialog.Config Msg
 cartDialogConfig model =
     let
+        count =
+            List.length model.samples
+
         content =
-            case List.length model.samples of
+            case count of
                 0 ->
                     text "Your cart is empty"
 
                 _ ->
                     viewCart model
 
+        disable =
+            case count of
+                0 -> True
+
+                _ -> False
+
         footer =
             div []
-                [ button [ class "btn btn-default pull-left", onClick Cart.SelectAllInCart ]
+                [ button [ class "btn btn-default pull-left", disabled disable, onClick Cart.SelectAllInCart ]
                     [ text "Select All" ] |> Html.map CartMsg
-                , button [ class "btn btn-default pull-left", onClick Cart.UnselectAllInCart ]
+                , button [ class "btn btn-default pull-left", disabled disable, onClick Cart.UnselectAllInCart ]
                     [ text "Unselect All" ] |> Html.map CartMsg
                 , button [ class "btn btn-primary" , onClick CloseCartDialog ]
                     [ text "OK" ]
