@@ -216,7 +216,7 @@ viewFiles files =
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
+                    table [ class "table table-condensed" ]
                         [ tbody [] (cols :: (List.map viewFile files)) ]
     in
     div []
@@ -356,7 +356,7 @@ viewOntologies ontologies =
                     text "None"
 
                 _ ->
-                    table [ class "table" ]
+                    table [ class "table table-condensed" ]
                         [ tbody [] (List.map viewOntology ontologies) ]
     in
     div []
