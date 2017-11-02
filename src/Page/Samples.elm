@@ -501,7 +501,6 @@ showTypes samples =
         sampleTypes =
             List.map (\x -> x.sample_type) samples
                 |> List.filter ((/=) "")
-                |> List.filter ((/=) "metagenome") -- requested to be removed by Elisha
                 |> List.sort
                 |> List.Extra.unique
     in
