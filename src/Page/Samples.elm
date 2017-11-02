@@ -392,7 +392,7 @@ showSearchResults model results =
         body =
             case resultRows of
                 [] ->
-                    div [ class "italic gray", style [("font-size", "2em")] ] [ text "No results" ]
+                    noResults
 
                 _ ->
                     div [ style [("padding-top", "1em")] ]
@@ -456,13 +456,13 @@ showAll model =
                         )
                         filteredSamples
 
+        count =
+            List.length acceptableSamples
+
         numShowing =
             let
                 myLocale =
                     { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableSamples
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -474,25 +474,38 @@ showAll model =
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
+
+        body =
+            case count of
+                0 ->
+                    noResults
+
+                _ ->
+                    div [] [ Table.view (config model.cart) model.tableState acceptableSamples ]
     in
-    div [ class "container" ]
-        [ div [ class "row" ]
-            [ div [ class "page-header" ]
-                [ h1 []
-                    [ text (model.pageTitle ++ " ")
-                    , numShowing
-                    , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+        div [ class "container" ]
+            [ div [ class "row" ]
+                [ div [ class "page-header" ]
+                    [ h1 []
+                        [ text (model.pageTitle ++ " ")
+                        , numShowing
+                        , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+                        ]
                     ]
-                ]
-            , div [ class "panel panel-default" ]
-                [ div [ class "panel-body" ]
-                    [ showTypes model.samples
-                    , searchView model
+                , div [ class "panel panel-default" ]
+                    [ div [ class "panel-body" ]
+                        [ showTypes model.samples
+                        , searchView model
+                        ]
                     ]
+                , body
                 ]
-            , div [] [ Table.view (config model.cart) model.tableState acceptableSamples ]
             ]
-        ]
+
+
+noResults : Html Msg
+noResults =
+    div [ class "italic gray", style [("font-size", "2em")] ] [ text "No results" ]
 
 
 showTypes : List Sample -> Html Msg
