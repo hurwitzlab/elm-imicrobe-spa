@@ -70,20 +70,7 @@ init session =
         loadSearchParams =
             Request.MetaSearch.getParams |> Http.toTask
     in
---    loadSamples
---        |> Task.andThen
---            (\samples ->
---                Task.succeed
---                    { pageTitle = "Samples"
---                    , samples = samples
---                    , tableState = Table.initialSort "Name"
---                    , query = ""
---                    , sampleTypeRestriction = []
---                    , cart = (Cart.init session.cart Cart.Editable)
---                    }
---            )
---        |> Task.mapError Error.handleLoadError
-
+    -- FIXME load samples and search params in parallel
     loadSamples |> Task.andThen
         (\samples ->
             (loadSearchParams |> Task.andThen
@@ -514,6 +501,7 @@ showTypes samples =
         sampleTypes =
             List.map (\x -> x.sample_type) samples
                 |> List.filter ((/=) "")
+                |> List.filter ((/=) "metagenome") -- requested to be removed by Elisha
                 |> List.sort
                 |> List.Extra.unique
     in
