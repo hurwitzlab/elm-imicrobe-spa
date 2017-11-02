@@ -1295,7 +1295,7 @@ subscriptions model =
           Sub.map SetSession sessionChange
         , Ports.onFileSelect SelectFile
         , Time.every (10 * Time.second) PollTimerTick
-        , Time.every (1 * Time.second) InputTimerTick
+        , Time.every (500 * Time.millisecond) InputTimerTick
         ]
 
 

@@ -116,7 +116,7 @@ init session =
 type Msg
     = CartMsg Cart.Msg
     | SetQuery String
-    | SelectOption String Bool
+    | SelectType String Bool
     | SetTableState Table.State
     | SetSession Session
     | AddParamOption String
@@ -124,7 +124,7 @@ type Msg
     | UpdateOptionValue String String
     | UpdateMultiOptionValue String (List String)
     | UpdatePossibleOptionValues (Result Http.Error (Dict String (List JsonType)))
-    | Search
+--    | Search
     | DelayedSearch Time
     | UpdateSearchResults (WebData (List (Dict String JsonType)))
 
@@ -152,7 +152,7 @@ update session msg model =
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none => NoOp
 
-        SelectOption value bool ->
+        SelectType value bool ->
             let
                 curOptions =
                     model.sampleTypeRestriction
@@ -190,17 +190,23 @@ update session msg model =
                     { model
                         | selectedParams = rmParam model.selectedParams opt
                         , optionValues = rmOptionValue model.optionValues opt
+                        , doSearch = True
                     }
             in
-            newModel => doSearch newModel => NoOp
+            newModel => Cmd.none => NoOp
 
-        Search ->
-            model => doSearch model => NoOp
+--        Search ->
+--            { model | doSearch = False } => doSearch model => NoOp
 
         DelayedSearch time ->
             case model.doSearch of
                 True ->
-                    { model | doSearch = False } => doSearch model => NoOp
+                    case model.selectedParams of
+                        [] ->
+                            { model | doSearch = False, searchResults = NotAsked } => Cmd.none => NoOp
+
+                        _ ->
+                            { model | doSearch = False } => doSearch model => NoOp
 
                 False ->
                     model => Cmd.none => NoOp
@@ -261,11 +267,10 @@ update session msg model =
                 newModel = { model
                                 | possibleOptionValues = Dict.union response model.possibleOptionValues
                                 , optionValues = Dict.union optionValues model.optionValues
+                                , doSearch = True
                             }
             in
-            newModel
-            => doSearch newModel
-            => NoOp
+            newModel => Cmd.none => NoOp
 
 
 config : Cart.Model -> Table.Config Sample Msg
@@ -306,10 +311,7 @@ view model =
             text (toString e)
 
         Success data ->
-            let
-                _ = Debug.log "data" (toString data)
-            in
-            case data of
+            case model.selectedParams of
                 [] ->
                     showAll model
 
@@ -368,7 +370,7 @@ showSearchResults model results =
             List.map sampleIdFromResult results
 
         cartTh =
-            th [ class "nowrap" ] [ text "Cart ", Cart.addAllToCartButton model.cart sampleIds |> Html.map CartMsg ]
+            th [ class "nowrap" ] [ text "Cart ", br [] [], Cart.addAllToCartButton model.cart sampleIds |> Html.map CartMsg ]
 
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__project_name" :: "specimen__sample_name" :: "specimen__sample_type" :: fieldNames)) ++ [cartTh]) ]
@@ -390,7 +392,7 @@ showSearchResults model results =
         body =
             case resultRows of
                 [] ->
-                    text "No results"
+                    div [ class "italic gray", style [("font-size", "2em")] ] [ text "No results" ]
 
                 _ ->
                     div [ style [("padding-top", "1em")] ]
@@ -516,7 +518,7 @@ showTypes samples =
 mkCheckbox : String -> Html Msg
 mkCheckbox val =
     label [ style [("padding-left", "1em")]]
-        [ input [ type_ "checkbox", onCheck (SelectOption val) ] []
+        [ input [ type_ "checkbox", onCheck (SelectType val) ] []
         , text (" " ++ val)
         ]
 
@@ -670,7 +672,7 @@ mkOptionTable model =
             text ""
 
         _ ->
-            table [ style [ ( "width", "100%" ), ( "padding-left", "2em" ) ] ] rows
+            table [ style [ ( "width", "100%" ), ( "margin-left", "2em" ) ] ] rows
 
 
 unpackJsonType : JsonType -> String
