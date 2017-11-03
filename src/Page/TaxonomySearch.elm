@@ -24,7 +24,9 @@ import View.Cart as Cart
 
 type alias Model =
     { pageTitle : String
+    , searchTerm : String
     , query : String
+    , taxId : String
     , minAbundance : Float
     , tableState : Table.State
     , cart : Cart.Model
@@ -33,17 +35,15 @@ type alias Model =
 
 
 init : Session -> String -> Task PageLoadError Model
-init session query =
-    let
-        doSearch =
-            Request.Sample.taxonomy_search query |> Http.toTask
-    in
-    doSearch
+init session searchTerm =
+    doSearch searchTerm
         |> Task.andThen
             (\results ->
                 Task.succeed
                     { pageTitle = "Taxonomy Search"
+                    , searchTerm = searchTerm
                     , query = ""
+                    , taxId = searchTerm
                     , minAbundance = 0
                     , tableState = Table.initialSort "Abundance"
                     , cart = (Cart.init session.cart Cart.Editable)
@@ -53,6 +53,16 @@ init session query =
         |> Task.mapError Error.handleLoadError
 
 
+doSearch : String -> Task Http.Error (List Centrifuge2)
+doSearch searchTerm =
+    case searchTerm of
+        "" ->
+            Task.succeed []
+
+        _ ->
+            Request.Sample.taxonomy_search searchTerm |> Http.toTask
+
+
 
 -- UPDATE --
 
@@ -60,6 +70,9 @@ init session query =
 type Msg
     = CartMsg Cart.Msg
     | SetQuery String
+    | SetTaxId String
+    | Search
+    | SetResults String (List Centrifuge2)
     | SetAbundanceThreshold String
     | SetTableState Table.State
     | SetSession Session
@@ -84,6 +97,27 @@ update session msg model =
 
         SetQuery newQuery ->
             { model | query = newQuery } => Cmd.none => NoOp
+
+        SetTaxId strValue ->
+            { model | taxId = strValue } => Cmd.none => NoOp
+
+        Search ->
+           let
+                handleResults searchTerm results =
+                    case results of
+                        Ok results ->
+                            SetResults searchTerm results
+
+                        Err _ ->
+                            let
+                                _ = Debug.log "Error" "could not retrieve search results"
+                            in
+                            SetResults searchTerm []
+            in
+            model => Task.attempt (handleResults model.taxId) (doSearch model.taxId) => NoOp
+
+        SetResults searchTerm results ->
+            { model | searchTerm = searchTerm, results = results } => Route.modifyUrl (Route.TaxonomySearch searchTerm) => NoOp
 
         SetAbundanceThreshold strValue ->
             let
@@ -154,13 +188,32 @@ view model =
                     span [ class "badge" ]
                         [ text numStr ]
 
-        display =
-            case acceptableSamples of
-                [] ->
-                    text "None"
+        filters =
+            case model.searchTerm of
+                "" -> text ""
 
                 _ ->
-                    Table.view (tableConfig model.cart) model.tableState acceptableSamples
+                    case acceptableSamples of
+                        [] ->
+                            text ""
+
+                        _ ->
+                            div [ style [("padding-bottom", "0.5em")] ]
+                                [ text "Filter: Abundance >= "
+                                , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
+                                ]
+
+        display =
+            case model.searchTerm of
+                "" -> text ""
+
+                _ ->
+                    case acceptableSamples of
+                        [] ->
+                            text "No results"
+
+                        _ ->
+                            Table.view (tableConfig model.cart) model.tableState acceptableSamples
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -170,9 +223,12 @@ view model =
                 , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
-                [ text "Filter: Abundance >= "
-                , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
+                [ text "NCBI Tax ID "
+                , input [ value model.taxId, size 10, onInput SetTaxId ] []
+                , text " "
+                , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]
+            , filters
             , display
             ]
         ]
