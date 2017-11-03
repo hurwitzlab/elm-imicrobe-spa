@@ -1,6 +1,6 @@
-module Request.Sample exposing (list, get, getSome, files, proteins)
+module Request.Sample exposing (..)
 
-import Data.Sample as Sample exposing (Sample, SampleFile, SampleUProC, decoderSampleFile, decoderSampleUProC)
+import Data.Sample as Sample exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
@@ -66,6 +66,34 @@ proteins id =
 
         decoder =
             Decode.list decoderSampleUProC
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+centrifuge_results : Int -> Http.Request (List SampleToCentrifuge)
+centrifuge_results id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString id) ++ "/centrifuge_results"
+
+        decoder =
+            Decode.list decoderSampleToCentrifuge
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+taxonomy_search : String -> Http.Request (List Centrifuge2)
+taxonomy_search query =
+    let
+        url =
+            apiBaseUrl ++ "/samples/taxonomy_search/" ++ query
+
+        decoder =
+            Decode.list decoderCentrifuge2
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)

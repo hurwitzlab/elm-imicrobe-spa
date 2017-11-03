@@ -1,6 +1,6 @@
 module Page.Sample exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Sample as Sample exposing (Sample, SampleFile, SampleFile2, Ontology, Assembly, CombinedAssembly, SampleUProC)
+import Data.Sample as Sample exposing (..)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
@@ -27,14 +27,19 @@ type alias Model =
     { pageTitle : String
     , sample_id : Int
     , sample : Sample
+    , cart : Cart.Model
     , loadingProteins : Bool
     , loadedProteins : Bool
     , proteins : List SampleUProC
+    , loadingCentrifugeResults : Bool
+    , loadedCentrifugeResults : Bool
+    , centrifugeResults : List SampleToCentrifuge
     , attrTableState : Table.State
     , proteinTableState : Table.State
+    , centrifugeTableState : Table.State
     , attrQuery : String
     , proteinQuery : String
-    , cart : Cart.Model
+    , centrifugeQuery : String
     }
 
 
@@ -51,14 +56,19 @@ init session id =
                     { pageTitle = "Sample"
                     , sample_id = id
                     , sample = sample
+                    , cart = Cart.init session.cart Cart.Editable
                     , loadingProteins = False
                     , loadedProteins = False
                     , proteins = []
+                    , loadingCentrifugeResults = False
+                    , loadedCentrifugeResults = False
+                    , centrifugeResults = []
                     , attrTableState = Table.initialSort "Name"
                     , proteinTableState = Table.initialSort "Read Count"
+                    , centrifugeTableState = Table.initialSort "Abundance"
                     , attrQuery = ""
                     , proteinQuery = ""
-                    , cart = Cart.init session.cart Cart.Editable
+                    , centrifugeQuery = ""
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -71,10 +81,14 @@ init session id =
 type Msg
     = SetAttrQuery String
     | SetProteinQuery String
+    | SetCentrifugeQuery String
     | SetAttrTableState Table.State
     | SetProteinTableState Table.State
+    | SetCentrifugeTableState Table.State
     | GetProteins
     | SetProteins (List SampleUProC)
+    | GetCentrifugeResults
+    | SetCentrifugeResults (List SampleToCentrifuge)
     | CartMsg Cart.Msg
 
 
@@ -92,11 +106,17 @@ update session msg model =
         SetProteinQuery newQuery ->
             { model | proteinQuery = newQuery } => Cmd.none => NoOp
 
+        SetCentrifugeQuery newQuery ->
+            { model | centrifugeQuery = newQuery } => Cmd.none => NoOp
+
         SetAttrTableState newState ->
             { model | attrTableState = newState } => Cmd.none => NoOp
 
         SetProteinTableState newState ->
             { model | proteinTableState = newState } => Cmd.none => NoOp
+
+        SetCentrifugeTableState newState ->
+            { model | centrifugeTableState = newState } => Cmd.none => NoOp
 
         GetProteins ->
             let
@@ -108,9 +128,9 @@ update session msg model =
                         Ok proteins ->
                             SetProteins proteins
 
-                        Err _ ->
+                        Err error ->
                             let
-                                _ = Debug.log "Error" "could not retrieve proteins"
+                                _ = Debug.log "Error" ("could not retrieve proteins: " ++ (toString error))
                             in
                             SetProteins []
             in
@@ -118,6 +138,27 @@ update session msg model =
 
         SetProteins proteins ->
             { model | loadedProteins = True, proteins = proteins } => Cmd.none => NoOp
+
+        GetCentrifugeResults ->
+            let
+                loadCentrifugeResults =
+                    Request.Sample.centrifuge_results model.sample_id |> Http.toTask
+
+                handleCentrifugeResults results =
+                    case results of
+                        Ok results ->
+                            SetCentrifugeResults results
+
+                        Err error ->
+                            let
+                                _ = Debug.log "Error" ("could not retrieve centrifuge results: " ++ (toString error))
+                            in
+                            SetCentrifugeResults []
+            in
+            { model | loadingCentrifugeResults = True } => Task.attempt handleCentrifugeResults loadCentrifugeResults => NoOp
+
+        SetCentrifugeResults results ->
+            { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
         CartMsg subMsg ->
             let
@@ -153,6 +194,7 @@ view model =
             , viewOntologies model.sample.ontologies
             , viewAttributes model
 --            , viewProteins model
+            , viewCentrifugeResults model
             ]
         ]
 
@@ -403,7 +445,7 @@ attrTableConfig =
         }
 
 
-toTableAttrs : List (Attribute Msg)
+toTableAttrs : List (Html.Attribute Msg)
 toTableAttrs =
     [ attribute "class" "table table-condensed"
     ]
@@ -533,13 +575,13 @@ countColumn : Table.Column SampleUProC Msg
 countColumn =
     Table.veryCustomColumn
         { name = "Read Count"
-        , viewData = viewCount
+        , viewData = viewReadCount
         , sorter = Table.decreasingOrIncreasingBy .count
         }
 
 
-viewCount : SampleUProC -> Table.HtmlDetails Msg
-viewCount protein =
+viewReadCount : SampleUProC -> Table.HtmlDetails Msg
+viewReadCount protein =
     Table.HtmlDetails []
         [ text (toString protein.count) ]
 
@@ -625,6 +667,177 @@ viewProteins model =
                 , numShowing
                 , searchBar
                 ]
+            , body
+            ]
+        ]
+
+
+centrifugeTableConfig : Table.Config SampleToCentrifuge Msg
+centrifugeTableConfig =
+    Table.customConfig
+        { toId = toString << .sample_to_centrifuge_id
+        , toMsg = SetCentrifugeTableState
+        , columns =
+            [ nameColumn
+            , taxIdColumn
+            , numReadsColumn
+            , numUniqueReadsColumn
+            , abundanceColumn
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
+
+
+nameColumn : Table.Column SampleToCentrifuge Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = nameLink
+        , sorter = Table.increasingOrDecreasingBy (.name << .centrifuge)
+        }
+
+
+nameLink : SampleToCentrifuge -> Table.HtmlDetails Msg
+nameLink result =
+    let
+        url =
+            "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=" ++ (toString result.centrifuge.tax_id)
+    in
+    Table.HtmlDetails []
+        [ a [ href url ] [ text (toString result.centrifuge.name) ]
+        ]
+
+
+taxIdColumn : Table.Column SampleToCentrifuge Msg
+taxIdColumn =
+    Table.veryCustomColumn
+        { name = "Tax ID"
+        , viewData = taxIdLink
+        , sorter = Table.increasingOrDecreasingBy (String.toLower << toString << .tax_id << .centrifuge)
+        }
+
+
+taxIdLink : SampleToCentrifuge -> Table.HtmlDetails Msg
+taxIdLink result =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.TaxonomySearch (toString result.centrifuge.tax_id)) ]
+            [ text (toString result.centrifuge.tax_id) ]
+        ]
+
+
+numReadsColumn : Table.Column SampleToCentrifuge Msg
+numReadsColumn =
+    Table.customColumn
+        { name = "Reads"
+        , viewData = toString << .num_reads
+        , sorter = Table.increasingOrDecreasingBy (toString << .num_reads)
+        }
+
+
+numUniqueReadsColumn : Table.Column SampleToCentrifuge Msg
+numUniqueReadsColumn =
+    Table.customColumn
+        { name = "Unique Reads"
+        , viewData = toString << .num_unique_reads
+        , sorter = Table.increasingOrDecreasingBy (toString << .num_unique_reads)
+        }
+
+
+abundanceColumn : Table.Column SampleToCentrifuge Msg
+abundanceColumn =
+    Table.customColumn
+        { name = "Abundance"
+        , viewData = toString << .abundance
+        , sorter = Table.decreasingOrIncreasingBy (toString << .abundance)
+        }
+
+
+viewCentrifugeResults : Model -> Html Msg
+viewCentrifugeResults model =
+    let
+        lowerQuery =
+            String.toLower model.centrifugeQuery
+
+        centrifugeFilter item =
+            ( (String.contains lowerQuery (String.toLower item.centrifuge.name))
+                || (String.contains lowerQuery (String.toLower (toString item.centrifuge.tax_id)))
+                || (String.contains lowerQuery (String.toLower (toString item.num_reads)))
+                || (String.contains lowerQuery (String.toLower (toString item.num_unique_reads)))
+                || (String.contains lowerQuery (String.toLower (toString item.abundance))) )
+
+        acceptableResults =
+            List.filter centrifugeFilter model.centrifugeResults
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    case acceptableResults of
+                        [] ->
+                            case model.centrifugeQuery of
+                                 "" ->
+                                    model.sample.centrifuge_count
+
+                                 _ ->
+                                    0
+
+                        _ ->
+                            List.length acceptableResults
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
+
+        searchBar =
+            case model.centrifugeResults of
+                [] ->
+                    span [] []
+
+                _ ->
+                    small [ class "right" ]
+                        [ input [ placeholder "Search", onInput SetCentrifugeQuery ] [] ]
+
+        body =
+            case model.sample.centrifuge_count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    case model.loadedCentrifugeResults of
+                        True ->
+                            case acceptableResults of
+                                [] ->
+                                    text "None"
+
+                                _ ->
+                                    Table.view centrifugeTableConfig model.centrifugeTableState acceptableResults
+
+                        False ->
+                            case model.loadingCentrifugeResults of
+                                True ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                                False ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCentrifugeResults ] [ text "Show Results" ] ] ] ] ]
+    in
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 []
+                [ text "Taxonomic Classification "
+                , numShowing
+                , searchBar
+                ]
+            , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml" ] [ text "Centrifuge"] ]
             , body
             ]
         ]

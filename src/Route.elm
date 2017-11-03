@@ -28,6 +28,8 @@ type Route
     | Job String
     | Login
     | Logout
+    | Map String String
+    | MetaSearch
     | Publication Int
     | Publications
     | Profile
@@ -38,9 +40,8 @@ type Route
     | Pubchase
     | Sample Int
     | Samples
-    | MetaSearch
     | Search String
-    | Map String String
+    | TaxonomySearch String
 
 
 routeMather : Parser (Route -> a) a
@@ -64,6 +65,8 @@ routeMather =
         , Url.map Job (s "jobs" </> Url.string)
         , Url.map Login (s "login")
         , Url.map Logout (s "logout")
+        , Url.map Map (s "map" </> Url.string </> Url.string)
+        , Url.map MetaSearch (s "metasearch")
         , Url.map Pubchase (s "pubchase")
         , Url.map Publication (s "publications" </> Url.int)
         , Url.map Publications (s "publications")
@@ -74,9 +77,8 @@ routeMather =
         , Url.map ProjectGroups (s "project_groups")
         , Url.map Sample (s "samples" </> Url.int)
         , Url.map Samples (s "samples")
-        , Url.map MetaSearch (s "metasearch")
         , Url.map Search (s "search" </> Url.string)
-        , Url.map Map (s "map" </> Url.string </> Url.string)
+        , Url.map TaxonomySearch (s "taxonomy_search" </> Url.string)
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -184,6 +186,9 @@ routeToString page =
 
                 Search query ->
                     [ "search", query ]
+
+                TaxonomySearch query ->
+                    [ "taxonomy_search", query ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->

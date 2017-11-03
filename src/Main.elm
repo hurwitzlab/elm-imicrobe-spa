@@ -45,6 +45,7 @@ import Page.Publications as Publications
 import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
+import Page.TaxonomySearch as TaxonomySearch
 import Route exposing (..)
 import Request.Agave
 import Request.Login
@@ -106,6 +107,7 @@ type Page
     | Sample Int Sample.Model
     | Samples Samples.Model
     | Search String Search.Model
+    | TaxonomySearch String TaxonomySearch.Model
 
 
 type PageState
@@ -180,6 +182,8 @@ type Msg
     | SamplesMsg Samples.Msg
     | SearchLoaded String (Result PageLoadError Search.Model)
     | SearchMsg Search.Msg
+    | TaxonomySearchLoaded String (Result PageLoadError TaxonomySearch.Model)
+    | TaxonomySearchMsg TaxonomySearch.Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
@@ -264,6 +268,12 @@ setRoute maybeRoute model =
         Just Route.Logout ->
             transition Deauthorize (Home.init model.session)
 
+        Just (Route.Map lat lng) ->
+            transition (MapLoaded lat lng) (Map.init lat lng)
+
+        Just Route.MetaSearch ->
+            transition MetaSearchLoaded (MetaSearch.init model.session)
+
         Just Route.Pubchase ->
             transition PubchaseLoaded Pubchase.init
 
@@ -294,14 +304,11 @@ setRoute maybeRoute model =
         Just Route.Samples ->
             transition SamplesLoaded (Samples.init model.session)
 
-        Just Route.MetaSearch ->
-            transition MetaSearchLoaded (MetaSearch.init model.session)
-
         Just (Route.Search query) ->
             transition (SearchLoaded query) (Search.init query)
 
-        Just (Route.Map lat lng) ->
-            transition (MapLoaded lat lng) (Map.init lat lng)
+        Just (Route.TaxonomySearch query) ->
+            transition (TaxonomySearchLoaded query) (TaxonomySearch.init model.session query)
 
 
 getPage : PageState -> Page
@@ -428,7 +435,7 @@ updatePage page msg model =
             case page of
                 Cart subModel ->
                     let
-                        _ = Debug.log "Main.CartMsg" (toString subMsg)
+--                        _ = Debug.log "Main.CartMsg" (toString subMsg)
 
                         ( ( pageModel, cmd ), msgFromPage ) =
                             Cart.update model.session subMsg subModel
@@ -526,6 +533,14 @@ updatePage page msg model =
         HomeLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        HomeMsg subMsg ->
+            case page of
+                Home subModel ->
+                    toPage Home HomeMsg Home.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         InvestigatorLoaded id (Ok subModel) ->
             { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
 
@@ -584,8 +599,6 @@ updatePage page msg model =
             case page of
                 MetaSearch subModel ->
                     let
-                        _ = Debug.log "Main.MetaSearchMsg" (toString subMsg)
-
                         ( ( pageModel, cmd ), msgFromPage ) =
                             MetaSearch.update model.session subMsg subModel
 
@@ -676,6 +689,20 @@ updatePage page msg model =
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
+        MapLoaded lat lng (Ok subModel) ->
+            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
+
+        MapLoaded lat lng (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        MapMsg subMsg ->
+            case page of
+                Map lat lng subModel ->
+                    toPage (Map lat lng) MapMsg Map.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         ProfileLoaded (Ok subModel) ->
             { model | pageState = Loaded (Profile subModel) } => Cmd.none
 
@@ -706,8 +733,6 @@ updatePage page msg model =
             case page of
                 Project id subModel ->
                     let
-                        _ = Debug.log "Main.ProjectMsg" (toString subMsg)
-
                         ( ( pageModel, cmd ), msgFromPage ) =
                             Project.update model.session subMsg subModel
 
@@ -760,8 +785,6 @@ updatePage page msg model =
             case page of
                 Sample id subModel ->
                     let
-                        _ = Debug.log "Main.SampleMsg" (toString subMsg)
-
                         ( ( pageModel, cmd ), msgFromPage ) =
                             Sample.update model.session subMsg subModel
 
@@ -794,8 +817,6 @@ updatePage page msg model =
             case page of
                 Samples subModel ->
                     let
-                        _ = Debug.log "Main.SamplesMsg" (toString subMsg)
-
                         ( ( pageModel, cmd ), msgFromPage ) =
                             Samples.update model.session subMsg subModel
 
@@ -832,24 +853,34 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        HomeMsg subMsg ->
-            case page of
-                Home subModel ->
-                    toPage Home HomeMsg Home.update subMsg subModel
+        TaxonomySearchLoaded query (Ok subModel) ->
+            { model | pageState = Loaded (TaxonomySearch query subModel) } => Cmd.none
 
-                _ ->
-                    model => Cmd.none
-
-        MapLoaded lat lng (Ok subModel) ->
-            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
-
-        MapLoaded lat lng (Err error) ->
+        TaxonomySearchLoaded query (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        MapMsg subMsg ->
+        TaxonomySearchMsg subMsg ->
             case page of
-                Map lat lng subModel ->
-                    toPage (Map lat lng) MapMsg Map.update subMsg subModel
+                TaxonomySearch query subModel ->
+                    let
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            TaxonomySearch.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                TaxonomySearch.NoOp ->
+                                    model
+
+                                TaxonomySearch.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (TaxonomySearch query pageModel) }
+                        => Cmd.map TaxonomySearchMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -1131,6 +1162,11 @@ viewPage session isLoading page =
             Search.view subModel
                 |> Html.map SearchMsg
                 |> layout Page.Search
+
+        TaxonomySearch query subModel ->
+            TaxonomySearch.view subModel
+                |> Html.map TaxonomySearchMsg
+                |> layout Page.TaxonomySearch
 
 
 {-| Take a page's Html and layout it with a header and footer.

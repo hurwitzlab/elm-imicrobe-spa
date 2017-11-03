@@ -101,6 +101,7 @@ type alias Sample =
     , ontologies : List Ontology
     , sample_attrs : List Attribute
     , protein_count : Int
+    , centrifuge_count : Int
     }
 
 
@@ -149,6 +150,47 @@ type alias SampleUProC =
     , sample_id : Int
     , uproc_id : String
     , count : Int
+    }
+
+
+-- FIXME centrifuge-related types below are a mess
+type alias Centrifuge =
+    { centrifuge_id : Int
+    , tax_id : Int
+    , name : String
+    }
+
+
+type alias Centrifuge2 =
+    { centrifuge_id : Int
+    , tax_id : Int
+    , name : String
+    , samples : List CentrifugeSample
+    }
+
+
+type alias SampleToCentrifuge =
+    { sample_to_centrifuge_id : Int
+    , num_reads : Int
+    , num_unique_reads : Int
+    , abundance : Float
+    , centrifuge : Centrifuge
+    }
+
+type alias SampleToCentrifuge2 =
+    { sample_to_centrifuge_id : Int
+    , num_reads : Int
+    , num_unique_reads : Int
+    , abundance : Float
+    }
+
+
+type alias CentrifugeSample =
+    { sample_id : Int
+    , sample_name : String
+    , project_id : Int
+    , project : Project
+    , sample_to_centrifuge : SampleToCentrifuge2
     }
 
 
@@ -260,6 +302,7 @@ decoder =
         |> optional "ontologies" (Decode.list decoderOnt) []
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0
+        |> optional "centrifuge_count" Decode.int 0
 
 
 decoderSampleFile : Decoder SampleFile
@@ -312,6 +355,52 @@ decoderSampleUProC =
         |> required "sample_id" Decode.int
         |> required "uproc_id" Decode.string
         |> required "count" Decode.int
+
+
+decoderSampleToCentrifuge : Decoder SampleToCentrifuge
+decoderSampleToCentrifuge =
+    decode SampleToCentrifuge
+        |> required "sample_to_centrifuge_id" Decode.int
+        |> required "num_reads" Decode.int
+        |> required "num_unique_reads" Decode.int
+        |> required "abundance" Decode.float
+        |> required "centrifuge" decoderCentrifuge
+
+
+decoderSampleToCentrifuge2 : Decoder SampleToCentrifuge2
+decoderSampleToCentrifuge2 =
+    decode SampleToCentrifuge2
+        |> required "sample_to_centrifuge_id" Decode.int
+        |> required "num_reads" Decode.int
+        |> required "num_unique_reads" Decode.int
+        |> required "abundance" Decode.float
+
+
+decoderCentrifuge : Decoder Centrifuge
+decoderCentrifuge =
+    decode Centrifuge
+        |> required "centrifuge_id" Decode.int
+        |> required "tax_id" Decode.int
+        |> required "name" Decode.string
+
+
+decoderCentrifuge2 : Decoder Centrifuge2
+decoderCentrifuge2 =
+    decode Centrifuge2
+        |> required "centrifuge_id" Decode.int
+        |> required "tax_id" Decode.int
+        |> required "name" Decode.string
+        |> optional "samples" (Decode.list decoderCentrifugeSample) []
+
+
+decoderCentrifugeSample : Decoder CentrifugeSample
+decoderCentrifugeSample =
+    decode CentrifugeSample
+        |> required "sample_id" Decode.int
+        |> required "sample_name" Decode.string
+        |> required "project_id" Decode.int
+        |> required "project" decoderProject
+        |> required "sample_to_centrifuge" decoderSampleToCentrifuge2
 
 
 encode : Sample -> Value

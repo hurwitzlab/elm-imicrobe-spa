@@ -19,6 +19,8 @@ type ActivePage
     | Investigators
     | Job
     | Jobs
+    | Map
+    | MetaSearch
     | Other
     | Pubchase
     | Publication
@@ -30,8 +32,5 @@ type ActivePage
     | ProjectGroup
     | Sample
     | Samples
-    | MetaSearch
     | Search
-    | Map
-
-
+    | TaxonomySearch
