@@ -294,33 +294,33 @@ abundanceColumn : Table.Column CentrifugeSample Msg
 abundanceColumn =
     Table.veryCustomColumn
         { name = "Abundance"
-        , viewData = abundanceView
+        , viewData = nowrapColum << toString << .abundance << .sample_to_centrifuge
         , sorter = Table.decreasingOrIncreasingBy (toString << .abundance << .sample_to_centrifuge)
         }
 
 
-abundanceView : CentrifugeSample -> Table.HtmlDetails Msg
-abundanceView sample =
-    Table.HtmlDetails [ style [("min-width","7em")] ] -- min-width is to prevent column header from wrapping
-        [ text (toString sample.sample_to_centrifuge.abundance) ]
-
-
 numReadsColumn : Table.Column CentrifugeSample Msg
 numReadsColumn =
-    Table.customColumn
+    Table.veryCustomColumn
         { name = "Reads"
-        , viewData = toString << .num_reads << .sample_to_centrifuge
+        , viewData = nowrapColum << toString << .num_reads << .sample_to_centrifuge
         , sorter = Table.decreasingOrIncreasingBy (toString << .num_reads << .sample_to_centrifuge)
         }
 
 
 numUniqueReadsColumn : Table.Column CentrifugeSample Msg
 numUniqueReadsColumn =
-    Table.customColumn
+    Table.veryCustomColumn
         { name = "Unique Reads"
-        , viewData = toString << .num_unique_reads << .sample_to_centrifuge
+        , viewData = nowrapColum << toString << .num_unique_reads << .sample_to_centrifuge
         , sorter = Table.decreasingOrIncreasingBy (toString << .num_unique_reads << .sample_to_centrifuge)
         }
+
+
+nowrapColum : String -> Table.HtmlDetails Msg
+nowrapColum value =
+    Table.HtmlDetails [ style [("min-width","8em")] ] -- min-width is to prevent column header from wrapping
+        [ text value ]
 
 
 addToCartColumn : Cart.Model -> Table.Column CentrifugeSample Msg

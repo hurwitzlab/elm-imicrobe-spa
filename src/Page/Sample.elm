@@ -712,7 +712,7 @@ nameLink result =
 taxIdColumn : Table.Column SampleToCentrifuge Msg
 taxIdColumn =
     Table.veryCustomColumn
-        { name = "Tax ID"
+        { name = "NCBI Tax ID"
         , viewData = taxIdLink
         , sorter = Table.increasingOrDecreasingBy (String.toLower << toString << .tax_id << .centrifuge)
         }
