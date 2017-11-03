@@ -78,12 +78,12 @@ view model =
         , div [ class "alert alert-info" ]
             [ p []
                 [ text "The user information shown above was obtained from your "
-                , a [ href "http://www.cyverse.org/" ] [ text "CyVerse" ]
+                , a [ href "http://www.cyverse.org/", target "_blank" ] [ text "CyVerse" ]
                 , text " account."
                 ]
             , p []
                 [ text "For details please see the "
-                , a [ href "https://user.cyverse.org/" ] [ text "CyVerse User Portal" ]
+                , a [ href "https://user.cyverse.org/", target "_blank" ] [ text "CyVerse User Portal" ]
                 , text "."
                 ]
             ]

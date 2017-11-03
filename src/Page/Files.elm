@@ -130,7 +130,7 @@ fileColumn =
 fileLink : SampleFile -> Table.HtmlDetails Msg
 fileLink file =
     Table.HtmlDetails []
-        [ a [ attribute "href" (dataCommonsUrl ++ file.file) ]
+        [ a [ attribute "href" (dataCommonsUrl ++ file.file), target "_blank" ]
             [ text <| file.file ]
         ]
 

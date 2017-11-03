@@ -302,7 +302,7 @@ viewApp model =
             ]
         , tr []
             [ th [] [ text "Help" ]
-            , td [] [ a [ href agaveApp.helpURI ] [ text agaveApp.helpURI ] ]
+            , td [] [ a [ href agaveApp.helpURI, target "_blank" ] [ text agaveApp.helpURI ] ]
             ]
         , tr []
             [ th [] [ text "Version" ]

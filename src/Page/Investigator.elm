@@ -103,7 +103,7 @@ viewInvestigator inv =
             ]
         , tr []
             [ th [] [ text "Link" ]
-            , td [] [ a [ href inv.url ] [ text inv.url ] ]
+            , td [] [ a [ href inv.url, target "_blank" ] [ text inv.url ] ]
             ]
         ]
 

@@ -274,7 +274,7 @@ viewFile : SampleFile2 -> Html msg
 viewFile file =
     tr []
         [ td []
-            [ a [ href (dataCommonsUrl ++ file.file) ] [ text file.file ]
+            [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
             ]
         , td []
             [ text file.sample_file_type.file_type
@@ -567,7 +567,7 @@ uprocIdLink protein =
             "http://pfam.xfam.org/family/" ++ protein.uproc_id
     in
     Table.HtmlDetails []
-        [ a [ href url ] [ text protein.uproc_id ]
+        [ a [ href url, target "_blank" ] [ text protein.uproc_id ]
         ]
 
 
@@ -705,7 +705,7 @@ nameLink result =
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=" ++ (toString result.centrifuge.tax_id)
     in
     Table.HtmlDetails []
-        [ a [ href url ] [ text (toString result.centrifuge.name) ]
+        [ a [ href url, target "_blank" ] [ text (toString result.centrifuge.name) ]
         ]
 
 
@@ -837,7 +837,7 @@ viewCentrifugeResults model =
                 , numShowing
                 , searchBar
                 ]
-            , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml" ] [ text "Centrifuge"] ]
+            , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml", target "_blank" ] [ text "Centrifuge"] ]
             , body
             ]
         ]

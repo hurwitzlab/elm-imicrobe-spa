@@ -95,7 +95,7 @@ viewUrl : String -> Html msg
 viewUrl url =
     case String.startsWith "http" url of
         True ->
-            a [ href url ] [ text url ]
+            a [ href url, target "_blank" ] [ text url ]
 
         _ ->
             text url
