@@ -244,7 +244,7 @@ viewSamples cart samples =
                 tbl
 
             else
-                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
+                div [ class "scrollable" ] [ tbl ]
 
     in
     div []
@@ -299,7 +299,7 @@ viewAssemblies assemblies =
                 tbl
 
             else
-                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
+                div [ class "scrollable" ] [ tbl ]
     in
     case count of
         0 -> text ""
@@ -355,7 +355,7 @@ viewCombinedAssemblies assemblies =
                 tbl
 
             else
-                div [ style [("overflow-y", "scroll"), ("height", "25em")] ] [ tbl ]
+                div [ class "scrollable" ] [ tbl ]
     in
     case count of
         0 -> text ""

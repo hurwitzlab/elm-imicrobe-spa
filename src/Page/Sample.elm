@@ -447,8 +447,7 @@ attrTableConfig =
 
 toTableAttrs : List (Html.Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table table-condensed"
-    ]
+    [ attribute "class" "table table-condensed" ]
 
 
 typeColumn : Table.Column Sample.Attribute Msg
@@ -532,7 +531,7 @@ viewAttributes model =
                 , small [ class "right" ]
                     [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
                 ]
-            , display
+            , div [ class "scrollable" ] [ display ]
             ]
         ]
 
@@ -838,6 +837,6 @@ viewCentrifugeResults model =
                 , searchBar
                 ]
             , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml", target "_blank" ] [ text "Centrifuge"] ]
-            , body
+            , div [ class "scrollable" ] [ body ]
             ]
         ]

@@ -98,6 +98,11 @@ tr.padded > td {
     position: absolute;
 }
 
+.scrollable {
+    overflow-y: scroll;
+    height: 50em;
+}
+
 
 /*
  * Modify bootstrap styles
