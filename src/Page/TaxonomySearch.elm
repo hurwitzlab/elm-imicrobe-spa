@@ -188,6 +188,13 @@ view model =
                     span [ class "badge" ]
                         [ text numStr ]
 
+        searchBar =
+            case model.searchTerm of
+                "" -> text ""
+
+                _ ->
+                    small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+
         filters =
             case model.searchTerm of
                 "" -> text ""
@@ -215,7 +222,7 @@ view model =
             [ h2 []
                 [ text "Taxonomy Search "
                 , numShowing
-                , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+                , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
                 [ text "NCBI Tax ID "
