@@ -8,6 +8,7 @@ import Html.Events exposing (onClick)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
+import Request.PlanB
 import Ports
 import Task exposing (Task)
 import Dict exposing (Dict)
@@ -38,8 +39,17 @@ type alias Model =
 init : Session -> String -> Task PageLoadError Model
 init session id =
     let
-        loadJob =
+        loadJobFromAgave =
             Request.Agave.getJob session.token id |> Http.toTask |> Task.map .result
+
+        loadJobFromPlanB =
+            Request.PlanB.getJob session.token id |> Http.toTask |> Task.map .result
+
+        loadJob =
+            case String.startsWith "planb" id of
+                True -> loadJobFromPlanB
+
+                False -> loadJobFromAgave
     in
     loadJob
         |> Task.andThen
@@ -154,8 +164,17 @@ update session msg model =
                     timeSinceLastPoll =
                         time - lastPollTime
 
-                    loadJob =
+                    loadJobFromAgave =
                         Request.Agave.getJob session.token model.job.id |> Http.toTask |> Task.map .result
+
+                    loadJobFromPlanB =
+                        Request.PlanB.getJob session.token model.job.id |> Http.toTask |> Task.map .result
+
+                    loadJob =
+                        case String.startsWith "planb" model.job_id of
+                            True -> loadJobFromPlanB
+
+                            False -> loadJobFromAgave
 
                     handleJob job =
                         case job of
