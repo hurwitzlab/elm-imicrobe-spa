@@ -11,6 +11,7 @@ type alias App =
     { app_id : Int
     , app_name : String
     , is_active : Int
+    , provider : String
     , app_tags : List AppTag
     , app_data_types : List AppDataType
     }
@@ -56,6 +57,7 @@ decoder =
         |> required "app_id" Decode.int
         |> required "app_name" Decode.string
         |> optional "is_active" Decode.int 1
+        |> optional "provider" Decode.string ""
         |> optional "app_tags" (Decode.list decoderAppTag) []
         |> optional "app_data_types" (Decode.list decoderAppDataType) []
 

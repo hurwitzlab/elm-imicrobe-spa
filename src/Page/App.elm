@@ -12,6 +12,7 @@ import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.App
 import Request.Agave
+import Request.PlanB
 import Request.Sample
 import Route
 import Ports
@@ -53,6 +54,15 @@ init session id =
         loadAppFromAgave name =
             Request.Agave.getApp session.token name |> Http.toTask |> Task.map .result
 
+        loadAppFromPlanB name =
+            Request.PlanB.getApp session.token name |> Http.toTask |> Task.map .result
+
+        loadAppFromProvider app =
+            case app.provider of
+                "plan-b" -> loadAppFromPlanB
+
+                _ -> loadAppFromAgave
+
         default val =
             case val of
                 Agave.StringValue val -> val
@@ -72,7 +82,7 @@ init session id =
     in
     loadApp |> Task.andThen
         (\app ->
-            (loadAppFromAgave app.app_name |> Task.andThen
+            ((loadAppFromProvider app) app.app_name |> Task.andThen
                 (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing))
             )
         )
@@ -146,13 +156,22 @@ update session msg model =
                 jobRequest =
                     Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
 
-                cmd1 = Request.Agave.launchJob session.token jobRequest
+                launchAgave = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
-                cmd2 = Request.App.run model.app_id 13 (Agave.encodeJobRequest jobRequest |> toString) --FIXME user_id hardcoded to mbomhoff
+                launchPlanB = Request.PlanB.launchJob session.token jobRequest
+                    |> Http.send RunJobCompleted
+
+                sendAppRun = Request.App.run model.app_id 13 (Agave.encodeJobRequest jobRequest |> toString) --FIXME user_id hardcoded to mbomhoff
                     |> Http.send AppRunCompleted
+
+                launchApp =
+                    case model.app.provider of
+                        "plan-b" -> launchPlanB
+
+                        _ -> launchAgave
             in
-            { model | showRunDialog = True } => Cmd.batch [ cmd1, cmd2 ]
+            { model | showRunDialog = True } => Cmd.batch [ launchApp, sendAppRun ]
 
         RunJobCompleted (Ok response) ->
             --TODO add job to app_run table
