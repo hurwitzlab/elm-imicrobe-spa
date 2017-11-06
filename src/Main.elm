@@ -1285,7 +1285,7 @@ viewHeader page isLoading session =
 --                                , li [] [ a [ Route.href Route.CombinedAssemblies ] [ text "CombinedAssemblies" ] ]
                                 , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
                                 , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
-                                , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
+--                                , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                                 ]
                             ]
                         , li [ class "dropdown" ]
