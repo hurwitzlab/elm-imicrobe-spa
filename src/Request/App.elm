@@ -4,7 +4,6 @@ import Data.App as App exposing (App, AppRun, decoderAppRun, encodeAppRun)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode exposing (Decoder, string)
-import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode
 import Config exposing (apiBaseUrl)
 
