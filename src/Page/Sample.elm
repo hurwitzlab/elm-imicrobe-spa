@@ -305,7 +305,7 @@ viewAssemblies assemblies =
 
                 _ ->
                     table [ class "table" ]
-                        (List.map viewAssembly assemblies)
+                        [ tbody [] (List.map viewAssembly assemblies) ]
     in
     case count of
         0 -> text ""
@@ -352,7 +352,7 @@ viewCombinedAssemblies assemblies =
 
                 _ ->
                     table [ class "table" ]
-                        (List.map viewCombinedAssembly assemblies)
+                        [ tbody [] (List.map viewCombinedAssembly assemblies) ]
     in
     case count of
         0 -> text ""
