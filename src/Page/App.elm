@@ -144,7 +144,7 @@ update session msg model =
                 jobName = "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
 
                 jobRequest =
-                    Agave.JobRequest jobName model.app.app_name False jobInputs jobParameters []
+                    Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
 
                 cmd1 = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
@@ -363,14 +363,30 @@ viewAppParameter input =
 
         id = param.id
 
-        interface =
-            case param.value.enum_values of
-                Nothing ->
-                    Html.input [ class "form-control", type_ "text", size 40, name id, value val, onInput (SetParameter id) ] []
+        defaultInput len =
+            Html.input [ class "form-control", type_ "text", size len, name id, value val, onInput (SetParameter id) ] []
 
-                Just enum ->
-                    select [ onInput (SetParameter id) ]
-                        (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+        interface =
+            case param.value.type_ of
+                "number" ->
+                    defaultInput 10
+
+                "bool" ->
+                    label []
+                        [ Html.input [ type_ "checkbox" ] []
+                        , text id
+                        ]
+
+                "enumeration" ->
+                    case param.value.enum_values of
+                        Nothing -> -- an error in the parameter definition
+                            defaultInput 40
+
+                        Just enum ->
+                            select [ onInput (SetParameter id) ]
+                                (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+                _ ->
+                    defaultInput 40
     in
     tr []
     [ th [ class "col-md-3" ] [ text param.details.label ]
