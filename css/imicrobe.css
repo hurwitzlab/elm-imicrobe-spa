@@ -100,7 +100,7 @@ tr.padded > td {
 
 .scrollable {
     overflow-y: scroll;
-    height: 50em;
+    max-height: 50em;
 }
 
 
