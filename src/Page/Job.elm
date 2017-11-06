@@ -360,6 +360,7 @@ viewOutputs model =
     in
     div []
         [ h2 [] [ text "Outputs" ]
+        , div [] [ text "Browse and view output files in the ", a [ target "_blank", href "https://de.cyverse.org/de/" ] [ text "CyVerse Data Store" ], text "." ]
         , table [ class "table" ]
             [ tbody [] body
             ]
