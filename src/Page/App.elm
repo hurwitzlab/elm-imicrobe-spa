@@ -40,6 +40,7 @@ type alias Model =
     , showRunDialog : Bool
     , cartDialogInputId : Maybe String
     , dialogError : Maybe String
+    , filterFileType : String
     }
 
 
@@ -73,7 +74,7 @@ init session id =
     loadApp |> Task.andThen
         (\app ->
             (loadAppFromAgave app.app_name |> Task.andThen
-                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing))
+                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing "All"))
             )
         )
         |> Task.mapError Error.handleLoadError
@@ -94,6 +95,7 @@ type Msg
     | OpenCart String
     | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile)))
     | CloseCartDialog
+    | FilterByFileType String
     | CartMsg Cart.Msg
 
 
@@ -179,7 +181,14 @@ update session msg model =
                     Set.toList selected.contents
 
                 match file =
-                    if (List.member file.sample_id sampleIds) then
+                    let
+                        fileType =
+                            String.toLower file.sample_file_type.file_type
+
+                        filterFileType =
+                            String.toLower model.filterFileType
+                    in
+                    if (List.member file.sample_id sampleIds && (fileType == filterFileType || filterFileType == "all") ) then
                         Just file.file
                     else
                         Nothing
@@ -222,6 +231,9 @@ update session msg model =
 
         LoadCartCompleted (Err error) ->
             model => Cmd.none
+
+        FilterByFileType fileType ->
+            { model | filterFileType = fileType } => Cmd.none
 
         CartMsg subMsg ->
             let
@@ -448,12 +460,13 @@ cartDialogConfig model =
                 _ -> False
 
         footer =
-            div []
-                [ button [ class "btn btn-default pull-left", disabled disable, onClick Cart.SelectAllInCart ]
+            div [ style [("display","inline")] ]
+                [ div [ class "pull-left" ] [ viewFileTypeSelector model ]
+                , button [ class "btn btn-default pull-left", style [("margin-left","2em")], disabled disable, onClick Cart.SelectAllInCart ]
                     [ text "Select All" ] |> Html.map CartMsg
                 , button [ class "btn btn-default pull-left", disabled disable, onClick Cart.UnselectAllInCart ]
                     [ text "Unselect All" ] |> Html.map CartMsg
-                , button [ class "btn btn-primary" , onClick CloseCartDialog ]
+                , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
                     [ text "OK" ]
                 ]
 
@@ -472,4 +485,47 @@ viewCart model =
         [] -> text "Your cart is empty"
 
         _ ->
-            div [ style [("overflow-y", "scroll"), ("max-height", "25em")] ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+            div [ class "scrollable" ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+
+
+-- This function was copied from Page.File, find a way to merge into a single copy
+viewFileTypeSelector : Model -> Html Msg
+viewFileTypeSelector model =
+    let
+        types =
+            Set.toList <| Set.fromList <| List.map (.sample_file_type >> .file_type) model.files
+
+        _ = Debug.log "types" types
+
+        numTypes =
+            List.length types
+
+        btn label =
+            button [ class "btn btn-default", onClick (FilterByFileType label) ] [ text label ]
+
+        lia label =
+            li [] [ a [ onClick (FilterByFileType label) ] [ text label ] ]
+
+        selectedType =
+            case model.filterFileType of
+                "All" -> "File Type "
+
+                _ -> model.filterFileType ++ " "
+    in
+--    if (numTypes <= 1) then
+--        text ""
+--    else if (numTypes <= 4) then
+--        div [ class "btn-group", attribute "role" "group", attribute "aria-label" "..."]
+--           (btn "All" :: List.map (\t -> btn t) types)
+--    else
+        div [ class "dropdown" ]
+            [ button
+                [ class "btn btn-default dropdown-toggle", id "dropdownMenu1",
+                    attribute "type" "button", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true"
+                ]
+                [ text selectedType
+                , span [ class "caret" ] []
+                ]
+            , ul [ class "dropdown-menu", attribute "aria-labelledby" "dropdownMenu1" ]
+                (lia "All" :: List.map (\t -> lia t) types)
+            ]
