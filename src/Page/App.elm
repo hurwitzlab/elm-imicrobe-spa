@@ -461,11 +461,11 @@ cartDialogConfig model =
 
         footer =
             div [ style [("display","inline")] ]
-                [ div [ class "pull-left" ] [ viewFileTypeSelector model ]
-                , button [ class "btn btn-default pull-left", style [("margin-left","2em")], disabled disable, onClick Cart.SelectAllInCart ]
+                [ button [ class "btn btn-default pull-left", disabled disable, onClick Cart.SelectAllInCart ]
                     [ text "Select All" ] |> Html.map CartMsg
                 , button [ class "btn btn-default pull-left", disabled disable, onClick Cart.UnselectAllInCart ]
                     [ text "Unselect All" ] |> Html.map CartMsg
+                , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
                 , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
                     [ text "OK" ]
                 ]
