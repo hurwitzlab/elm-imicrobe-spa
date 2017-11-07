@@ -386,6 +386,7 @@ viewAppParameter input =
                 "bool" ->
                     label []
                         [ Html.input [ type_ "checkbox" ] []
+                        , text " "
                         , text id
                         ]
 
