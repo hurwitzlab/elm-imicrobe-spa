@@ -207,7 +207,7 @@ viewToolbar model =
         text ""
 
     else if (numTypes < 10) then
-        div [ class "padded btn-group", attribute "role" "group", attribute "aria-label" "..."]
+        div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
            (btn "All" :: List.map (\t -> btn t) types)
 
     else
