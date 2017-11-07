@@ -1254,7 +1254,7 @@ viewHeader page isLoading session =
         , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
             [ div [ class "container" ]
                 [ div [ class "navbar-header" ]
-                    [ a [ class "navbar-brand", Route.href Route.Home ]
+                    [ a [ class "navbar-brand", Html.Attributes.href "/" ] --Route.href Route.Home ] -- fix home page not rendering in some cases
                         [ img [ src "/img/nav-header.png" ] [] ]
                     ]
                 , div [ class "navbar-collapse collapse" ]

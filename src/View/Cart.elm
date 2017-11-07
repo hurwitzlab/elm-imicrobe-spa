@@ -281,7 +281,7 @@ addAllToCartButton model ids =
     in
     case intersection of
         [] ->
-            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text "Add all" ]
+            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text "Add All" ]
 
         _ ->
             button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text "Remove all" ]
