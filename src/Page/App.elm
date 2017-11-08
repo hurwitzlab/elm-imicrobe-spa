@@ -74,7 +74,7 @@ init session id =
     loadApp |> Task.andThen
         (\app ->
             (loadAppFromAgave app.app_name |> Task.andThen
-                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing "All"))
+                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing "All Types"))
             )
         )
         |> Task.mapError Error.handleLoadError
@@ -188,7 +188,7 @@ update session msg model =
                         filterFileType =
                             String.toLower model.filterFileType
                     in
-                    if (List.member file.sample_id sampleIds && (fileType == filterFileType || filterFileType == "all") ) then
+                    if (List.member file.sample_id sampleIds && (fileType == filterFileType || filterFileType == "all types") ) then
                         Just file.file
                     else
                         Nothing
@@ -509,7 +509,7 @@ viewFileTypeSelector model =
 
         selectedType =
             case model.filterFileType of
-                "All" -> "File Type "
+                "All Types" -> "File Type "
 
                 _ -> model.filterFileType ++ " "
     in
@@ -528,5 +528,5 @@ viewFileTypeSelector model =
                 , span [ class "caret" ] []
                 ]
             , ul [ class "dropdown-menu", attribute "aria-labelledby" "dropdownMenu1" ]
-                (lia "All" :: List.map (\t -> lia t) types)
+                (lia "All Types" :: List.map (\t -> lia t) types)
             ]
