@@ -145,3 +145,12 @@ app.ports.createSimPlot.subscribe(function(args) {
     simplots.heatmap(args[0], args[1]);
     simplots.edgeboundary(args[0], args[1]);
 });
+
+
+/*
+ * Define port for scrolling to top of page
+ */
+
+app.ports.scrollToTop.subscribe(function() {
+    window.scrollTo(0, 0);
+});

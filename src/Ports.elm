@@ -35,3 +35,10 @@ port updateAnalytics : String -> Cmd msg
 
 
 port createSimPlot : (String, String) -> Cmd msg
+
+
+
+---- Scroll To Top ----
+
+
+port scrollToTop : String -> Cmd msg

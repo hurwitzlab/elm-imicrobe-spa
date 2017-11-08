@@ -50,7 +50,7 @@ import Route exposing (..)
 import Request.Agave
 import Request.Login
 import Ports
-import Task
+import Task exposing (Task)
 import Time exposing (Time)
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
@@ -204,8 +204,24 @@ setRoute maybeRoute model =
                 Just route -> Route.routeToString route
 
         transition toMsg task =
+--            let
+--                scrollToTop : Task x ()
+--                scrollToTop =
+--                    Dom.Scroll.toTop "page-body"
+--                        -- It's not worth showing the user anything special if scrolling fails.
+--                        -- If anything, we'd log this to an error recording service.
+--                        |> Task.onError (\_ -> Task.succeed ())
+--            in
             { model | pageState = TransitioningFrom (getPage model.pageState) }
-                => Cmd.batch [ Ports.updateAnalytics routeString, Task.attempt toMsg task ]
+                => Cmd.batch
+                    [ Ports.updateAnalytics routeString
+                    , Task.attempt toMsg task
+
+                    -- Can't get scrollToTop working per Richard Feldman's demo:  https://github.com/rtfeldman/elm-spa-example/blob/74cb1e5da06492050ed4cf3002c3eef2d2ca184d/src/Views/Article/Feed.elm#L267
+                    -- As a workaround added Ports.scrollToTop which is triggered in updatePage below for each relevant page
+--                    , Task.perform (\_ -> NoOp) scrollToTop -- doesn't work
+--                    , Ports.scrollToTop "page-body" -- scrolls before page is loaded
+                    ]
 
 --        error =
 --            pageError model
@@ -353,6 +369,8 @@ updatePage page msg model =
 --        error =
 --            pageError model
 
+        scrollToTop =
+            Ports.scrollToTop "page-body"
     in
     case msg of
         SetRoute route ->
@@ -378,7 +396,7 @@ updatePage page msg model =
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
         AppLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (App id subModel) } => Cmd.none
+            { model | pageState = Loaded (App id subModel) } => scrollToTop
 
         AppLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
@@ -392,7 +410,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         AppsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Apps subModel) } => Cmd.none
+            { model | pageState = Loaded (Apps subModel) } => scrollToTop
 
         AppsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -406,13 +424,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         AssemblyLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Assembly id subModel) } => Cmd.none
+            { model | pageState = Loaded (Assembly id subModel) } => scrollToTop
 
         AssemblyLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         AssembliesLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Assemblies subModel) } => Cmd.none
+            { model | pageState = Loaded (Assemblies subModel) } => scrollToTop
 
         AssembliesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -426,7 +444,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         CartLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Cart subModel) } => Cmd.none
+            { model | pageState = Loaded (Cart subModel) } => scrollToTop
 
         CartLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -460,13 +478,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         CombinedAssemblyLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (CombinedAssembly id subModel) } => Cmd.none
+            { model | pageState = Loaded (CombinedAssembly id subModel) } => scrollToTop
 
         CombinedAssemblyLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         CombinedAssembliesLoaded (Ok subModel) ->
-            { model | pageState = Loaded (CombinedAssemblies subModel) } => Cmd.none
+            { model | pageState = Loaded (CombinedAssemblies subModel) } => scrollToTop
 
         CombinedAssembliesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -480,7 +498,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         ContactLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Contact subModel) } => Cmd.none
+            { model | pageState = Loaded (Contact subModel) } => scrollToTop
 
         ContactLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -494,7 +512,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         DomainsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Domains subModel) } => Cmd.none
+            { model | pageState = Loaded (Domains subModel) } => scrollToTop
 
         DomainsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -508,13 +526,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         DomainLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Domain id subModel) } => Cmd.none
+            { model | pageState = Loaded (Domain id subModel) } => scrollToTop
 
         DomainLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         FilesLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Files subModel) } => Cmd.none
+            { model | pageState = Loaded (Files subModel) } => scrollToTop
 
         FilesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -528,7 +546,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         HomeLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Home subModel) } => Cmd.none
+            { model | pageState = Loaded (Home subModel) } => scrollToTop
 
         HomeLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -542,13 +560,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         InvestigatorLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Investigator id subModel) } => Cmd.none
+            { model | pageState = Loaded (Investigator id subModel) } => scrollToTop
 
         InvestigatorLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         InvestigatorsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Investigators subModel) } => Cmd.none
+            { model | pageState = Loaded (Investigators subModel) } => scrollToTop
 
         InvestigatorsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -562,7 +580,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         JobsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Jobs subModel) } => Cmd.none
+            { model | pageState = Loaded (Jobs subModel) } => scrollToTop
 
         JobsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
@@ -576,7 +594,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         JobLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Job id subModel) } => Cmd.none
+            { model | pageState = Loaded (Job id subModel) } => scrollToTop
 
         JobLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
@@ -590,7 +608,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         MetaSearchLoaded (Ok subModel) ->
-            { model | pageState = Loaded (MetaSearch subModel) } => Cmd.none
+            { model | pageState = Loaded (MetaSearch subModel) } => scrollToTop
 
         MetaSearchLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -622,7 +640,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         PubchaseLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Pubchase subModel) } => Cmd.none
+            { model | pageState = Loaded (Pubchase subModel) } => scrollToTop
 
         PubchaseLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -636,13 +654,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         PublicationLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Publication id subModel) } => Cmd.none
+            { model | pageState = Loaded (Publication id subModel) } => scrollToTop
 
         PublicationLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         PublicationsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Publications subModel) } => Cmd.none
+            { model | pageState = Loaded (Publications subModel) } => scrollToTop
 
         PublicationsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -690,7 +708,7 @@ updatePage page msg model =
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
         MapLoaded lat lng (Ok subModel) ->
-            { model | pageState = Loaded (Map lat lng subModel) } => Cmd.none
+            { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
 
         MapLoaded lat lng (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -704,13 +722,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         ProfileLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Profile subModel) } => Cmd.none
+            { model | pageState = Loaded (Profile subModel) } => scrollToTop
 
         ProfileLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         ProjectsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Projects subModel) } => Cmd.none
+            { model | pageState = Loaded (Projects subModel) } => scrollToTop
 
         ProjectsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -724,7 +742,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         ProjectLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Project id subModel) } => Cmd.none
+            { model | pageState = Loaded (Project id subModel) } => scrollToTop
 
         ProjectLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -756,13 +774,13 @@ updatePage page msg model =
                     model => Cmd.none
 
         ProjectGroupLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (ProjectGroup id subModel) } => Cmd.none
+            { model | pageState = Loaded (ProjectGroup id subModel) } => scrollToTop
 
         ProjectGroupLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         ProjectGroupsLoaded (Ok subModel) ->
-            { model | pageState = Loaded (ProjectGroups subModel) } => Cmd.none
+            { model | pageState = Loaded (ProjectGroups subModel) } => scrollToTop
 
         ProjectGroupsLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -776,7 +794,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         SampleLoaded id (Ok subModel) ->
-            { model | pageState = Loaded (Sample id subModel) } => Cmd.none
+            { model | pageState = Loaded (Sample id subModel) } => scrollToTop
 
         SampleLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -808,7 +826,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         SamplesLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Samples subModel) } => Cmd.none
+            { model | pageState = Loaded (Samples subModel) } => scrollToTop
 
         SamplesLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -840,7 +858,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         SearchLoaded query (Ok subModel) ->
-            { model | pageState = Loaded (Search query subModel) } => Cmd.none
+            { model | pageState = Loaded (Search query subModel) } => scrollToTop
 
         SearchLoaded query (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
@@ -854,7 +872,7 @@ updatePage page msg model =
                     model => Cmd.none
 
         TaxonomySearchLoaded query (Ok subModel) ->
-            { model | pageState = Loaded (TaxonomySearch query subModel) } => Cmd.none
+            { model | pageState = Loaded (TaxonomySearch query subModel) } => scrollToTop
 
         TaxonomySearchLoaded query (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
