@@ -212,7 +212,7 @@ viewToolbar model =
 
     else
         div [ class "dropdown" ]
-            [ button [ class "btn btn-default dropdown-toggle", attribute "type" "button", id "dropdownMenu1", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true" ]
+            [ button [ class "btn btn-default dropdown-toggle margin-top-bottom", attribute "type" "button", id "dropdownMenu1", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true" ]
                 [ text "Filter by Type "
                 , span [ class "caret" ] []
                 ]
