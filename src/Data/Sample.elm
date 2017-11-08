@@ -145,11 +145,43 @@ type alias SampleFileType =
     }
 
 
-type alias SampleUProC =
-    { sample_uproc_id : Int
+type alias Proteins =
+    { pfam : List UProC_PFAM
+    , kegg : List UProC_KEGG
+    }
+
+
+type alias UProC_PFAM =
+    { sample_to_uproc_id : Int
     , sample_id : Int
-    , uproc_id : String
-    , count : Int
+    , uproc_id : Int
+    , read_count : Int
+    , annotation : PFAMAnnotation
+    }
+
+
+type alias UProC_KEGG =
+    { uproc_kegg_result_id : Int
+    , sample_id : Int
+    , kegg_annotation_id : String
+    , read_count : Int
+    , annotation : KEGGAnnotation
+    }
+
+
+type alias PFAMAnnotation =
+    { accession : String
+    , identifier : String
+    , name : String
+    , description : String
+    }
+
+
+type alias KEGGAnnotation =
+    { name : String
+    , definition : String
+    , pathway : String
+    , module_ : String
     }
 
 
@@ -348,13 +380,49 @@ decoderSampleFileSample =
         |> required "sample_name" Decode.string
 
 
-decoderSampleUProC : Decoder SampleUProC
-decoderSampleUProC =
-    decode SampleUProC
-        |> required "sample_uproc_id" Decode.int
+decoderProteins : Decoder Proteins
+decoderProteins =
+    decode Proteins
+        |> required "pfam" (Decode.list decoderUProC_PFAM)
+        |> required "kegg" (Decode.list decoderUProC_KEGG)
+
+
+decoderUProC_PFAM : Decoder UProC_PFAM
+decoderUProC_PFAM =
+    decode UProC_PFAM
+        |> required "sample_to_uproc_id" Decode.int
         |> required "sample_id" Decode.int
-        |> required "uproc_id" Decode.string
-        |> required "count" Decode.int
+        |> required "uproc_id" Decode.int
+        |> required "read_count" Decode.int
+        |> required "pfam_annotation" decoderPFAMAnnotation
+
+
+decoderUProC_KEGG : Decoder UProC_KEGG
+decoderUProC_KEGG =
+    decode UProC_KEGG
+        |> required "uproc_kegg_result_id" Decode.int
+        |> required "sample_id" Decode.int
+        |> required "kegg_annotation_id" Decode.string
+        |> required "read_count" Decode.int
+        |> required "kegg_annotation" decoderKEGGAnnotation
+
+
+decoderPFAMAnnotation : Decoder PFAMAnnotation
+decoderPFAMAnnotation =
+    decode PFAMAnnotation
+        |> required "accession" Decode.string
+        |> required "identifier" Decode.string
+        |> required "name" Decode.string
+        |> required "description" Decode.string
+
+
+decoderKEGGAnnotation : Decoder KEGGAnnotation
+decoderKEGGAnnotation =
+    decode KEGGAnnotation
+        |> required "name" Decode.string
+        |> required "definition" Decode.string
+        |> required "pathway" Decode.string
+        |> required "module" Decode.string
 
 
 decoderSampleToCentrifuge : Decoder SampleToCentrifuge

@@ -30,16 +30,18 @@ type alias Model =
     , cart : Cart.Model
     , loadingProteins : Bool
     , loadedProteins : Bool
-    , proteins : List SampleUProC
+    , proteins : Proteins
     , loadingCentrifugeResults : Bool
     , loadedCentrifugeResults : Bool
     , centrifugeResults : List SampleToCentrifuge
     , attrTableState : Table.State
-    , proteinTableState : Table.State
+    , pfamTableState : Table.State
+    , keggTableState : Table.State
     , centrifugeTableState : Table.State
     , attrQuery : String
     , proteinQuery : String
     , centrifugeQuery : String
+    , proteinFilterType : String
     }
 
 
@@ -59,16 +61,18 @@ init session id =
                     , cart = Cart.init session.cart Cart.Editable
                     , loadingProteins = False
                     , loadedProteins = False
-                    , proteins = []
+                    , proteins = Proteins [] []
                     , loadingCentrifugeResults = False
                     , loadedCentrifugeResults = False
                     , centrifugeResults = []
                     , attrTableState = Table.initialSort "Name"
-                    , proteinTableState = Table.initialSort "Read Count"
+                    , pfamTableState = Table.initialSort "Read Count"
+                    , keggTableState = Table.initialSort "Read Count"
                     , centrifugeTableState = Table.initialSort "Abundance"
                     , attrQuery = ""
                     , proteinQuery = ""
                     , centrifugeQuery = ""
+                    , proteinFilterType = "PFAM"
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -83,10 +87,12 @@ type Msg
     | SetProteinQuery String
     | SetCentrifugeQuery String
     | SetAttrTableState Table.State
-    | SetProteinTableState Table.State
+    | SetPFAMTableState Table.State
+    | SetKEGGTableState Table.State
     | SetCentrifugeTableState Table.State
+    | FilterProteinType String
     | GetProteins
-    | SetProteins (List SampleUProC)
+    | SetProteins Proteins
     | GetCentrifugeResults
     | SetCentrifugeResults (List SampleToCentrifuge)
     | CartMsg Cart.Msg
@@ -112,11 +118,17 @@ update session msg model =
         SetAttrTableState newState ->
             { model | attrTableState = newState } => Cmd.none => NoOp
 
-        SetProteinTableState newState ->
-            { model | proteinTableState = newState } => Cmd.none => NoOp
+        SetPFAMTableState newState ->
+            { model | pfamTableState = newState } => Cmd.none => NoOp
+
+        SetKEGGTableState newState ->
+            { model | keggTableState = newState } => Cmd.none => NoOp
 
         SetCentrifugeTableState newState ->
             { model | centrifugeTableState = newState } => Cmd.none => NoOp
+
+        FilterProteinType filterType ->
+            { model | proteinFilterType = filterType } => Cmd.none => NoOp
 
         GetProteins ->
             let
@@ -132,7 +144,7 @@ update session msg model =
                             let
                                 _ = Debug.log "Error" ("could not retrieve proteins: " ++ (toString error))
                             in
-                            SetProteins []
+                            SetProteins (Proteins [] [])
             in
             { model | loadingProteins = True } => Task.attempt handleProteins loadProteins => NoOp
 
@@ -193,7 +205,7 @@ view model =
             , viewCombinedAssemblies model.sample.combined_assemblies
             , viewOntologies model.sample.ontologies
             , viewAttributes model
---            , viewProteins model
+            , viewProteins model
             , viewCentrifugeResults model
             ]
         ]
@@ -536,53 +548,95 @@ viewAttributes model =
         ]
 
 
-proteinTableConfig : Table.Config SampleUProC Msg
-proteinTableConfig =
+type PFAMorKEGG
+    = PFAM UProC_PFAM
+    | KEGG UProC_KEGG
+
+
+pfamTableConfig : Table.Config UProC_PFAM Msg
+pfamTableConfig =
     Table.customConfig
-        { toId = toString << .sample_uproc_id
-        , toMsg = SetProteinTableState
+        { toId = toString << .sample_to_uproc_id
+        , toMsg = SetPFAMTableState
         , columns =
-            [ uprocIdColumn
-            , countColumn
+            [ pfamIdColumn
+            , pfamCountColumn
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
         }
 
 
-uprocIdColumn : Table.Column SampleUProC Msg
-uprocIdColumn =
+pfamIdColumn : Table.Column UProC_PFAM Msg
+pfamIdColumn =
     Table.veryCustomColumn
         { name = "ID"
-        , viewData = uprocIdLink
-        , sorter = Table.increasingOrDecreasingBy (String.toLower << .uproc_id)
+        , viewData = pfamIdLink
+        , sorter = Table.increasingOrDecreasingBy (.annotation >> .identifier)
         }
 
 
-uprocIdLink : SampleUProC -> Table.HtmlDetails Msg
-uprocIdLink protein =
+pfamIdLink : UProC_PFAM -> Table.HtmlDetails Msg
+pfamIdLink protein =
     let
         url =
-            "http://pfam.xfam.org/family/" ++ protein.uproc_id
+            "http://pfam.xfam.org/family/" ++ protein.annotation.accession
     in
     Table.HtmlDetails []
-        [ a [ href url, target "_blank" ] [ text protein.uproc_id ]
+        [ a [ href url, target "_blank" ] [ text protein.annotation.identifier ]
         ]
 
 
-countColumn : Table.Column SampleUProC Msg
-countColumn =
-    Table.veryCustomColumn
+pfamCountColumn : Table.Column UProC_PFAM Msg
+pfamCountColumn =
+    Table.customColumn
         { name = "Read Count"
-        , viewData = viewReadCount
-        , sorter = Table.decreasingOrIncreasingBy .count
+        , viewData = toString << .read_count
+        , sorter = Table.decreasingOrIncreasingBy .read_count
         }
 
 
-viewReadCount : SampleUProC -> Table.HtmlDetails Msg
-viewReadCount protein =
+keggTableConfig : Table.Config UProC_KEGG Msg
+keggTableConfig =
+    Table.customConfig
+        { toId = toString << .uproc_kegg_result_id
+        , toMsg = SetKEGGTableState
+        , columns =
+            [ keggIdColumn
+            , keggCountColumn
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
+
+
+keggIdColumn : Table.Column UProC_KEGG Msg
+keggIdColumn =
+    Table.veryCustomColumn
+        { name = "ID"
+        , viewData = keggIdLink
+        , sorter = Table.increasingOrDecreasingBy (.annotation >> .name)
+        }
+
+
+keggIdLink : UProC_KEGG -> Table.HtmlDetails Msg
+keggIdLink protein =
+    let
+        url =
+            "http://www.genome.jp/dbget-bin/www_bget?ko:" ++ protein.kegg_annotation_id
+    in
     Table.HtmlDetails []
-        [ text (toString protein.count) ]
+        [ a [ href url, target "_blank" ] [ text protein.annotation.name ]
+        ]
+
+
+keggCountColumn : Table.Column UProC_KEGG Msg
+keggCountColumn =
+    Table.customColumn
+        { name = "Read Count"
+        , viewData = toString << .read_count
+        , sorter = Table.decreasingOrIncreasingBy .read_count
+        }
 
 
 viewProteins : Model -> Html Msg
@@ -591,12 +645,92 @@ viewProteins model =
         lowerQuery =
             String.toLower model.proteinQuery
 
-        proteinFilter protein =
-            ( (String.contains lowerQuery (String.toLower protein.uproc_id))
-                || (String.contains lowerQuery (String.toLower (toString protein.count))) )
+--        proteinFilter protein =
+--            ( (String.contains lowerQuery (String.toLower (toString protein.uproc_id)))
+--                || (String.contains lowerQuery (String.toLower (toString protein.read_count))) )
+--
+--        acceptableProteins =
+--            case model.proteinFilterType of
+--                "PFAM" -> model.proteins.pfam--List.filter proteinFilter model.proteins.pfam
+--
+--                "KEGG" -> model.proteins.kegg--List.filter proteinFilter model.proteins.kegg
 
-        acceptableProteins =
-            List.filter proteinFilter model.proteins
+        searchBar =
+            case model.proteins.pfam of
+                [] ->
+                    span [] []
+
+                _ ->
+                    small [ class "right" ]
+                        [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
+
+        filterButton label =
+            let
+                classes =
+                    if label == model.proteinFilterType then
+                        "btn btn-default active"
+                    else
+                        "btn btn-default"
+            in
+            button [ class classes, onClick (FilterProteinType label) ] [ text label ]
+
+        filterBar =
+            div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
+                [ filterButton "PFAM"
+                , filterButton "KEGG"
+                ]
+
+        (proteinTable, proteinCount) =
+            case model.proteinFilterType of
+                "PFAM" ->
+                    let
+                        filter protein =
+                            ( (String.contains lowerQuery (String.toLower (toString protein.annotation.identifier)))
+                                || (String.contains lowerQuery (String.toLower (toString protein.read_count))) )
+
+                        acceptableProteins =
+                            List.filter filter model.proteins.pfam
+                    in
+                    ( Table.view pfamTableConfig model.pfamTableState acceptableProteins, List.length acceptableProteins )
+
+                "KEGG" ->
+                    let
+                        filter protein =
+                            ( (String.contains lowerQuery (String.toLower (toString protein.annotation.name)))
+                                || (String.contains lowerQuery (String.toLower (toString protein.read_count))) )
+
+                        acceptableProteins =
+                            List.filter filter model.proteins.kegg
+                    in
+                ( Table.view keggTableConfig model.keggTableState acceptableProteins, List.length acceptableProteins )
+
+                _ -> (text "", 0)
+
+        body =
+            case model.sample.protein_count of
+                0 ->
+                    text "None"
+
+                _ ->
+                    case model.loadedProteins of
+                        True ->
+                            case proteinCount of
+                                0 ->
+                                    text "None"
+
+                                _ ->
+                                    div []
+                                        [ filterBar
+                                        , div [ class "scrollable" ] [ proteinTable ]
+                                        ]
+
+                        False ->
+                            case model.loadingProteins of
+                                True ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                                False ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
 
         numShowing =
             let
@@ -604,8 +738,8 @@ viewProteins model =
                     { usLocale | decimals = 0 }
 
                 count =
-                    case acceptableProteins of
-                        [] ->
+                    case proteinCount of
+                        0 ->
                             case model.proteinQuery of
                                  "" ->
                                     model.sample.protein_count
@@ -614,7 +748,7 @@ viewProteins model =
                                     0
 
                         _ ->
-                            List.length acceptableProteins
+                            proteinCount
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -626,38 +760,6 @@ viewProteins model =
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
-
-        searchBar =
-            case model.proteins of
-                [] ->
-                    span [] []
-
-                _ ->
-                    small [ class "right" ]
-                        [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
-
-        body =
-            case model.sample.protein_count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    case model.loadedProteins of
-                        True ->
-                            case acceptableProteins of
-                                [] ->
-                                    text "None"
-
-                                _ ->
-                                    Table.view proteinTableConfig model.proteinTableState acceptableProteins
-
-                        False ->
-                            case model.loadingProteins of
-                                True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
-
-                                False ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
     in
     div [ class "container" ]
         [ div [ class "row" ]

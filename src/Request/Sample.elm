@@ -58,17 +58,14 @@ files id_list =
         |> HttpBuilder.toRequest
 
 
-proteins : Int -> Http.Request (List SampleUProC)
+proteins : Int -> Http.Request Proteins
 proteins id =
     let
         url =
             apiBaseUrl ++ "/samples/" ++ (toString id) ++ "/proteins"
-
-        decoder =
-            Decode.list decoderSampleUProC
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoderProteins)
         |> HttpBuilder.toRequest
 
 
