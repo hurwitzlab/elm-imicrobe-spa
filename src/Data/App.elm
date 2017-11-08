@@ -3,6 +3,7 @@ module Data.App exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
+import Json.Encode.Extra as EncodeExtra
 import Util exposing ((=>))
 
 
@@ -19,7 +20,7 @@ type alias App =
 type alias AppRun =
     { app_run_id : Int
     , app_id : Int
-    , user_id : Int
+    , user_id : Maybe Int
     , app_ran_at : String
     , params : String
     }
@@ -65,7 +66,7 @@ decoderAppRun =
     decode AppRun
         |> required "app_run_id" Decode.int
         |> required "app_id" Decode.int
-        |> required "user_id" Decode.int
+        |> optional "user_id" (Decode.nullable Decode.int) Nothing
         |> optional "app_ran_at" Decode.string ""
         |> optional "params" Decode.string ""
 
@@ -85,10 +86,10 @@ decoderAppDataType =
         |> optional "alias" Decode.string ""
 
 
-encodeAppRun : AppRun -> Encode.Value
-encodeAppRun run =
+encodeAppRun : Int -> Maybe Int -> String -> Encode.Value
+encodeAppRun app_id user_id params =
     Encode.object
-        [ "app_id" => Encode.int run.app_id
-        , "user_id" => Encode.int run.user_id
-        , "app_ran_at" => Encode.string run.app_ran_at
+        [ "app_id" => Encode.int app_id
+        , "user_id" => EncodeExtra.maybe Encode.int user_id
+        , "params" => Encode.string params
         ]

@@ -4,7 +4,6 @@ import Data.App as App exposing (App, AppRun, decoderAppRun, encodeAppRun)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode exposing (Decoder, string)
-import Json.Encode as Encode
 import Config exposing (apiBaseUrl)
 
 
@@ -30,20 +29,13 @@ get id =
         |> HttpBuilder.toRequest
 
 
-run : Int -> Int -> String -> Http.Request AppRun
+run : Int -> Maybe Int -> String -> Http.Request AppRun
 run app_id user_id params =
     let
         url =
             apiBaseUrl ++ "/apps/runs"
-
-        body =
-            Encode.object
-                [ ("app_id", Encode.int app_id)
-                , ("user_id", Encode.int user_id)
-                , ("params", Encode.string params)
-                ]
     in
     HttpBuilder.post url
-        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withJsonBody (encodeAppRun app_id user_id params)
         |> HttpBuilder.withExpect (Http.expectJson decoderAppRun)
         |> HttpBuilder.toRequest

@@ -6,7 +6,7 @@ import Data.Agave as Agave
 import Data.Sample as Sample exposing (Sample, SampleFile)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onCheck, onInput)
 import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
@@ -153,7 +153,7 @@ update session msg model =
                 cmd1 = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
-                cmd2 = Request.App.run model.app_id 13 (Agave.encodeJobRequest jobRequest |> toString) --FIXME user_id hardcoded to mbomhoff
+                cmd2 = Request.App.run model.app_id session.user_id (Agave.encodeJobRequest jobRequest |> toString) --FIXME user_id hardcoded to mbomhoff
                     |> Http.send AppRunCompleted
             in
             { model | showRunDialog = True } => Cmd.batch [ cmd1, cmd2 ]
@@ -383,17 +383,21 @@ viewAppParameter input =
         defaultInput len =
             Html.input [ class "form-control", type_ "text", size len, name id, value val, onInput (SetParameter id) ] []
 
+        checkbox =
+            label []
+                [ Html.input [ type_ "checkbox", onCheck (toString >> (SetParameter id)) ] []
+                ]
+
         interface =
             case param.value.type_ of
                 "number" ->
                     defaultInput 10
 
                 "bool" ->
-                    label []
-                        [ Html.input [ type_ "checkbox" ] []
-                        , text " "
-                        , text id
-                        ]
+                    checkbox
+
+                "flag" ->
+                    checkbox
 
                 "enumeration" ->
                     case param.value.enum_values of
@@ -512,8 +516,6 @@ viewFileTypeSelector model =
     let
         types =
             Set.toList <| Set.fromList <| List.map (.sample_file_type >> .file_type) model.files
-
-        _ = Debug.log "types" types
 
         numTypes =
             List.length types
