@@ -486,7 +486,7 @@ viewCart model =
         [] -> text "Your cart is empty"
 
         _ ->
-            div [ class "scrollable" ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+            div [ class "scrollable-half" ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
 
 
 -- This function was copied from Page.File, find a way to merge into a single copy

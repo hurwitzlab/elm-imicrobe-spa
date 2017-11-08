@@ -105,7 +105,12 @@ tr.padded > td {
 
 .scrollable {
     overflow-y: scroll;
-    max-height: 50em;
+    max-height: 90vh;
+}
+
+.scrollable-half {
+    overflow-y: scroll;
+    max-height: 50vh;
 }
 
 
