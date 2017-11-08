@@ -806,7 +806,7 @@ nameLink result =
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=" ++ (toString result.centrifuge.tax_id)
     in
     Table.HtmlDetails []
-        [ a [ href url, target "_blank" ] [ text (toString result.centrifuge.name) ]
+        [ a [ href url, target "_blank" ] [ text result.centrifuge.name ]
         ]
 
 
