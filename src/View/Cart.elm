@@ -291,6 +291,7 @@ samplesInCart : Cart -> List Sample -> List Sample
 samplesInCart cart samples =
     List.filter (\sample -> Set.member sample.sample_id cart.contents) samples
 
+
 size : Model -> Int
 size model =
     Set.size model.cart.contents
