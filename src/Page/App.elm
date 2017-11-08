@@ -95,6 +95,7 @@ type Msg
     | OpenCart String
     | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile)))
     | CloseCartDialog
+    | CancelCartDialog
     | FilterByFileType String
     | CartMsg Cart.Msg
 
@@ -200,6 +201,9 @@ update session msg model =
                     SetInput (Maybe.withDefault "" model.cartDialogInputId) filesStr
             in
             update session msg { model | cartDialogInputId = Nothing }
+
+        CancelCartDialog ->
+            { model | cartDialogInputId = Nothing } => Cmd.none
 
         OpenFileBrowser inputId ->
             let
@@ -468,7 +472,9 @@ cartDialogConfig model =
                     [ text "Unselect All" ] |> Html.map CartMsg
                 , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
                 , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
-                    [ text "OK" ]
+                    [ text "Select" ]
+                , button [ class "btn btn-secondary pull-right margin-right", onClick CancelCartDialog ]
+                    [ text "Close" ]
                 ]
 
     in
