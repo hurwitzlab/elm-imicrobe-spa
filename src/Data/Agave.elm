@@ -215,7 +215,7 @@ decoderJob =
         |> optional "endTime" Decode.string ""
         |> optional "status" Decode.string ""
         |> optional "inputs" (Decode.dict (Decode.list Decode.string)) Dict.empty
-        |> optional "parameters" (Decode.dict Decode.string) Dict.empty
+        |> optional "parameters" (Decode.dict (Decode.oneOf [Decode.string, Decode.map toString Decode.bool])) Dict.empty
 
 
 decoderJobOutput : Decoder JobOutput
