@@ -527,6 +527,6 @@ viewFileTypeSelector model =
                 [ text selectedType
                 , span [ class "caret" ] []
                 ]
-            , ul [ class "dropdown-menu", attribute "aria-labelledby" "dropdownMenu1" ]
+            , ul [ class "dropdown-menu", style [("overflow-y","scroll"),("max-height","200px")], attribute "aria-labelledby" "dropdownMenu1" ]
                 (lia "All Types" :: List.map (\t -> lia t) types)
             ]
