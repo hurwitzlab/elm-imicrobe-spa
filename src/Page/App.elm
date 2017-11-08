@@ -35,6 +35,7 @@ type alias Model =
     , inputs : Dict String String
     , parameters : Dict String String
     , cart : Cart.Model
+    , cartLoaded : Bool
     , samples : List Sample
     , files : List SampleFile
     , showRunDialog : Bool
@@ -74,7 +75,7 @@ init session id =
     loadApp |> Task.andThen
         (\app ->
             (loadAppFromAgave app.app_name |> Task.andThen
-                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart [] [] False Nothing Nothing "All Types"))
+                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart False [] [] False Nothing Nothing "All Types"))
             )
         )
         |> Task.mapError Error.handleLoadError
@@ -231,7 +232,7 @@ update session msg model =
             { model | cartDialogInputId = Just inputId } => cmd
 
         LoadCartCompleted (Ok (samples, files)) ->
-            { model | samples = samples, files = files } => Cmd.none
+            { model | samples = samples, files = files, cartLoaded = True } => Cmd.none
 
         LoadCartCompleted (Err error) ->
             model => Cmd.none
@@ -447,36 +448,46 @@ runDialogConfig model =
 cartDialogConfig : Model -> Dialog.Config Msg
 cartDialogConfig model =
     let
+        content =
+            case Cart.size model.cart > 0 of
+                True ->
+                    case model.cartLoaded of
+                        True ->
+                            viewCart model
+
+                        False ->
+                            div [ class "center" ]
+                                [ div [ class "padded-xl spinner" ] [] ]
+
+                False ->
+                    text "Your cart is empty"
+
         count =
             List.length model.samples
 
-        content =
-            case count of
-                0 ->
-                    text "Your cart is empty"
-
-                _ ->
-                    viewCart model
-
         disable =
-            case count of
-                0 -> True
+            not (model.cartLoaded && count > 0)
 
-                _ -> False
+        closeButton =
+            button [ class "btn btn-secondary pull-right margin-right", onClick CancelCartDialog ]
+                            [ text "Close" ]
 
         footer =
-            div [ style [("display","inline")] ]
-                [ button [ class "btn btn-default pull-left", disabled disable, onClick Cart.SelectAllInCart ]
-                    [ text "Select All" ] |> Html.map CartMsg
-                , button [ class "btn btn-default pull-left", disabled disable, onClick Cart.UnselectAllInCart ]
-                    [ text "Unselect All" ] |> Html.map CartMsg
-                , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
-                , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
-                    [ text "Select" ]
-                , button [ class "btn btn-secondary pull-right margin-right", onClick CancelCartDialog ]
-                    [ text "Close" ]
-                ]
+            case disable of
+                False ->
+                    div [ style [("display","inline")] ]
+                        [ button [ class "btn btn-default pull-left", onClick Cart.SelectAllInCart ]
+                            [ text "Select All" ] |> Html.map CartMsg
+                        , button [ class "btn btn-default pull-left", onClick Cart.UnselectAllInCart ]
+                            [ text "Unselect All" ] |> Html.map CartMsg
+                        , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
+                        , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
+                            [ text "Select" ]
+                        , closeButton
+                        ]
 
+                True ->
+                    closeButton
     in
     { closeMessage = Nothing
     , containerClass = Nothing
