@@ -544,7 +544,7 @@ viewFileTypeSelector model =
 --        div [ class "btn-group", attribute "role" "group", attribute "aria-label" "..."]
 --           (btn "All" :: List.map (\t -> btn t) types)
 --    else
-        div [ class "dropdown" ]
+        div [ class "dropup" ]
             [ button
                 [ class "btn btn-default dropdown-toggle", id "dropdownMenu1",
                     attribute "type" "button", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true"
