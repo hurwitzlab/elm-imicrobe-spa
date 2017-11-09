@@ -110,7 +110,7 @@ update session msg model =
             let
                 newValue =
                     case String.startsWith "/iplant/home" value of
-                        True -> String.Extra.replaceSlice "" 0 12 value
+                        True -> String.Extra.replace "/iplant/home" "" value
                         False -> value
 
                 newInputs = Dict.insert id newValue model.inputs
@@ -556,7 +556,7 @@ viewFileTypeSelector model =
 --        div [ class "btn-group", attribute "role" "group", attribute "aria-label" "..."]
 --           (btn "All" :: List.map (\t -> btn t) types)
 --    else
-        div [ class "dropdown" ]
+        div [ class "dropup" ]
             [ button
                 [ class "btn btn-default dropdown-toggle", id "dropdownMenu1",
                     attribute "type" "button", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true"
