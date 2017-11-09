@@ -99,7 +99,7 @@ update session msg model =
         GetResults ->
             let
                 loadResults =
-                    Request.Agave.getJobOutput session.token model.job_id "mash-out/sna/distance.tab" |> Http.toTask
+                    Request.Agave.getJobOutput session.token model.job_id "mash-out/results/distance.tab" |> Http.toTask
             in
             { model | loadingResults = True } => Task.attempt SetResults loadResults
 
