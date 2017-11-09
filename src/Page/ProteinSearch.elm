@@ -47,7 +47,7 @@ init session searchTerm =
                     , query = ""
                     , accession = searchTerm
                     , minReadCount = 0
-                    , proteinFilterType = "PFAM"
+                    , proteinFilterType = autoFilterType pfamResults keggResults
                     , tableState = Table.initialSort "Reads"
                     , cart = (Cart.init session.cart Cart.Editable)
                     , pfamResults = pfamResults
@@ -78,7 +78,6 @@ type Msg
     | SetQuery String
     | SetAccession String
     | Search
-    | SetResults String ( (List PFAMProtein), (List KEGGProtein) )
     | SetReadCountThreshold String
     | FilterProteinType String
     | SetTableState Table.State
@@ -109,29 +108,7 @@ update session msg model =
             { model | accession = strValue } => Cmd.none => NoOp
 
         Search ->
-           let
-                handleResults searchTerm results =
-                    case results of
-                        Ok results ->
-                            SetResults searchTerm results
-
-                        Err _ ->
-                            let
-                                _ = Debug.log "Error" "could not retrieve search results"
-                            in
-                            SetResults searchTerm ([], [])
-            in
-            model => Task.attempt (handleResults model.accession) (doSearch model.accession) => NoOp
-
-        SetResults searchTerm results ->
-            let
-                pfamResults = Tuple.first results
-
-                keggResults = Tuple.second results
-            in
-            { model | searchTerm = searchTerm, pfamResults = pfamResults, keggResults = keggResults }
-                => Route.modifyUrl (Route.ProteinSearch searchTerm)
-                => NoOp
+            model => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
 
         SetReadCountThreshold strValue ->
             let
@@ -160,6 +137,13 @@ update session msg model =
                     Cart.update newSession (Cart.SetSession newSession) model.cart
             in
             { model | cart = newCart } => Cmd.none => NoOp
+
+
+autoFilterType pfamResults keggResults =
+    if pfamResults /= [] || keggResults == [] then
+        "PFAM"
+    else
+        "KEGG"
 
 
 
