@@ -109,7 +109,7 @@ update session msg model =
             let
                 newValue =
                     case String.startsWith "/iplant/home" value of
-                        True -> String.Extra.replaceSlice "" 0 12 value
+                        True -> String.Extra.replace "/iplant/home" "" value
                         False -> value
 
                 newInputs = Dict.insert id newValue model.inputs
