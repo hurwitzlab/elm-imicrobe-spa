@@ -6,7 +6,7 @@ import Data.Cart
 import Http
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
+import Html.Events exposing (onClick, onInput)
 import Page.Error as Error exposing (PageLoadError)
 import Route
 import Request.Sample
@@ -16,6 +16,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
+import Events exposing (onKeyDown)
 
 
 
@@ -72,6 +73,7 @@ type Msg
     | SetQuery String
     | SetTaxId String
     | Search
+    | SearchKeyDown Int
     | SetAbundanceThreshold String
     | SetTableState Table.State
     | SetSession Session
@@ -102,6 +104,12 @@ update session msg model =
 
         Search ->
             model => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
+
+        SearchKeyDown key ->
+            if key == 13 then -- enter key
+                update session Search model
+            else
+                model => Cmd.none => NoOp
 
         SetAbundanceThreshold strValue ->
             let
@@ -211,7 +219,7 @@ view model =
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
                 [ text "NCBI Tax ID "
-                , input [ value model.taxId, size 10, onInput SetTaxId ] []
+                , input [ value model.taxId, size 10, onInput SetTaxId, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]

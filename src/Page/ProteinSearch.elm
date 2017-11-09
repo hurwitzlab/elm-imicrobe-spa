@@ -6,7 +6,7 @@ import Data.Cart
 import Http
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
+import Html.Events exposing (onClick, onInput)
 import Page.Error as Error exposing (PageLoadError)
 import Route
 import Request.Sample
@@ -16,6 +16,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
+import Events exposing (onKeyDown)
 
 
 
@@ -78,6 +79,7 @@ type Msg
     | SetQuery String
     | SetAccession String
     | Search
+    | SearchKeyDown Int
     | SetReadCountThreshold String
     | FilterProteinType String
     | SetTableState Table.State
@@ -109,6 +111,12 @@ update session msg model =
 
         Search ->
             model => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
+
+        SearchKeyDown key ->
+            if key == 13 then -- enter key
+                update session Search model
+            else
+                model => Cmd.none => NoOp
 
         SetReadCountThreshold strValue ->
             let
@@ -261,7 +269,7 @@ view model =
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
                 [ text "PFAM/KEGG Accession "
-                , input [ value model.accession, size 10, onInput SetAccession ] []
+                , input [ value model.accession, size 10, onInput SetAccession, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]
