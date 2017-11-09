@@ -117,6 +117,12 @@ type alias JobStatus =
     }
 
 
+type alias JobError =
+    { status : String
+    , message : String
+    }
+
+
 type alias JobOutput =
     { name : String
     , path : String
@@ -203,6 +209,13 @@ decoderJobStatus : Decoder JobStatus
 decoderJobStatus =
     decode JobStatus
         |> required "id" Decode.string
+
+
+decoderJobError : Decoder JobError
+decoderJobError =
+    decode JobError
+        |> required "status" Decode.string
+        |> required "message" Decode.string
 
 
 decoderJob : Decoder Job

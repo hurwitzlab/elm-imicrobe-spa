@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onCheck, onInput)
 import Dialog
+import Json.Decode as Decode
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.App
@@ -169,7 +170,18 @@ update session msg model =
             model => Route.modifyUrl (Route.Job response.result.id)
 
         RunJobCompleted (Err error) ->
-            { model | dialogError = Just (toString error) } => Cmd.none
+            let
+                _ = Debug.log "error" (toString error)
+
+                errorMsg =
+                    case error of
+                        Http.BadStatus response ->
+                            --Just (response.body |> Decode.decodeString Agave.decoderJobError |> Result.withDefault "")
+                            Just response.body
+
+                        _ -> Just (toString error)
+            in
+            { model | dialogError = errorMsg } => Cmd.none
 
         AppRunCompleted (Ok response) ->
             model => Cmd.none
@@ -178,7 +190,7 @@ update session msg model =
             model => Cmd.none
 
         CloseRunDialog ->
-            { model | showRunDialog = False } => Cmd.none
+            { model | showRunDialog = False, dialogError = Nothing } => Cmd.none
 
         CloseCartDialog ->
             let
