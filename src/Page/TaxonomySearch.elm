@@ -220,7 +220,8 @@ view model =
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
-                [ text "Taxonomy Search "
+                [ text model.pageTitle
+                , text " "
                 , numShowing
                 , searchBar
                 ]
