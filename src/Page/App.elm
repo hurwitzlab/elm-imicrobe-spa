@@ -19,6 +19,7 @@ import Task exposing (Task)
 import View.Cart as Cart
 import Dict as Dict exposing (Dict)
 import List.Extra
+import String.Extra
 import Util exposing ((=>))
 import Set
 
@@ -106,7 +107,12 @@ update session msg model =
     case msg of
         SetInput id value ->
             let
-                newInputs = Dict.insert id value model.inputs
+                newValue =
+                    case String.startsWith "/iplant/home" value of
+                        True -> String.Extra.replaceSlice "" 0 12 value
+                        False -> value
+
+                newInputs = Dict.insert id newValue model.inputs
 
 --                exts =
 --                    String.split ";" value |> List.map (\a -> String.split "." a |> List.reverse |> List.head)
