@@ -27,7 +27,7 @@ type alias Model =
     , searchTerm : String
     , query : String
     , accession : String
-    , minReadCount : Float
+    , minReadCount : Int
     , tableState : Table.State
     , cart : Cart.Model
     , results : List PFAMProtein
@@ -73,7 +73,7 @@ type Msg
     | SetAccession String
     | Search
     | SetResults String (List PFAMProtein)
---    | SetAbundanceThreshold String
+    | SetReadCountThreshold String
     | SetTableState Table.State
     | SetSession Session
 
@@ -119,15 +119,15 @@ update session msg model =
         SetResults searchTerm results ->
                 { model | searchTerm = searchTerm, results = results } => Route.modifyUrl (Route.ProteinSearch searchTerm) => NoOp
 
---        SetAbundanceThreshold strValue ->
---            let
---                threshold =
---                    case String.toFloat strValue of
---                        Ok value -> value
---
---                        Err _ -> 0
---            in
---            { model | minAbundance = threshold } => Cmd.none => NoOp
+        SetReadCountThreshold strValue ->
+            let
+                threshold =
+                    case String.toInt strValue of
+                        Ok value -> value
+
+                        Err _ -> 0
+            in
+            { model | minReadCount = threshold } => Cmd.none => NoOp
 
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none => NoOp
@@ -157,26 +157,26 @@ view model =
                 Nothing -> []
 
                 Just result -> result.uproc_pfam_results
---
---        lowerQuery =
---            String.toLower model.query
---
---        filter sample =
---            ( String.contains lowerQuery (String.toLower sample.sample_name)
---                || String.contains lowerQuery (String.toLower sample.project.project_name)
---                || String.contains lowerQuery (toString sample.sample_to_centrifuge.abundance) )
---              && sample.sample_to_centrifuge.abundance >= model.minAbundance
---
---        acceptableSamples =
---            List.filter filter samples
---
+
+        lowerQuery =
+            String.toLower model.query
+
+        filter result =
+            ( String.contains lowerQuery (String.toLower result.sample.sample_name)
+                || String.contains lowerQuery (String.toLower result.sample.project.project_name)
+                || String.contains lowerQuery (toString result.read_count) )
+              && result.read_count >= model.minReadCount
+
+        acceptableResults =
+            List.filter filter results
+
         numShowing =
             let
                 myLocale =
                     { usLocale | decimals = 0 }
 
                 count =
-                    List.length results
+                    List.length acceptableResults
 
                 numStr =
                     count |> toFloat |> format myLocale
@@ -196,28 +196,28 @@ view model =
                 _ ->
                     small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
 
---        filters =
---            case model.searchTerm of
---                "" -> text ""
---
---                _ ->
---                    div [ style [("padding-bottom", "0.5em")] ]
---                        [ text "Filter: Abundance >= "
---                        , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
---                        ]
---
+        filters =
+            case model.searchTerm of
+                "" -> text ""
+
+                _ ->
+                    div [ style [("padding-bottom", "0.5em")] ]
+                        [ text "Filter: Read Count >= "
+                        , input [ size 8, onInput SetReadCountThreshold ] []
+                        ]
+
 
         display =
             case model.searchTerm of
                 "" -> text ""
 
                 _ ->
-                    case results of
+                    case acceptableResults of
                         [] ->
                             text "No results"
 
                         _ ->
-                            Table.view (tableConfig model.cart) model.tableState results
+                            Table.view (tableConfig model.cart) model.tableState acceptableResults
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -233,7 +233,7 @@ view model =
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]
---            , filters
+            , filters
             , display
             ]
         ]
