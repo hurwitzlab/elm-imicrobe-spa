@@ -1,6 +1,6 @@
 module Page.ProteinSearch exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Sample as Sample exposing (Sample, PFAMProtein, PFAMResult)
+import Data.Sample as Sample exposing (Sample, Project, PFAMProtein, PFAMResult, KEGGProtein, KEGGResult)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Http
@@ -28,9 +28,11 @@ type alias Model =
     , query : String
     , accession : String
     , minReadCount : Int
+    , proteinFilterType : String
     , tableState : Table.State
     , cart : Cart.Model
-    , results : List PFAMProtein
+    , pfamResults : List PFAMProtein
+    , keggResults : List KEGGProtein
     }
 
 
@@ -38,29 +40,33 @@ init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
     doSearch searchTerm
         |> Task.andThen
-            (\results ->
+            (\(pfamResults, keggResults) ->
                 Task.succeed
                     { pageTitle = "Protein Search"
                     , searchTerm = searchTerm
                     , query = ""
                     , accession = searchTerm
                     , minReadCount = 0
+                    , proteinFilterType = "PFAM"
                     , tableState = Table.initialSort "Reads"
                     , cart = (Cart.init session.cart Cart.Editable)
-                    , results = results
+                    , pfamResults = pfamResults
+                    , keggResults = keggResults
                     }
             )
         |> Task.mapError Error.handleLoadError
 
 
-doSearch : String -> Task Http.Error (List PFAMProtein)
+doSearch : String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
 doSearch searchTerm =
     case searchTerm of
         "" ->
-            Task.succeed []
+            Task.succeed ([], [])
 
         _ ->
-            Request.Sample.protein_search searchTerm |> Http.toTask
+            Task.map2 (\pfamResults keggResults -> (pfamResults, keggResults))
+                (Request.Sample.protein_pfam_search searchTerm |> Http.toTask)
+                (Request.Sample.protein_kegg_search searchTerm |> Http.toTask)
 
 
 
@@ -72,8 +78,9 @@ type Msg
     | SetQuery String
     | SetAccession String
     | Search
-    | SetResults String (List PFAMProtein)
+    | SetResults String ( (List PFAMProtein), (List KEGGProtein) )
     | SetReadCountThreshold String
+    | FilterProteinType String
     | SetTableState Table.State
     | SetSession Session
 
@@ -112,12 +119,19 @@ update session msg model =
                             let
                                 _ = Debug.log "Error" "could not retrieve search results"
                             in
-                            SetResults searchTerm []
+                            SetResults searchTerm ([], [])
             in
             model => Task.attempt (handleResults model.accession) (doSearch model.accession) => NoOp
 
         SetResults searchTerm results ->
-                { model | searchTerm = searchTerm, results = results } => Route.modifyUrl (Route.ProteinSearch searchTerm) => NoOp
+            let
+                pfamResults = Tuple.first results
+
+                keggResults = Tuple.second results
+            in
+            { model | searchTerm = searchTerm, pfamResults = pfamResults, keggResults = keggResults }
+                => Route.modifyUrl (Route.ProteinSearch searchTerm)
+                => NoOp
 
         SetReadCountThreshold strValue ->
             let
@@ -128,6 +142,9 @@ update session msg model =
                         Err _ -> 0
             in
             { model | minReadCount = threshold } => Cmd.none => NoOp
+
+        FilterProteinType filterType ->
+            { model | proteinFilterType = filterType } => Cmd.none => NoOp
 
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none => NoOp
@@ -152,42 +169,8 @@ update session msg model =
 view : Model -> Html Msg
 view model =
     let
-        results =
-            case List.head model.results of
-                Nothing -> []
-
-                Just result -> result.uproc_pfam_results
-
         lowerQuery =
             String.toLower model.query
-
-        filter result =
-            ( String.contains lowerQuery (String.toLower result.sample.sample_name)
-                || String.contains lowerQuery (String.toLower result.sample.project.project_name)
-                || String.contains lowerQuery (toString result.read_count) )
-              && result.read_count >= model.minReadCount
-
-        acceptableResults =
-            List.filter filter results
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableResults
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
 
         searchBar =
             case model.searchTerm of
@@ -206,18 +189,83 @@ view model =
                         , input [ size 8, onInput SetReadCountThreshold ] []
                         ]
 
+        filterButton label =
+            let
+                classes =
+                    if label == model.proteinFilterType then
+                        "btn btn-default active"
+                    else
+                        "btn btn-default"
+            in
+            button [ class classes, onClick (FilterProteinType label) ] [ text label ]
 
-        display =
-            case model.searchTerm of
-                "" -> text ""
+        filterBar =
+            div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
+                [ filterButton "PFAM"
+                , filterButton "KEGG"
+                ]
+
+        (resultTable, resultCount) =
+            case model.proteinFilterType of
+                "PFAM" ->
+                    let
+                        filter result =
+                            ( (String.contains lowerQuery (String.toLower (toString result.sample.sample_name)))
+                                || (String.contains lowerQuery (String.toLower (toString result.sample.project.project_name)))
+                                || (String.contains lowerQuery (String.toLower (toString result.read_count))) )
+
+                        results =
+                            case List.head model.pfamResults of
+                                Nothing -> []
+
+                                Just result -> result.uproc_pfam_results
+
+                        acceptableResults =
+                            List.filter filter results
+                    in
+                    ( Table.view (pfamTableConfig model.cart) model.tableState acceptableResults, List.length acceptableResults )
+
+                "KEGG" ->
+                    let
+                        filter result =
+                            ( (String.contains lowerQuery (String.toLower (toString result.sample.sample_name)))
+                                || (String.contains lowerQuery (String.toLower (toString result.sample.project.project_name)))
+                                || (String.contains lowerQuery (String.toLower (toString result.read_count))) )
+
+                        results =
+                            case List.head model.keggResults of
+                                Nothing -> []
+
+                                Just result -> result.uproc_kegg_results
+
+                        acceptableResults =
+                            List.filter filter results
+                    in
+                    ( Table.view (keggTableConfig model.cart) model.tableState acceptableResults, List.length acceptableResults )
+
+                _ -> (text "", 0)
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                numStr =
+                    resultCount |> toFloat |> format myLocale
+            in
+            case resultCount of
+                0 ->
+                    span [] []
 
                 _ ->
-                    case acceptableResults of
-                        [] ->
-                            text "No results"
+                    span [ class "badge" ]
+                        [ text numStr ]
 
-                        _ ->
-                            Table.view (tableConfig model.cart) model.tableState acceptableResults
+        body =
+            case resultCount of
+                0 -> div [] [ text "No results" ]
+
+                _ -> resultTable
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -234,21 +282,38 @@ view model =
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]
             , filters
-            , display
+            , filterBar
+            , body
             ]
         ]
 
 
-tableConfig : Cart.Model -> Table.Config PFAMResult Msg
-tableConfig cart =
+pfamTableConfig : Cart.Model -> Table.Config PFAMResult Msg
+pfamTableConfig cart =
     Table.customConfig
         { toId = toString << .sample_to_uproc_id
         , toMsg = SetTableState
         , columns =
-            [ projectColumn
-            , nameColumn
-            , numReadsColumn
-            , addToCartColumn cart
+            [ pfam_projectColumn
+            , pfam_nameColumn
+            , pfam_numReadsColumn
+            , pfam_addToCartColumn cart
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
+
+
+keggTableConfig : Cart.Model -> Table.Config KEGGResult Msg
+keggTableConfig cart =
+    Table.customConfig
+        { toId = toString << .uproc_kegg_result_id
+        , toMsg = SetTableState
+        , columns =
+            [ kegg_projectColumn
+            , kegg_nameColumn
+            , kegg_numReadsColumn
+            , kegg_addToCartColumn cart
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -261,40 +326,40 @@ toTableAttrs =
     ]
 
 
-nameColumn : Table.Column PFAMResult Msg
-nameColumn =
+pfam_nameColumn : Table.Column PFAMResult Msg
+pfam_nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
-        , viewData = nameLink
+        , viewData = pfam_nameLink
         , sorter = Table.increasingOrDecreasingBy (.sample >> .sample_name)
         }
 
 
-nameLink : PFAMResult -> Table.HtmlDetails Msg
-nameLink result =
+pfam_nameLink : PFAMResult -> Table.HtmlDetails Msg
+pfam_nameLink result =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Sample result.sample.sample_id) ] [ text result.sample.sample_name ]
         ]
 
 
-projectColumn : Table.Column PFAMResult Msg
-projectColumn =
+pfam_projectColumn : Table.Column PFAMResult Msg
+pfam_projectColumn =
     Table.veryCustomColumn
         { name = "Project"
-        , viewData = projectLink
+        , viewData = pfam_projectLink
         , sorter = Table.increasingOrDecreasingBy (.sample >> .project >> .project_name)
         }
 
 
-projectLink : PFAMResult -> Table.HtmlDetails Msg
-projectLink result =
+pfam_projectLink : PFAMResult -> Table.HtmlDetails Msg
+pfam_projectLink result =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project result.sample.project_id) ] [ text result.sample.project.project_name ]
         ]
 
 
-numReadsColumn : Table.Column PFAMResult Msg
-numReadsColumn =
+pfam_numReadsColumn : Table.Column PFAMResult Msg
+pfam_numReadsColumn =
     Table.veryCustomColumn
         { name = "Reads"
         , viewData = nowrapColumn 4 << toString << .read_count
@@ -312,14 +377,63 @@ nowrapColumn width value =
         [ text value ]
 
 
-addToCartColumn : Cart.Model -> Table.Column PFAMResult Msg
-addToCartColumn cart =
+pfam_addToCartColumn : Cart.Model -> Table.Column PFAMResult Msg
+pfam_addToCartColumn cart =
     Table.veryCustomColumn
         { name = "Cart"
         , viewData = (\result -> addToCartButton cart result.sample)
         , sorter = Table.unsortable
         }
 
+
+kegg_nameColumn : Table.Column KEGGResult Msg
+kegg_nameColumn =
+    Table.veryCustomColumn
+        { name = "Sample"
+        , viewData = kegg_nameLink
+        , sorter = Table.increasingOrDecreasingBy (.sample >> .sample_name)
+        }
+
+
+kegg_nameLink : KEGGResult -> Table.HtmlDetails Msg
+kegg_nameLink result =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Sample result.sample.sample_id) ] [ text result.sample.sample_name ]
+        ]
+
+
+kegg_projectColumn : Table.Column KEGGResult Msg
+kegg_projectColumn =
+    Table.veryCustomColumn
+        { name = "Project"
+        , viewData = kegg_projectLink
+        , sorter = Table.increasingOrDecreasingBy (.sample >> .project >> .project_name)
+        }
+
+
+kegg_projectLink : KEGGResult -> Table.HtmlDetails Msg
+kegg_projectLink result =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Project result.sample.project_id) ] [ text result.sample.project.project_name ]
+        ]
+
+
+kegg_numReadsColumn : Table.Column KEGGResult Msg
+kegg_numReadsColumn =
+    Table.veryCustomColumn
+        { name = "Reads"
+        , viewData = nowrapColumn 4 << toString << .read_count
+        , sorter = Table.decreasingOrIncreasingBy .read_count
+        }
+
+
+kegg_addToCartColumn : Cart.Model -> Table.Column KEGGResult Msg
+kegg_addToCartColumn cart =
+    Table.veryCustomColumn
+        { name = "Cart"
+        , viewData = (\result -> addToCartButton cart result.sample)
+        , sorter = Table.unsortable
+        }
 
 addToCartButton : Cart.Model -> Sample -> Table.HtmlDetails Msg
 addToCartButton cart sample =

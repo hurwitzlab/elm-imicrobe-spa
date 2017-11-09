@@ -97,12 +97,23 @@ taxonomy_search query =
         |> HttpBuilder.toRequest
 
 
-protein_search : String -> Http.Request (List PFAMProtein)
-protein_search query =
+protein_pfam_search : String -> Http.Request (List PFAMProtein)
+protein_pfam_search query =
     let
         url =
-            apiBaseUrl ++ "/samples/protein_search/" ++ query
+            apiBaseUrl ++ "/samples/protein_search/pfam/" ++ query
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderPFAMProtein))
+        |> HttpBuilder.toRequest
+
+
+protein_kegg_search : String -> Http.Request (List KEGGProtein)
+protein_kegg_search query =
+    let
+        url =
+            apiBaseUrl ++ "/samples/protein_search/kegg/" ++ query
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderKEGGProtein))
         |> HttpBuilder.toRequest
