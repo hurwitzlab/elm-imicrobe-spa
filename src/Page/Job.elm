@@ -27,7 +27,8 @@ type alias Model =
     , loadingOutputs : Bool
     , outputs : List Agave.JobOutput
     , loadingResults : Bool
-    , results : String
+    , loadedResults : Bool
+    , results : Maybe String
     , startTime : Maybe Time
     , lastPollTime : Maybe Time
     }
@@ -49,7 +50,8 @@ init session id =
                     , loadingOutputs = False
                     , outputs = []
                     , loadingResults = False
-                    , results = ""
+                    , loadedResults = False
+                    , results = Nothing
                     , startTime = Nothing
                     , lastPollTime = Nothing
                     }
@@ -65,7 +67,7 @@ type Msg
     = GetOutputs
     | SetOutputs (List Agave.JobOutput)
     | GetResults
-    | SetResults String
+    | SetResults (Result Http.Error String)
     | SetJob Agave.Job
     | PollJob Time
 
@@ -98,22 +100,21 @@ update session msg model =
             let
                 loadResults =
                     Request.Agave.getJobOutput session.token model.job_id "mash-out/sna/distance.tab" |> Http.toTask
-
-                handleResults results =
-                    case results of
-                        Ok results ->
-                            SetResults results
-
-                        Err error ->
-                            let
-                                _ = Debug.log "Error" ("could not retrieve job results: " ++ (toString error))
-                            in
-                            SetResults ""
             in
-            { model | loadingResults = True } => Task.attempt handleResults loadResults
+            { model | loadingResults = True } => Task.attempt SetResults loadResults
 
-        SetResults results ->
-            { model | results = results } => Ports.createSimPlot ("sim-plot", results)
+        SetResults (Ok results) ->
+            case results of
+                "" -> { model | loadedResults = True } => Cmd.none -- File not found
+
+                _ ->
+                    { model | loadedResults = True, results = Just results } => Ports.createSimPlot ("sim-plot", results)
+
+        SetResults (Err error) ->
+            let
+                _ = Debug.log "Page.Job" ("Error retrieving results: " ++ (toString error))
+            in
+            { model | loadedResults = True }  => Cmd.none
 
         SetJob job ->
             { model | job = job } => Cmd.none
@@ -381,14 +382,22 @@ viewResults model =
         body =
             case model.job.status of
                 "FINISHED" ->
-                    case model.results of
-                        "" ->
+                    case model.loadedResults of
+                        True ->
+                            case model.results of
+                                Nothing ->
+                                    text "None"
+
+                                _ ->
+                                    div [] []
+
+                        False ->
                             case model.loadingResults of
-                                False -> button [ class "btn btn-default", onClick GetResults ] [ text "Show Results" ]
+                                True ->
+                                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-                                True -> div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
-
-                        _ -> div [] []
+                                False ->
+                                    button [ class "btn btn-default", onClick GetResults ] [ text "Show Results" ]
 
                 "FAILED" ->
                     tr [] [ td [] [ text "None" ] ]
