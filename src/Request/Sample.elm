@@ -95,3 +95,14 @@ taxonomy_search query =
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
+
+
+protein_search : String -> Http.Request (List PFAMProtein)
+protein_search query =
+    let
+        url =
+            apiBaseUrl ++ "/samples/protein_search/" ++ query
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderPFAMProtein))
+        |> HttpBuilder.toRequest

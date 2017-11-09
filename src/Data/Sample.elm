@@ -185,6 +185,23 @@ type alias KEGGAnnotation =
     }
 
 
+type alias PFAMProtein =
+    { uproc_id : Int
+    , accession : String
+    , identifier : String
+    , name : String
+    , description : String
+    , uproc_pfam_results : List PFAMResult
+    }
+
+
+type alias PFAMResult =
+    { sample_to_uproc_id : Int
+    , read_count : Int
+    , sample : Sample
+    }
+
+
 -- FIXME centrifuge-related types below are a mess
 type alias Centrifuge =
     { centrifuge_id : Int
@@ -423,6 +440,25 @@ decoderKEGGAnnotation =
         |> required "definition" Decode.string
         |> required "pathway" Decode.string
         |> required "module" Decode.string
+
+
+decoderPFAMProtein : Decoder PFAMProtein
+decoderPFAMProtein =
+    decode PFAMProtein
+        |> required "uproc_id" Decode.int
+        |> required "accession" Decode.string
+        |> required "identifier" Decode.string
+        |> required "name" Decode.string
+        |> required "description" Decode.string
+        |> optional "uproc_pfam_results" (Decode.list decoderPFAMResult) []
+
+
+decoderPFAMResult : Decoder PFAMResult
+decoderPFAMResult =
+    decode PFAMResult
+        |> required "sample_to_uproc_id" Decode.int
+        |> required "read_count" Decode.int
+        |> required "sample" decoder
 
 
 decoderSampleToCentrifuge : Decoder SampleToCentrifuge

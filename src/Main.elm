@@ -46,6 +46,7 @@ import Page.Sample as Sample
 import Page.Samples as Samples
 import Page.Search as Search
 import Page.TaxonomySearch as TaxonomySearch
+import Page.ProteinSearch as ProteinSearch
 import Route exposing (..)
 import Request.Agave
 import Request.Login
@@ -108,6 +109,7 @@ type Page
     | Samples Samples.Model
     | Search String Search.Model
     | TaxonomySearch String TaxonomySearch.Model
+    | ProteinSearch String ProteinSearch.Model
 
 
 type PageState
@@ -184,6 +186,8 @@ type Msg
     | SearchMsg Search.Msg
     | TaxonomySearchLoaded String (Result PageLoadError TaxonomySearch.Model)
     | TaxonomySearchMsg TaxonomySearch.Msg
+    | ProteinSearchLoaded String (Result PageLoadError ProteinSearch.Model)
+    | ProteinSearchMsg ProteinSearch.Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
@@ -325,6 +329,9 @@ setRoute maybeRoute model =
 
         Just (Route.TaxonomySearch query) ->
             transition (TaxonomySearchLoaded query) (TaxonomySearch.init model.session query)
+
+        Just (Route.ProteinSearch query) ->
+            transition (ProteinSearchLoaded query) (ProteinSearch.init model.session query)
 
 
 getPage : PageState -> Page
@@ -903,6 +910,38 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        ProteinSearchLoaded query (Ok subModel) ->
+            { model | pageState = Loaded (ProteinSearch query subModel) } => scrollToTop
+
+        ProteinSearchLoaded query (Err error) ->
+            { model | pageState = Loaded (Error error) } => Cmd.none
+
+        ProteinSearchMsg subMsg ->
+            case page of
+                ProteinSearch query subModel ->
+                    let
+                        ( ( pageModel, cmd ), msgFromPage ) =
+                            ProteinSearch.update model.session subMsg subModel
+
+                        newModel =
+                            case msgFromPage of
+                                ProteinSearch.NoOp ->
+                                    model
+
+                                ProteinSearch.SetCart newCart ->
+                                    let
+                                        newSession =
+                                            { session | cart = newCart }
+                                    in
+                                    { model | session = newSession }
+
+                    in
+                    { newModel | pageState = Loaded (ProteinSearch query pageModel) }
+                        => Cmd.map ProteinSearchMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
         SetSession newSession ->
             let
                  _ = Debug.log "Main.SetSession" (toString newSession)
@@ -1186,6 +1225,11 @@ viewPage session isLoading page =
                 |> Html.map TaxonomySearchMsg
                 |> layout Page.TaxonomySearch
 
+        ProteinSearch query subModel ->
+            ProteinSearch.view subModel
+                |> Html.map ProteinSearchMsg
+                |> layout Page.ProteinSearch
+
 
 {-| Take a page's Html and layout it with a header and footer.
     isLoading can be used to show loading indicator during slow transitions
@@ -1317,6 +1361,7 @@ viewHeader page isLoading session =
                                 , li [] [ a [ Route.href Route.Jobs ] [ text "Jobs" ] ]
 --                                , li [] [ a [ Route.href Route.Cart ] [ text ("Cart " ++ cartLabel) ] ]
                                 , li [] [ a [ Route.href (Route.TaxonomySearch "") ] [ text "Taxonomy Search" ] ]
+                                , li [] [ a [ Route.href (Route.ProteinSearch "") ] [ text "Protein Search" ] ]
                                 ]
                             ]
                         , li []

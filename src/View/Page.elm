@@ -34,3 +34,4 @@ type ActivePage
     | Samples
     | Search
     | TaxonomySearch
+    | ProteinSearch

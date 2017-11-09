@@ -42,6 +42,7 @@ type Route
     | Samples
     | Search String
     | TaxonomySearch String
+    | ProteinSearch String
 
 
 routeMather : Parser (Route -> a) a
@@ -79,6 +80,7 @@ routeMather =
         , Url.map Samples (s "samples")
         , Url.map Search (s "search" </> Url.string)
         , Url.map TaxonomySearch (s "taxonomy_search" </> Url.string)
+        , Url.map ProteinSearch (s "protein_search" </> Url.string)
 
         --    When needing parameters on the form base/item/3
         --    , Url.map Item (s "item" </> Item.itemParser)
@@ -189,6 +191,9 @@ routeToString page =
 
                 TaxonomySearch query ->
                     [ "taxonomy_search", query ]
+
+                ProteinSearch query ->
+                    [ "protein_search", query ]
 
         --    When needing parameters on the form base/item/3
         --                    Item ->
