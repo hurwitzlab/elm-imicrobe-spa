@@ -72,7 +72,6 @@ type Msg
     | SetQuery String
     | SetTaxId String
     | Search
-    | SetResults String (List Centrifuge2)
     | SetAbundanceThreshold String
     | SetTableState Table.State
     | SetSession Session
@@ -102,22 +101,7 @@ update session msg model =
             { model | taxId = strValue } => Cmd.none => NoOp
 
         Search ->
-           let
-                handleResults searchTerm results =
-                    case results of
-                        Ok results ->
-                            SetResults searchTerm results
-
-                        Err _ ->
-                            let
-                                _ = Debug.log "Error" "could not retrieve search results"
-                            in
-                            SetResults searchTerm []
-            in
-            model => Task.attempt (handleResults model.taxId) (doSearch model.taxId) => NoOp
-
-        SetResults searchTerm results ->
-            { model | searchTerm = searchTerm, results = results } => Route.modifyUrl (Route.TaxonomySearch searchTerm) => NoOp
+            model => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
 
         SetAbundanceThreshold strValue ->
             let
