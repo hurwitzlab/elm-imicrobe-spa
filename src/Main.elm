@@ -64,6 +64,7 @@ import Events exposing (onKeyDown)
 
 type alias Model =
     { pageState : PageState
+    , currentRoute : Maybe Route -- mdb added 11/15/17 for oauth redirect back to original page
     , session : Session
     , oauth :
         { authEndpoint : String
@@ -130,8 +131,8 @@ type Msg
     | AssemblyMsg Assembly.Msg
     | AssembliesLoaded (Result PageLoadError Assemblies.Model)
     | AssembliesMsg Assemblies.Msg
-    | Authorize (Result PageLoadError Home.Model)
-    | Deauthorize (Result PageLoadError Home.Model)
+    | Authorize
+    | Deauthorize
     | CartLoaded (Result PageLoadError Cart.Model)
     | CartMsg Cart.Msg
     | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
@@ -216,7 +217,7 @@ setRoute maybeRoute model =
 --                        -- If anything, we'd log this to an error recording service.
 --                        |> Task.onError (\_ -> Task.succeed ())
 --            in
-            { model | pageState = TransitioningFrom (getPage model.pageState) }
+            { model | pageState = TransitioningFrom (getPage model.pageState), currentRoute = maybeRoute }
                 => Cmd.batch
                     [ Ports.updateAnalytics routeString
                     , Task.attempt toMsg task
@@ -283,10 +284,12 @@ setRoute maybeRoute model =
             transition (JobLoaded id) (Job.init model.session id)
 
         Just Route.Login ->
-            transition Authorize (Home.init model.session)
+            --transition Authorize (Home.init model.session)
+            update Authorize model
 
         Just Route.Logout ->
-            transition Deauthorize (Home.init model.session)
+            --transition Deauthorize (Home.init model.session)
+            update Deauthorize model
 
         Just (Route.Map lat lng) ->
             transition (MapLoaded lat lng) (Map.init lat lng)
@@ -383,24 +386,31 @@ updatePage page msg model =
         SetRoute route ->
             setRoute route model
 
-        Authorize (Ok subModel) ->
+        Authorize ->
+            let
+                routeStr =
+                    case model.currentRoute of
+                        Nothing -> ""
+
+                        Just route -> routeToString route
+            in
             model
                 ! [ OAuth.Implicit.authorize
                         { clientId = model.oauth.clientId
                         , redirectUri = model.oauth.redirectUri
                         , responseType = OAuth.Token
                         , scope = [ "PRODUCTION" ]
-                        , state = Just "000"
+                        , state = Just routeStr --Just "000"
                         , url = model.oauth.authEndpoint
                         }
                   ]
 
-        Deauthorize (Ok subModel) ->
+        Deauthorize ->
             let
                 newSession =
                     { session | token = "", profile = Nothing }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Session.store newSession
 
         AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => scrollToTop
@@ -712,7 +722,7 @@ updatePage page msg model =
                 newSession =
                     { session | user_id = Just login.user_id }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession ] --, Route.modifyUrl Route.Home ]
 
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
@@ -1433,13 +1443,13 @@ init flags location =
     let
         _ = Debug.log "flags" flags
 
+        _ = Debug.log "location" (toString location)
+
         session = --TODO use Maybe Session instead
             case flags.session of
                 "" -> Session.empty
 
                 _ -> decodeSessionFromJson flags.session
-
-        _ = Debug.log "location" (toString location)
 
         model =
             { oauth =
@@ -1451,17 +1461,21 @@ init flags location =
             , query = ""
             , error = Nothing
             , pageState = Loaded initialPage
+            , currentRoute = Nothing
             }
 
-        -- Kludge for Agave not returning required "token_type=bearer" in redirect
+        -- Kludge for Agave not returning required "token_type=bearer" in OAuth redirect
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
-
-        _ = Debug.log "init" model
     in
     case OAuth.Implicit.parse location2 of
-        Ok { token } ->
+        Ok { token, state } ->
             let
+                url =
+                    case state of
+                        Nothing -> ""
+                        Just state -> state
+
                 newSession =
                     { session | token = toString token }
 
@@ -1479,7 +1493,10 @@ init flags location =
                             in
                             SetRoute (Just Route.Home) --FIXME go to Error page with a relevant error message instead
             in
-            { model | session = newSession } => Task.attempt handleProfile loadProfile
+            { model | session = newSession } => Cmd.batch
+                [ Navigation.modifyUrl url
+                , Task.attempt handleProfile loadProfile
+                ]
 
         Err OAuth.Empty ->
             let
