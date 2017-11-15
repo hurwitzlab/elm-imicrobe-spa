@@ -410,7 +410,7 @@ updatePage page msg model =
                 newSession =
                     { session | token = "", profile = Nothing }
             in
-            { model | session = newSession } => Session.store newSession
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
         AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => scrollToTop
