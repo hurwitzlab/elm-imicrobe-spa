@@ -24,6 +24,7 @@ type alias Model =
     { pageTitle : String
     , job_id : String
     , job : Agave.Job
+    , loadingJob : Bool
     , loadingOutputs : Bool
     , outputs : List Agave.JobOutput
     , loadingResults : Bool
@@ -47,6 +48,7 @@ init session id =
                     { pageTitle = "Job"
                     , job_id = job.id
                     , job = job
+                    , loadingJob = False
                     , loadingOutputs = False
                     , outputs = []
                     , loadingResults = False
@@ -98,8 +100,18 @@ update session msg model =
 
         GetResults ->
             let
+                path =
+--                    "mash-out/results/distance.tab"
+                    "refseq-mash-out/dist/mash-dist.tab"
+
+                username =
+                    case session.profile of
+                        Nothing -> ""
+
+                        Just profile -> profile.username
+
                 loadResults =
-                    Request.Agave.getJobOutput session.token model.job_id "mash-out/results/distance.tab" |> Http.toTask
+                    Request.Agave.getJobOutput username session.token model.job_id path |> Http.toTask
             in
             { model | loadingResults = True } => Task.attempt SetResults loadResults
 
@@ -117,12 +129,10 @@ update session msg model =
             { model | loadedResults = True }  => Cmd.none
 
         SetJob job ->
-            { model | job = job } => Cmd.none
+            { model | job = job, loadingJob = False } => Cmd.none
 
         PollJob time ->
-            if model.job.status == "FINISHED" || model.job.status == "FAILED" || model.job.status == "STOPPED" then
-                model => Cmd.none
-            else
+            if model.loadingJob == False && model.job.status /= "FINISHED" && model.job.status /= "FAILED" && model.job.status /= "STOPPED" then
                 let
                     _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
 
@@ -170,14 +180,14 @@ update session msg model =
                             True
                         else
                             False
-
-                    cmd =
-                        case doPoll of
-                            True -> Task.attempt handleJob loadJob
-
-                            False -> Cmd.none
                 in
-                    { model | startTime = Just startTime, lastPollTime = Just time } => cmd
+                case doPoll of
+                    True ->
+                        { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt handleJob loadJob
+                    False ->
+                        { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
+            else
+                model => Cmd.none
 
 
 

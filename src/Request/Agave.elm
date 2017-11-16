@@ -103,11 +103,13 @@ getJobOutputs token id =
         |> HttpBuilder.toRequest
 
 
-getJobOutput : String -> String -> String -> Http.Request String
-getJobOutput token id path =
+getJobOutput : String -> String -> String -> String -> Http.Request String
+getJobOutput username token id path =
     let
         url =
-            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
+            -- Changed Agave endpoint after adding archive=True
+            --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
+            agaveBaseUrl ++ "/files/v2/media/" ++ username ++ "/archive/jobs/job-" ++ id ++ "/" ++ path
 
         headers =
             [( "Authorization", token)]
