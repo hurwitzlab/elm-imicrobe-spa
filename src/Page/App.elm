@@ -8,7 +8,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onCheck, onInput)
 import Dialog
-import Json.Decode as Decode
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.App

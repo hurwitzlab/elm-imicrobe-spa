@@ -4,8 +4,6 @@ import Data.ProjectGroup as ProjectGroup exposing (ProjectGroup)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
-import Json.Encode as Encode
-import Json.Encode.Extra as EncodeExtra
 import Config exposing (apiBaseUrl)
 
 
