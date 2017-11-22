@@ -509,8 +509,8 @@ cartDialogConfig model =
             not (model.cartLoaded && count > 0)
 
         closeButton =
-            button [ class "btn btn-secondary pull-right margin-right", onClick CancelCartDialog ]
-                            [ text "Close" ]
+            button [ class "btn btn-default pull-right margin-right", onClick CancelCartDialog ]
+                [ text "Close" ]
 
         footer =
             case disable of
