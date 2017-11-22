@@ -61,7 +61,7 @@ init session id =
             Request.PlanB.getApp session.token name |> Http.toTask |> Task.map .result
 
         loadAppFromProvider app =
-            case app.provider of
+            case app.provider_name of
                 "plan-b" -> loadAppFromPlanB
 
                 _ -> loadAppFromAgave
@@ -176,7 +176,7 @@ update session msg model =
                     |> Http.send AppRunCompleted
 
                 launchApp =
-                    case model.app.provider of
+                    case model.app.provider_name of
                         "plan-b" -> launchPlanB
 
                         _ -> launchAgave
