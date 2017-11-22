@@ -86,11 +86,18 @@ type Msg
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
+    let
+        username =
+            case session.profile of
+                Nothing -> ""
+
+                Just profile -> profile.username
+    in
     case msg of
         GetOutputs ->
             let
                 loadOutputs =
-                    Request.Agave.getJobOutputs session.token model.job_id |> Http.toTask |> Task.map .result
+                    Request.Agave.getJobOutputs username session.token model.job_id |> Http.toTask |> Task.map .result
 
                 handleOutputs outputs =
                     case outputs of
@@ -106,19 +113,17 @@ update session msg model =
             { model | loadingOutputs = True } => Task.attempt handleOutputs loadOutputs
 
         SetOutputs outputs ->
-            { model | outputs = outputs } => Cmd.none
+            let
+                filtered =
+                    List.filter (\output -> output.name /= ".") outputs
+            in
+            { model | outputs = filtered } => Cmd.none
 
         GetResults ->
             let
                 path =
 --                    "mash-out/results/distance.tab"
                     "refseq-mash-out/dist/mash-dist.tab"
-
-                username =
-                    case session.profile of
-                        Nothing -> ""
-
-                        Just profile -> profile.username
 
                 loadResults =
                     Request.Agave.getJobOutput username session.token model.job_id path |> Http.toTask

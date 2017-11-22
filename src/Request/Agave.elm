@@ -88,11 +88,13 @@ getJob token id =
         |> HttpBuilder.toRequest
 
 
-getJobOutputs : String -> String -> Http.Request (Response (List JobOutput))
-getJobOutputs token id =
+getJobOutputs : String -> String -> String -> Http.Request (Response (List JobOutput))
+getJobOutputs username token id =
     let
         url =
-            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/listings"
+            -- Changed Agave endpoint for PlanB support
+            --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/listings"
+            agaveBaseUrl ++ "/files/v2/listings/" ++ username ++ "/archive/jobs/job-" ++ id
 
         headers =
             [( "Authorization", token)]
