@@ -676,6 +676,14 @@ updatePage page msg model =
         PublicationLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        PublicationMsg subMsg ->
+            case page of
+                Publication id subModel ->
+                    toPage (Publication id) PublicationMsg Publication.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         PublicationsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Publications subModel) } => scrollToTop
 

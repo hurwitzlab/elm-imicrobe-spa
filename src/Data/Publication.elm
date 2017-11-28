@@ -1,9 +1,8 @@
-module Data.Publication exposing (Project, Publication, decoder)
+module Data.Publication exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Json.Encode as Encode exposing (Value)
-import Json.Encode.Extra as EncodeExtra
+
 
 
 type alias Publication =
@@ -16,12 +15,27 @@ type alias Publication =
     , pubmed_id : Int
     , pub_date : String
     , project : Maybe Project
+    , project_files : List ProjectFile
     }
 
 
 type alias Project =
     { project_id : Int
     , project_name : String
+    }
+
+
+type alias ProjectFile =
+    { profile_file_id : Int
+    , project_id : Int
+    , project_file_type : ProjectFileType
+    , file : String
+    }
+
+
+type alias ProjectFileType =
+    { profile_file_type_id : Int
+    , type_ : String
     }
 
 
@@ -36,6 +50,22 @@ decoderProject =
         |> required "project_name" Decode.string
 
 
+decoderProjectFile : Decoder ProjectFile
+decoderProjectFile =
+    decode ProjectFile
+        |> required "project_file_id" Decode.int
+        |> required "project_id" Decode.int
+        |> required "project_file_type" decoderProjectFileType
+        |> required "file" Decode.string
+
+
+decoderProjectFileType : Decoder ProjectFileType
+decoderProjectFileType =
+    decode ProjectFileType
+        |> required "project_file_type_id" Decode.int
+        |> required "type" Decode.string
+
+
 decoder : Decoder Publication
 decoder =
     decode Publication
@@ -48,17 +78,4 @@ decoder =
         |> optional "pubmed_id" Decode.int 0
         |> optional "pub_date" Decode.string "NA"
         |> optional "project" (Decode.nullable decoderProject) Nothing
-
-
-
--- handle NULL!
--- |> optional "projects" (Decode.list decoderProject) []
-{--
-encode : Publication -> Value
-encode inv =
-    Encode.object
-        [ "investigator_id" => Encode.int inv.investigator_id
-        , "investigator_name" => Encode.string inv.investigator_name
-        , "institution" => Encode.string inv.institution
-        ]
-        --}
+        |> optional "project_files" (Decode.list decoderProjectFile) []
