@@ -152,6 +152,7 @@ viewFiles files filterType =
         cols =
             tr []
                 [ th [] [ text "Name" ]
+                , th [] [ text "Description" ]
                 , th [] [ text "Type" ]
                 ]
 
@@ -190,6 +191,7 @@ viewFile : ProjectFile -> Html msg
 viewFile file =
     tr []
         [ td [] [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ] ]
+        , td [] [ text file.description ]
         , td [] [ text file.project_file_type.type_ ]
         ]
 

@@ -30,6 +30,7 @@ type alias ProjectFile =
     , project_id : Int
     , project_file_type : ProjectFileType
     , file : String
+    , description : String
     }
 
 
@@ -57,6 +58,7 @@ decoderProjectFile =
         |> required "project_id" Decode.int
         |> required "project_file_type" decoderProjectFileType
         |> required "file" Decode.string
+        |> optional "description" Decode.string ""
 
 
 decoderProjectFileType : Decoder ProjectFileType
