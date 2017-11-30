@@ -88,6 +88,7 @@ app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/tok
         fileBrowser = new agave.AgaveFileBrowser({
             elementId:   'file-browser',
             baseUrl:     config.agaveFilesUrl,
+            queryParams: 'limit=9999',
             path:        input.username,
             authToken:   input.token,
             busyIconUrl: 'img/spinner.gif'
