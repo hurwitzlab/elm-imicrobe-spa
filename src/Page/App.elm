@@ -97,13 +97,13 @@ init session id =
 
 
 type Msg
-    = SetInput String String
+    = SetInput String String String --FIXME change source (1st arg) to union type
     | SetParameter String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
     | AppRunCompleted (Result Http.Error AppRun)
     | CloseRunDialog
-    | OpenFileBrowser String
+    | OpenFileBrowser String String
     | OpenCart String
     | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile)))
     | CloseCartDialog
@@ -115,12 +115,17 @@ type Msg
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
-        SetInput id value ->
+        SetInput source id value ->
             let
                 newValue =
-                    case String.startsWith "/iplant/home" value of
-                        True -> String.Extra.replace "/iplant/home" "" value
-                        False -> value
+                    case source of
+                        "syndicate" ->
+                            "hsyn:///imicrobe/" ++ value
+
+                        _ -> -- "agave"
+                            case String.startsWith "/iplant/home" value of
+                                True -> String.Extra.replace "/iplant/home" "" value
+                                False -> value
 
                 newInputs = Dict.insert id newValue model.inputs
 
@@ -235,14 +240,14 @@ update session msg model =
                     List.filterMap match model.files |> String.join ";"
 
                 msg =
-                    SetInput (Maybe.withDefault "" model.cartDialogInputId) filesStr
+                    SetInput "agave" (Maybe.withDefault "" model.cartDialogInputId) filesStr
             in
             update session msg { model | cartDialogInputId = Nothing }
 
         CancelCartDialog ->
             { model | cartDialogInputId = Nothing } => Cmd.none
 
-        OpenFileBrowser inputId ->
+        OpenFileBrowser source inputId ->
             let
                 username =
                     case session.profile of
@@ -252,7 +257,7 @@ update session msg model =
                         Just profile ->
                             profile.username
             in
-            model => Ports.createFileBrowser (App.FileBrowser inputId username session.token "")
+            model => Ports.createFileBrowser (App.FileBrowser inputId username session.token "" source)
 
         OpenCart inputId ->
             let
@@ -387,16 +392,28 @@ viewAppInput input =
                 True -> agaveAppInput.details.label ++ " *"
 
                 False -> agaveAppInput.details.label
+
+        browserButton label msg =
+            button [ class "margin-right btn btn-default btn-sm", style [("max-height","2.8em")], onClick msg ]
+                [ span [ class "gray gylphicon glyphicon-cloud" ] []
+                , text (" " ++ label)
+                ]
+
+        syndicateButton =
+            case List.member "syndicate" agaveAppInput.semantics.ontology of
+                True ->
+                    browserButton "Syndicate" (OpenFileBrowser "syndicate" id)
+
+                False ->
+                    text ""
     in
     tr []
     [ th [ class "col-md-3" ] [ text label ]
     , td []
         [ div [ style [("display","flex")] ]
-            [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput id) ] []
-            , button [ class "margin-right btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenFileBrowser id) ]
-                [ span [ class "gray gylphicon glyphicon-cloud" ] []
-                , text " CyVerse"
-                ]
+            [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput "agave" id) ] []
+            , browserButton "CyVerse" (OpenFileBrowser "agave" id)
+            , syndicateButton
             , button [ class "btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenCart id) ]
                 [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
                 , text " Cart"
@@ -443,6 +460,7 @@ viewAppParameter input =
                         Just enum ->
                             select [ onInput (SetParameter id) ]
                                 (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+
                 _ ->
                     defaultInput 40
     in

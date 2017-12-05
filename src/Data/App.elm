@@ -45,6 +45,7 @@ type alias FileBrowser =
     , username : String
     , token : String
     , path : String
+    , source : String
     }
 
 

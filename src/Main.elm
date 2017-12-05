@@ -999,7 +999,7 @@ updatePage page msg model =
                 App id subModel ->
                     let
                         (pageModel, cmd) =
-                            App.update session (App.SetInput selection.id selection.path) subModel
+                            App.update session (App.SetInput selection.source selection.id selection.path) subModel
                     in
                     { model | pageState = Loaded (App id pageModel) } => Cmd.map AppMsg cmd
 
@@ -1331,7 +1331,7 @@ viewHeader page isLoading session =
     in
     div []
         [ --div [ class "center border-bottom", style [("background-color", "#ffb84d"), ("color", "white")] ] [ text "Note: This is a new beta version and still currently under development.  Please ", a [ Html.Attributes.href "#/contact" ] [ text "let us know" ], text " of any issues or suggestions!" ]
-          nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
+        nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
             [ div [ class "container" ]
                 [ div [ class "navbar-header" ]
                     [ a [ class "navbar-brand", Html.Attributes.href "/" ] --Route.href Route.Home ] -- fix home page not rendering in some cases

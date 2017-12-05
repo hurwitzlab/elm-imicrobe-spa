@@ -77,36 +77,68 @@ window.addEventListener("storage",
 
 
 /*
- * Define ports for Agave File Browser
+ * Define ports for Agave & Syndicate File Browsers
  */
 
-var fileBrowser;
-app.ports.createFileBrowser.subscribe(function(input) { // TODO get username/token from localStorage.session instead of passing in
-    var dialog = $('#file-browser-dialog');
+var fileBrowser = [];
+app.ports.createFileBrowser.subscribe(function(params) { // TODO get username/token from localStorage.session instead of passing in
+    var dialog = $('#' + params.source + '-file-browser-dialog');
+    var fb = fileBrowser[params.source];
 
-    if (typeof fileBrowser == 'undefined') {
-        fileBrowser = new agave.AgaveFileBrowser({
-            elementId:   'file-browser',
-            baseUrl:     config.agaveFilesUrl,
-            queryParams: 'limit=9999',
-            path:        input.username,
-            authToken:   input.token,
-            busyIconUrl: 'img/spinner.gif'
-        });
+    if (typeof fb == 'undefined') {
+        if (params.source == 'agave') {
+            fb = fileBrowser[params.source] = new agave.AgaveFileBrowser({
+                elementId:   'agave-file-browser',
+                baseUrl:     config.agaveFilesUrl,
+                queryParams: 'limit=9999',
+                path:        params.username,
+                authToken:   params.token,
+                busyIconUrl: 'img/spinner.gif'
+            });
+        }
+        else if (params.source == 'syndicate') {
+            fb = fileBrowser[params.source] = new agave.AgaveFileBrowser({
+                elementId:   'syndicate-file-browser',
+                baseUrl:     config.syndicateRestUrl,
+                queryParams: 'listdir',
+                path:        '',
+                authToken:   '',
+                busyIconUrl: 'img/spinner.gif',
+                formatCallback: function(path, response) {
+                    return response.entries
+                        .filter((item, index) => index >= 2) // remove first two items which are the current path and the top-level path
+                        .map((item) => {
+                            var type = (item.type == 2 ? 'dir' : 'file');
+                            path = (path ? path.replace(/\/?$/, '/') : ''); // add trailing slash to path if defined
+                            return {
+                                id: path + item.name,
+                                text: item.name,
+                                data: { type: type },
+                                icon: (type == 'dir' ? 'jstree-folder' : 'jstree-file')
+                            };
+                        });
+                    }
+            });
+        }
+        else {
+            console.error('Unknown "source" parameter');
+            return;
+        }
     }
 
     // Needs to be redefined for each call as input changes
     dialog.find('button.btn-primary').unbind().click(function() {
-        var files = fileBrowser.getSelectedNodes();
+        var files = fb.getSelectedNodes();
         console.log('selected:', files);
 
         dialog.modal('hide');
 
         app.ports.onFileSelect.send({
-            id: input.id,
-            username: input.username,
-            token: input.token,
-            path: files.map(f => f.id).join(';')
+            id: params.id,
+            username: params.username,
+            token: params.token,
+            path: files.map(f => f.id).join(';'),
+            source: params.source
         });
     });
 
