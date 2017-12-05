@@ -25,6 +25,7 @@ type alias Project =
     , project_code : String
     , project_type : String
     , description : String
+    , url : String
     , read_file : String
     , meta_file : String
     , assembly_file : String
@@ -96,6 +97,7 @@ decoder =
         |> optional "project_code" Decode.string "NA"
         |> optional "project_type" Decode.string "NA"
         |> optional "description" Decode.string "NA"
+        |> optional "url" Decode.string ""
         |> optional "read_file" Decode.string "NA"
         |> optional "meta_file" Decode.string "NA"
         |> optional "assembly_file" Decode.string "NA"

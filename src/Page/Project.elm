@@ -129,6 +129,10 @@ viewProject project =
             [ th [] [ text "Groups" ]
             , td [] (viewProjectGroups project.project_groups)
             ]
+        , tr []
+            [ th [] [ text "URL" ]
+            , td [] [ a [ href project.url, target "_blank" ] [ text project.url ] ]
+            ]
         ]
 
 viewInvestigator : Investigator -> Html msg
