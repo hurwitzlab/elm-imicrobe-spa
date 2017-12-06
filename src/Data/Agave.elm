@@ -199,10 +199,13 @@ decoderParameterValue =
         |> optional "enum_values" (Decode.nullable (Decode.list (Decode.keyValuePairs Decode.string))) Nothing
 
 
--- FIXME this doesn't properly support an actual default value
 decoderDefaultValue : Decoder DefaultValue
 decoderDefaultValue =
-    Decode.succeed (StringValue "")
+    Decode.oneOf
+        [ Decode.map StringValue Decode.string
+        , Decode.map ArrayValue (Decode.list Decode.string)
+        , Decode.map BoolValue Decode.bool
+        ]
 
 
 decoderJobStatus : Decoder JobStatus
