@@ -43,4 +43,4 @@ dataCommonsUrl =
 -- Base URL
 planbBaseUrl : String
 planbBaseUrl =
-    "https://www.imicrobe.us/planb"
+    "https://www.imicrobe.us/plan-b"

@@ -26,7 +26,7 @@ getApp : String -> String -> Http.Request (Response App)
 getApp token name =
     let
         url =
-            planbBaseUrl ++ "/apps/v2/" ++ name
+            planbBaseUrl ++ "/apps/" ++ name
 
         headers =
             [( "Authorization", token)]
@@ -41,7 +41,7 @@ getJobs : String -> Http.Request (Response (List Job))
 getJobs token =
     let
         url =
-            planbBaseUrl ++ "/jobs/v2/"
+            planbBaseUrl ++ "/jobs"
 
         headers =
             [( "Authorization", token)]
@@ -56,7 +56,7 @@ getJob : String -> String -> Http.Request (Response Job)
 getJob token id =
     let
         url =
-            planbBaseUrl ++ "/jobs/v2/" ++ id
+            planbBaseUrl ++ "/jobs/" ++ id
 
         headers =
             [( "Authorization", token)]
@@ -67,41 +67,11 @@ getJob token id =
         |> HttpBuilder.toRequest
 
 
---getJobOutputs : String -> String -> Http.Request (Response (List JobOutput))
---getJobOutputs token id =
---    let
---        url =
---            planbBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/listings"
---
---        headers =
---            [( "Authorization", token)]
---    in
---    HttpBuilder.get url
---        |> HttpBuilder.withHeaders headers
---        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderJobOutput)))
---        |> HttpBuilder.toRequest
---
---
---getJobOutput : String -> String -> String -> Http.Request String
---getJobOutput token id path =
---    let
---        url =
---            planbBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
---
---        headers =
---            [( "Authorization", token)]
---    in
---    HttpBuilder.get url
---        |> HttpBuilder.withHeaders headers
---        |> HttpBuilder.withExpect Http.expectString
---        |> HttpBuilder.toRequest
-
-
 launchJob : String -> JobRequest -> Http.Request (Response JobStatus)
 launchJob token request =
     let
         url =
-            planbBaseUrl ++ "/jobs/v2"
+            planbBaseUrl ++ "/jobs"
 
         headers =
             [( "Authorization", token)]
