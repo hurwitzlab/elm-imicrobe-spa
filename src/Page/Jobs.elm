@@ -10,6 +10,7 @@ import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
+import Request.PlanB
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
@@ -34,16 +35,22 @@ init session =
         title =
             Task.succeed "Jobs"
 
-        loadJobs =
+        loadJobsFromAgave =
             Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
 
+        loadJobsFromPlanB =
+            Request.PlanB.getJobs session.token |> Http.toTask |> Task.map .result
+
+        loadAllJobs =
+            Task.sequence [ loadJobsFromAgave, loadJobsFromPlanB ] |> Task.map List.concat
+
         tblState =
-            Task.succeed (Table.initialSort "End")
+            Task.succeed (Table.initialSort "Start")
 
         qry =
             Task.succeed ""
     in
-    Task.map4 Model title loadJobs tblState qry
+    Task.map4 Model title loadAllJobs tblState qry
         |> Task.mapError Error.handleLoadError
 
 
@@ -78,7 +85,7 @@ config =
         , columns =
             [ nameColumn
             , appColumn
-            , Table.stringColumn "Start" .startTime
+            , startColumn
             , endColumn
             , Table.stringColumn "Status" .status
             ]
@@ -125,6 +132,15 @@ appLink job =
         ]
 
 
+startColumn : Table.Column Job Msg
+startColumn =
+    Table.customColumn
+        { name = "Start"
+        , viewData = .startTime
+        , sorter = Table.decreasingOrIncreasingBy .startTime
+        }
+
+
 endColumn : Table.Column Job Msg
 endColumn =
     Table.customColumn
@@ -144,8 +160,13 @@ view model =
         lowerQuery =
             String.toLower model.query
 
+        jobFilter job =
+            ( (String.contains lowerQuery (String.toLower job.name))
+                || (String.contains lowerQuery (String.toLower job.app_id))
+                || (String.contains lowerQuery (String.toLower job.status)) )
+
         acceptableJobs =
-            List.filter (String.contains lowerQuery << String.toLower << .name) model.jobs
+            List.filter jobFilter model.jobs
 
         numShowing =
             let
