@@ -67,17 +67,21 @@ getJob token id =
         |> HttpBuilder.toRequest
 
 
-launchJob : String -> JobRequest -> Http.Request (Response JobStatus)
-launchJob token request =
+launchJob : String -> String -> JobRequest -> Http.Request (Response JobStatus)
+launchJob username token request =
     let
         url =
             planbBaseUrl ++ "/jobs"
 
         headers =
             [( "Authorization", token)]
+
+        queryParams =
+            [("username", username)]
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
         |> HttpBuilder.withJsonBody (encodeJobRequest request)
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobStatus))
         |> HttpBuilder.toRequest
