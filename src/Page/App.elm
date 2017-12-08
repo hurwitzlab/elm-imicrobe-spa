@@ -160,12 +160,6 @@ update session msg model =
 
         RunJob ->
             let
-                username =
-                    case session.profile of
-                        Nothing -> ""
-
-                        Just profile -> profile.username
-
                 jobInputs =
                     Dict.toList model.inputs |> List.map (\(k, v) -> Agave.JobInput k v)
 
@@ -180,7 +174,7 @@ update session msg model =
                 launchAgave = Request.Agave.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
-                launchPlanB = Request.PlanB.launchJob username session.token jobRequest
+                launchPlanB = Request.PlanB.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
                 sendAppRun = Request.App.run model.app_id session.user_id (Agave.encodeJobRequest jobRequest |> toString)
