@@ -1,12 +1,12 @@
-# iMicrobe Elm SPA 
+# iMicrobe Elm SPA [![Build Status](https://travis-ci.org/hurwitzlab/elm-imicrobe-spa.svg?branch=master)](https://travis-ci.org/hurwitzlab/elm-imicrobe-spa)
 
-[![Build Status](https://travis-ci.org/hurwitzlab/elm-imicrobe-spa.svg?branch=master)](https://travis-ci.org/hurwitzlab/elm-imicrobe-spa)
+New iMicrobe front-end rewritten using Elm v0.18 as a single-page application (SPA).  Now deployed at https://www.imicrobe.us
 
-Simple SPA iMicrobe.  Structured to handle each page as a separate module in a similar fashion to a MVC app. Made to be the bare minimum of a SPA but with a structure that can scale well.
+Based on the [Real World](https://github.com/rtfeldman/elm-spa-example "Real World") example from Richard Feldman.
 
-This is basically a trimmed down version of the Elm [Real World](https://github.com/rtfeldman/elm-spa-example "Real World") example from Richard Feldman. So all credit to him.
+Requires the [iMicrobe Backend](https://github.com/hurwitzlab/node-imicrobe).
 
-## Get It Running
+## Quick Start
 
 ```
 elm package install
