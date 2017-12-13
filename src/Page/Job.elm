@@ -123,7 +123,7 @@ update session msg model =
             let
                 path =
 --                    "mash-out/results/distance.tab"
-                    "refseq-mash-out/dist/mash-dist.tab"
+                    "distance.matrix"
 
                 loadResults =
                     Request.Agave.getJobOutput username session.token model.job_id path |> Http.toTask
