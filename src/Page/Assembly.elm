@@ -8,6 +8,7 @@ import Page.Error as Error exposing (PageLoadError)
 import Request.Assembly
 import Route
 import Task exposing (Task)
+import Config exposing (dataCommonsUrl)
 
 
 
@@ -95,21 +96,21 @@ viewAssembly assembly =
 
         cdsLink =
             case assembly.cds_file of
-                "" -> text "No"
+                "" -> text "None"
 
-                _ -> text "Yes"
+                _ -> a [ href (dataCommonsUrl ++ assembly.cds_file), target "_blank" ] [ text "Link" ]
 
         ntLink =
             case assembly.nt_file of
-                "" -> text "No"
+                "" -> text "None"
 
-                _ -> text "Yes"
+                _ -> a [ href (dataCommonsUrl ++ assembly.nt_file), target "_blank" ] [ text "Link" ]
 
         pepLink =
             case assembly.pep_file of
-                "" -> text "No"
+                "" -> text "None"
 
-                _ -> text "Yes"
+                _ -> a [ href (dataCommonsUrl ++ assembly.pep_file), target "_blank" ] [ text "Link" ]
 
     in
     table [ class "table table-condensed" ]
