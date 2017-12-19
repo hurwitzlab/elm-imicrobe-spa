@@ -179,7 +179,7 @@ app.ports.createSimPlot.subscribe(function(args) {
         matrix = args[1];
     simplots.heatmap(elementId, matrix);
     simplots.edgeboundary(elementId, matrix);
-    simplots.pcoaPlot(elementId, matrix);
+    simplots.pcoaPlot(elementId, matrix, { padding: 0, width: 600, height: 400 } );
 });
 
 
