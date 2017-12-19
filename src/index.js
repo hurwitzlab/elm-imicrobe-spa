@@ -2,7 +2,7 @@
 
 require("bootstrap-loader");
 import * as agave from '../node_modules/agave-file-browser/AgaveFileBrowser.js';
-import * as simplots from '../node_modules/sim-plots/sim-plots.js';
+import * as simplots from '../node_modules/sim-plots/src/sim-plots.js';
 import 'jstree';
 
 // Require these files so they get copied to dist
@@ -11,7 +11,7 @@ require("../img/nav-header.png");
 require('../css/imicrobe.css');
 //require('../css/readable.min.css');
 require('../css/spinner.css');
-require('../node_modules/sim-plots/main.css');
+require('../node_modules/sim-plots/src/main.css');
 require('../node_modules/agave-file-browser/spinner.gif');
 require.context("../plugins/landing-page", true, /^\.\/.*\.(jpg|png|html|css)/);
 
@@ -175,8 +175,11 @@ app.ports.updateAnalytics.subscribe(function (page) {
 
 app.ports.createSimPlot.subscribe(function(args) {
     console.log("createSimPlot: ", args);
-    simplots.heatmap(args[0], args[1]);
-    simplots.edgeboundary(args[0], args[1]);
+    var elementId = args[0],
+        matrix = args[1];
+    simplots.heatmap(elementId, matrix);
+    simplots.edgeboundary(elementId, matrix);
+    simplots.pcoaPlot(elementId, matrix);
 });
 
 
