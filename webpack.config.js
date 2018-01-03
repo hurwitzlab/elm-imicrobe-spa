@@ -42,10 +42,10 @@ module.exports = {
         loader: 'file-loader?name=./img/[name].[ext]',
       },
       { test: /vendor\/.+\.(jsx|js)$/,
-        loader: 'imports?jQuery=jquery,$=jquery,this=>window'
+        loader: 'imports-loader?jQuery=jquery,$=jquery,this=>window'
       },
       { test: /bootstrap\/js\//,
-        loader: 'imports?jQuery=jquery'
+        loader: 'imports-loader?jQuery=jquery'
       },
     ]
   },
