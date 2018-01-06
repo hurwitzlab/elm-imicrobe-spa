@@ -8,7 +8,7 @@
     "bootstrap": "^3.3.7",
     "bootstrap-loader": "^2.1.0",
     "bootstrap-sass": "^3.3.7",
-    "css-loader": "^0.28.4",
+    "css-loader": "^0.28.8",
     "d3": "^4.12.2",
     "d3.chart.bubble-matrix": "git+https://github.com/hurwitzlab/d3.chart.bubble-matrix.git",
     "elm-webpack-loader": "^4.3.1",

@@ -1,4 +1,4 @@
-module Request.App exposing (get, list, run)
+module Request.App exposing (..)
 
 import Data.App as App exposing (App, AppRun, decoderAppRun, encodeAppRun)
 import Http
@@ -25,6 +25,13 @@ list =
 get : Int -> Http.Request App
 get id =
     HttpBuilder.get (apiBaseUrl ++ "/apps/" ++ toString id)
+        |> HttpBuilder.withExpect (Http.expectJson App.decoder)
+        |> HttpBuilder.toRequest
+
+
+getByName : String -> Http.Request App
+getByName name =
+    HttpBuilder.get (apiBaseUrl ++ "/apps/" ++ name)
         |> HttpBuilder.withExpect (Http.expectJson App.decoder)
         |> HttpBuilder.toRequest
 

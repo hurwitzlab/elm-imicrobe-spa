@@ -176,10 +176,29 @@ app.ports.updateAnalytics.subscribe(function (page) {
 app.ports.createSimPlot.subscribe(function(args) {
     console.log("createSimPlot: ", args);
     var elementId = args[0],
-        matrix = args[1];
-    simplots.heatmap(elementId, matrix);
-    simplots.edgeboundary(elementId, matrix);
-    simplots.pcoaPlot(elementId, matrix, { padding: 0, width: 600, height: 400 } );
+        datasets = args[1];
+
+    if (!elementId || !datasets) {
+        console.error("createSimPlot: missing required args");
+        return;
+    }
+
+    datasets.forEach(d => {
+        var dataType = d[1];
+        var data = d[0];
+
+        dataType = dataType.toLowerCase();
+        console.log(dataType);
+
+        if (dataType == "matrix") {
+            simplots.heatmap(elementId, data);
+            simplots.edgeboundary(elementId, data);
+            simplots.pcoaPlot(elementId, data, { padding: 0, width: 600, height: 400 } );
+        }
+        else if (dataType == "centrifuge") {
+            simplots.bubblePlot(elementId, data);
+        }
+    });
 });
 
 

@@ -2,6 +2,7 @@ module Page.Job exposing (Model, Msg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Data.Agave as Agave
+import Data.App as App
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -9,12 +10,14 @@ import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
 import Request.PlanB
+import Request.App
 import Ports
 import Task exposing (Task)
 import Dict exposing (Dict)
 import Util exposing ((=>))
 import Time exposing (Time)
 import String.Extra
+import List.Extra
 
 
 
@@ -28,9 +31,10 @@ type alias Model =
     , loadingJob : Bool
     , loadingOutputs : Bool
     , outputs : List Agave.JobOutput
+    , app_results : List App.AppResult
     , loadingResults : Bool
     , loadedResults : Bool
-    , results : Maybe String
+    , results : Maybe (List String)
     , startTime : Maybe Time
     , lastPollTime : Maybe Time
     }
@@ -50,23 +54,32 @@ init session id =
                 True -> loadJobFromPlanB
 
                 False -> loadJobFromAgave
+
+        loadApp app_name =
+            Request.App.getByName app_name |> Http.toTask
     in
     loadJob
         |> Task.andThen
             (\job ->
-                Task.succeed
-                    { pageTitle = "Job"
-                    , job_id = job.id
-                    , job = job
-                    , loadingJob = False
-                    , loadingOutputs = False
-                    , outputs = []
-                    , loadingResults = False
-                    , loadedResults = False
-                    , results = Nothing
-                    , startTime = Nothing
-                    , lastPollTime = Nothing
-                    }
+                ((loadApp job.app_id)
+                    |> Task.andThen
+                        ( \app ->
+                            Task.succeed
+                                { pageTitle = "Job"
+                                , job_id = job.id
+                                , job = job
+                                , loadingJob = False
+                                , loadingOutputs = False
+                                , outputs = []
+                                , app_results = app.app_results
+                                , loadingResults = False
+                                , loadedResults = False
+                                , results = Nothing
+                                , startTime = Nothing
+                                , lastPollTime = Nothing
+                                }
+                        )
+                )
             )
         |> Task.mapError Error.handleLoadError
 
@@ -79,7 +92,7 @@ type Msg
     = GetOutputs
     | SetOutputs (List Agave.JobOutput)
     | GetResults
-    | SetResults (Result Http.Error String)
+    | SetResults (Result Http.Error (List String))
     | SetJob Agave.Job
     | PollJob Time
 
@@ -121,21 +134,24 @@ update session msg model =
 
         GetResults ->
             let
-                path =
---                    "mash-out/results/distance.tab"
-                    "distance.matrix"
+                loadResultData result =
+                    Request.Agave.getJobOutput username session.token model.job_id result.path |> Http.toTask
 
                 loadResults =
-                    Request.Agave.getJobOutput username session.token model.job_id path |> Http.toTask
+                    List.map loadResultData model.app_results |> Task.sequence
             in
             { model | loadingResults = True } => Task.attempt SetResults loadResults
 
         SetResults (Ok results) ->
             case results of
-                "" -> { model | loadedResults = True } => Cmd.none -- File not found
+                [] -> { model | loadedResults = True } => Cmd.none -- File not found
 
                 _ ->
-                    { model | loadedResults = True, results = Just results } => Ports.createSimPlot ("sim-plot", results)
+                    let
+                        datasets =
+                            List.map (.app_data_type >> .name) model.app_results |> List.Extra.zip results
+                    in
+                    { model | loadedResults = True, results = Just results } => Ports.createSimPlot ("sim-plot", datasets)
 
         SetResults (Err error) ->
             let

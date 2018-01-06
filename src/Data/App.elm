@@ -15,6 +15,7 @@ type alias App =
     , provider_name : String
     , app_tags : List AppTag
     , app_data_types : List AppDataType
+    , app_results : List AppResult
     }
 
 
@@ -40,6 +41,13 @@ type alias AppDataType =
     }
 
 
+type alias AppResult =
+    { app_result_id : Int
+    , path : String
+    , app_data_type : AppDataType
+    }
+
+
 type alias FileBrowser =
     { id : String
     , username : String
@@ -62,6 +70,7 @@ decoder =
         |> optional "provider_name" Decode.string ""
         |> optional "app_tags" (Decode.list decoderAppTag) []
         |> optional "app_data_types" (Decode.list decoderAppDataType) []
+        |> optional "app_results" (Decode.list decoderAppResult) []
 
 
 decoderAppRun : Decoder AppRun
@@ -87,6 +96,14 @@ decoderAppDataType =
         |> required "app_data_type_id" Decode.int
         |> required "name" Decode.string
         |> optional "alias" Decode.string ""
+
+
+decoderAppResult : Decoder AppResult
+decoderAppResult =
+    decode AppResult
+        |> required "app_result_id" Decode.int
+        |> required "path" Decode.string
+        |> required "app_data_type" decoderAppDataType
 
 
 encodeAppRun : Int -> Maybe Int -> String -> Encode.Value
