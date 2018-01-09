@@ -195,6 +195,7 @@ view model =
                     div [ style [("padding-bottom", "0.5em")] ]
                         [ text "Filter: Abundance >= "
                         , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
+                        , text " (value between 0 and 1)"
                         ]
 
         display =
