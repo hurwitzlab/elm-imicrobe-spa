@@ -142,6 +142,13 @@ app.ports.createFileBrowser.subscribe(function(params) { // TODO get username/to
         });
     });
 
+    dialog.find('button#cyverse-ds-refresh').unbind().click(function() {
+        console.log("refresh");
+        $('#agave-file-browser').html('<div class="center"><div class="padded-xl spinner"></div></div>');
+        fb.treeInit = 0;
+        fb.update('');
+    });
+
     dialog.modal('show');
 });
 
