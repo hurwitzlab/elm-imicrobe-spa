@@ -12,6 +12,7 @@ import Request.Agave
 import Request.PlanB
 import Request.App
 import Ports
+import Route
 import Task exposing (Task)
 import Dict exposing (Dict)
 import Util exposing ((=>))
@@ -31,7 +32,7 @@ type alias Model =
     , loadingJob : Bool
     , loadingOutputs : Bool
     , outputs : List Agave.JobOutput
-    , app_results : List App.AppResult
+    , app : App.App
     , loadingResults : Bool
     , loadedResults : Bool
     , results : Maybe (List String)
@@ -71,7 +72,7 @@ init session id =
                                 , loadingJob = False
                                 , loadingOutputs = False
                                 , outputs = []
-                                , app_results = app.app_results
+                                , app = app
                                 , loadingResults = False
                                 , loadedResults = False
                                 , results = Nothing
@@ -138,7 +139,7 @@ update session msg model =
                     Request.Agave.getJobOutput username session.token model.job_id result.path |> Http.toTask
 
                 loadResults =
-                    List.map loadResultData model.app_results |> Task.sequence
+                    List.map loadResultData model.app.app_results |> Task.sequence
             in
             { model | loadingResults = True } => Task.attempt SetResults loadResults
 
@@ -149,7 +150,7 @@ update session msg model =
                 _ ->
                     let
                         datasets =
-                            List.map (.app_data_type >> .name) model.app_results |> List.Extra.zip results
+                            List.map (.app_data_type >> .name) model.app.app_results |> List.Extra.zip results
                     in
                     { model | loadedResults = True, results = Just results } => Ports.createSimPlot ("sim-plot", datasets)
 
@@ -247,7 +248,7 @@ view model =
                         [ text ("Status: " ++ model.job.status) ]
                     ]
                 ]
-            , viewJob model.job
+            , viewJob model
             , viewInputs model.job.inputs
             , viewParameters model.job.parameters
             , viewOutputs model
@@ -256,8 +257,8 @@ view model =
         ]
 
 
-viewJob : Agave.Job -> Html msg
-viewJob job =
+viewJob : Model -> Html msg
+viewJob model =
     table [ class "table" ]
         [ colgroup []
             [ col [ class "col-md-1" ] []
@@ -265,27 +266,27 @@ viewJob job =
             ]
         , tr []
             [ th [] [ text "ID" ]
-            , td [] [ text job.id ]
+            , td [] [ text model.job.id ]
             ]
         , tr []
             [ th [] [ text "Name" ]
-            , td [] [ text job.name ]
+            , td [] [ text model.job.name ]
             ]
         , tr []
             [ th [] [ text "App" ]
-            , td [] [ text job.app_id ]
+            , td [] [ a [ Route.href (Route.App model.app.app_id) ] [ text model.job.app_id ] ]
             ]
         , tr []
             [ th [] [ text "Start Time" ]
-            , td [] [ text job.startTime ]
+            , td [] [ text model.job.startTime ]
             ]
         , tr []
             [ th [] [ text "End Time" ]
-            , td [] [ text job.endTime ]
+            , td [] [ text model.job.endTime ]
             ]
         , tr []
             [ th [ class "top" ] [ text "Status" ]
-            , td [] [ viewStatus job.status ]
+            , td [] [ viewStatus model.job.status ]
             , td [] []
             ]
         ]
