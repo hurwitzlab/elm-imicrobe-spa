@@ -143,10 +143,14 @@ app.ports.createFileBrowser.subscribe(function(params) { // TODO get username/to
     });
 
     dialog.find('button#cyverse-ds-refresh').unbind().click(function() {
-        console.log("refresh");
+        var button = this;
+        console.log('refresh');
+        fb.updateCallback = function() { $(button).attr('disabled', false); };
+        $(button).attr('disabled', true);
         $('#agave-file-browser').html('<div class="center"><div class="padded-xl spinner"></div></div>');
         fb.treeInit = 0;
         fb.update('');
+
     });
 
     dialog.modal('show');
