@@ -1,6 +1,6 @@
-module Request.Project exposing (get, list)
+module Request.Project exposing (..)
 
-import Data.Project as Project exposing (Project)
+import Data.Project as Project exposing (Project, Assembly, CombinedAssembly)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
@@ -29,4 +29,26 @@ get id =
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+getAssemblies : Int -> Http.Request (List Assembly)
+getAssemblies id =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString id) ++ "/assemblies"
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Project.decoderAssembly))
+        |> HttpBuilder.toRequest
+
+
+getCombinedAssemblies : Int -> Http.Request (List CombinedAssembly)
+getCombinedAssemblies id =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString id) ++ "/combined_assemblies"
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Project.decoderCombinedAssembly))
         |> HttpBuilder.toRequest

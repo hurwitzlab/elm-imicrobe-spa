@@ -5,11 +5,15 @@ import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput, onClick)
 import Http
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Route
 import Task exposing (Task)
+import Table exposing (defaultCustomizations)
 import View.Cart as Cart
 import Util exposing ((=>))
 
@@ -23,23 +27,45 @@ type alias Model =
     , project_id : Int
     , project : Project
     , cart : Cart.Model
+    , loadingAssemblies : Bool
+    , loadedAssemblies : Bool
+    , assemblies : List Assembly
+    , assemblyTableState : Table.State
+    , assemblyQuery : String
+    , loadingCombinedAssemblies : Bool
+    , loadedCombinedAssemblies : Bool
+    , combined_assemblies : List CombinedAssembly
+    , combinedAssemblyTableState : Table.State
+    , combinedAssemblyQuery : String
     }
 
 
 init : Session -> Int -> Task PageLoadError Model
 init session id =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Project"
-
         loadProject =
             Request.Project.get id |> Http.toTask
-
-        cart =
-            Task.succeed (Cart.init session.cart Cart.Editable)
     in
-    Task.map4 Model title (Task.succeed id) loadProject cart
+    loadProject
+        |> Task.andThen
+            (\project ->
+                Task.succeed
+                    { pageTitle = "Project"
+                    , project_id = id
+                    , project = project
+                    , cart = Cart.init session.cart Cart.Editable
+                    , loadingAssemblies = False
+                    , loadedAssemblies = False
+                    , assemblies = []
+                    , assemblyTableState = Table.initialSort "Name"
+                    , assemblyQuery = ""
+                    , loadingCombinedAssemblies = False
+                    , loadedCombinedAssemblies = False
+                    , combined_assemblies = []
+                    , combinedAssemblyTableState = Table.initialSort "Name"
+                    , combinedAssemblyQuery = ""
+                    }
+            )
         |> Task.mapError Error.handleLoadError
 
 
@@ -49,6 +75,14 @@ init session id =
 
 type Msg
     = CartMsg Cart.Msg
+    | GetAssemblies
+    | SetAssemblies (List Assembly)
+    | SetAssemblyQuery String
+    | SetAssemblyTableState Table.State
+    | GetCombinedAssemblies
+    | SetCombinedAssemblies (List CombinedAssembly)
+    | SetCombinedAssemblyQuery String
+    | SetCombinedAssemblyTableState Table.State
 
 
 type ExternalMsg
@@ -67,6 +101,60 @@ update session msg model =
                     Cart.update session subMsg model.cart
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
+        GetAssemblies ->
+            let
+                loadAssemblies =
+                    Request.Project.getAssemblies model.project_id |> Http.toTask
+
+                handleAssemblies assemblies =
+                    case assemblies of
+                        Ok assemblies ->
+                            SetAssemblies assemblies
+
+                        Err error ->
+                            let
+                                _ = Debug.log "Error" ("could not retrieve assemblies: " ++ (toString error))
+                            in
+                            SetAssemblies []
+            in
+            { model | loadingAssemblies = True } => Task.attempt handleAssemblies loadAssemblies => NoOp
+
+        SetAssemblies assemblies ->
+            { model | loadedAssemblies = True, assemblies = assemblies } => Cmd.none => NoOp
+
+        SetAssemblyQuery newQuery ->
+            { model | assemblyQuery = newQuery } => Cmd.none => NoOp
+
+        SetAssemblyTableState newState ->
+            { model | assemblyTableState = newState } => Cmd.none => NoOp
+
+        GetCombinedAssemblies ->
+            let
+                loadCombinedAssemblies =
+                    Request.Project.getCombinedAssemblies model.project_id |> Http.toTask
+
+                handleCombinedAssemblies combined_assemblies =
+                    case combined_assemblies of
+                        Ok combined_assemblies ->
+                            SetCombinedAssemblies combined_assemblies
+
+                        Err error ->
+                            let
+                                _ = Debug.log "Error" ("could not retrieve combined_assemblies: " ++ (toString error))
+                            in
+                            SetCombinedAssemblies []
+            in
+            { model | loadingCombinedAssemblies = True } => Task.attempt handleCombinedAssemblies loadCombinedAssemblies => NoOp
+
+        SetCombinedAssemblies combined_assemblies ->
+            { model | loadedCombinedAssemblies = True, combined_assemblies = combined_assemblies } => Cmd.none => NoOp
+
+        SetCombinedAssemblyQuery newQuery ->
+            { model | combinedAssemblyQuery = newQuery } => Cmd.none => NoOp
+
+        SetCombinedAssemblyTableState newState ->
+            { model | combinedAssemblyTableState = newState } => Cmd.none => NoOp
 
 
 
@@ -88,8 +176,8 @@ view model =
             , viewInvestigators model.project.investigators
             , viewPubs model.project.publications
             , viewSamples model.cart model.project.samples
-            , viewAssemblies model.project.assemblies
-            , viewCombinedAssemblies model.project.combined_assemblies
+            , viewAssemblies model
+            , viewCombinedAssemblies model
             ]
         ]
 
@@ -272,113 +360,231 @@ viewSample cart sample =
         ]
 
 
-viewAssemblies : List Assembly -> Html msg
-viewAssemblies assemblies =
-    let
-        count =
-            List.length assemblies
+assemblyTableConfig : Table.Config Assembly Msg
+assemblyTableConfig =
+    Table.customConfig
+        { toId = toString << .assembly_id
+        , toMsg = SetAssemblyTableState
+        , columns =
+            [ assemblyNameColumn
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
 
-        label =
+
+toTableAttrs : List (Html.Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table table-condensed" ]
+
+
+assemblyNameColumn : Table.Column Assembly Msg
+assemblyNameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = assemblyLink
+        , sorter = Table.increasingOrDecreasingBy .assembly_name
+        }
+
+
+assemblyLink : Assembly -> Table.HtmlDetails Msg
+assemblyLink assembly =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Assembly assembly.assembly_id) ]
+            [ text assembly.assembly_name ]
+        ]
+
+
+viewAssemblies : Model -> Html Msg
+viewAssemblies model =
+    let
+        lowerQuery =
+            String.toLower model.assemblyQuery
+
+        acceptableResults =
+            List.filter (\item -> String.contains lowerQuery (String.toLower item.assembly_name)) model.assemblies
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    case acceptableResults of
+                        [] ->
+                            case model.assemblyQuery of
+                                 "" ->
+                                    model.project.assembly_count
+
+                                 _ ->
+                                    0
+
+                        _ ->
+                            List.length acceptableResults
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
             case count of
                 0 ->
                     span [] []
 
                 _ ->
                     span [ class "badge" ]
-                        [ text (toString count)
-                        ]
+                        [ text numStr ]
+
+        searchBar =
+            case model.assemblies of
+                [] ->
+                    span [] []
+
+                _ ->
+                    small [ class "right" ]
+                        [ input [ placeholder "Search", onInput SetAssemblyQuery ] [] ]
 
         body =
-            let
-                tbl =
-                    table [ class "table table-condensed" ]
-                        [ tbody []
-                            (List.map viewAssembly assemblies)
-                        ]
-            in
-            if count == 0 then
-                text "None"
+            case model.project.assembly_count of
+                0 ->
+                    text "None"
 
-            else if count < 50 then
-                tbl
+                _ ->
+                    case model.loadedAssemblies of
+                        True ->
+                            case acceptableResults of
+                                [] ->
+                                    text "None"
 
-            else
-                div [ class "scrollable" ] [ tbl ]
+                                _ ->
+                                    Table.view assemblyTableConfig model.assemblyTableState acceptableResults
+
+                        False ->
+                            case model.loadingAssemblies of
+                                True ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                                False ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetAssemblies ] [ text "Show Results" ] ] ] ] ]
     in
-    case count of
-        0 -> text ""
-
-        _ ->
-            div []
-                [ h2 []
-                    [ text "Assemblies "
-                    , label
-                    ]
-                , body
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 []
+                [ text "Assemblies "
+                , numShowing
+                , searchBar
                 ]
-
-
-viewAssembly : Assembly -> Html msg
-viewAssembly assembly =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Assembly assembly.assembly_id) ] [ text assembly.assembly_name ]
+            , div [ class "scrollable" ] [ body ]
             ]
         ]
 
 
-viewCombinedAssemblies : List CombinedAssembly -> Html msg
-viewCombinedAssemblies assemblies =
-    let
-        count =
-            List.length assemblies
+combinedAssemblyTableConfig : Table.Config CombinedAssembly Msg
+combinedAssemblyTableConfig =
+    Table.customConfig
+        { toId = toString << .combined_assembly_id
+        , toMsg = SetCombinedAssemblyTableState
+        , columns =
+            [ combinedAssemblyNameColumn
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
+        }
 
-        label =
+
+combinedAssemblyNameColumn : Table.Column CombinedAssembly Msg
+combinedAssemblyNameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = combinedAssemblyLink
+        , sorter = Table.increasingOrDecreasingBy .assembly_name
+        }
+
+
+combinedAssemblyLink : CombinedAssembly -> Table.HtmlDetails Msg
+combinedAssemblyLink combined_assembly =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.CombinedAssembly combined_assembly.combined_assembly_id) ]
+            [ text combined_assembly.assembly_name ]
+        ]
+
+
+viewCombinedAssemblies : Model -> Html Msg
+viewCombinedAssemblies model =
+    let
+        lowerQuery =
+            String.toLower model.combinedAssemblyQuery
+
+        acceptableResults =
+            List.filter (\item -> String.contains lowerQuery (String.toLower item.assembly_name)) model.combined_assemblies
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    case acceptableResults of
+                        [] ->
+                            case model.combinedAssemblyQuery of
+                                 "" ->
+                                    model.project.combined_assembly_count
+
+                                 _ ->
+                                    0
+
+                        _ ->
+                            List.length acceptableResults
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
             case count of
                 0 ->
                     span [] []
 
                 _ ->
                     span [ class "badge" ]
-                        [ text (toString count)
-                        ]
+                        [ text numStr ]
 
+        searchBar =
+            case model.combined_assemblies of
+                [] ->
+                    span [] []
+
+                _ ->
+                    small [ class "right" ]
+                        [ input [ placeholder "Search", onInput SetCombinedAssemblyQuery ] [] ]
 
         body =
-            let
-                tbl =
-                    table [ class "table table-condensed" ]
-                        [ tbody []
-                            (List.map viewCombinedAssembly assemblies)
-                        ]
-            in
-            if count == 0 then
-                text "None"
+            case model.project.combined_assembly_count of
+                0 ->
+                    text "None"
 
-            else if count < 50 then
-                tbl
+                _ ->
+                    case model.loadedCombinedAssemblies of
+                        True ->
+                            case acceptableResults of
+                                [] ->
+                                    text "None"
 
-            else
-                div [ class "scrollable" ] [ tbl ]
+                                _ ->
+                                    Table.view combinedAssemblyTableConfig model.combinedAssemblyTableState acceptableResults
+
+                        False ->
+                            case model.loadingCombinedAssemblies of
+                                True ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+
+                                False ->
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCombinedAssemblies ] [ text "Show Results" ] ] ] ] ]
     in
-    case count of
-        0 -> text ""
-
-        _ ->
-            div []
-                [ h2 []
-                    [ text "Combined Assemblies "
-                    , label
-                    ]
-                , body
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ h2 []
+                [ text "Combined Assemblies "
+                , numShowing
+                , searchBar
                 ]
-
-
-viewCombinedAssembly : CombinedAssembly -> Html msg
-viewCombinedAssembly assembly =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.CombinedAssembly assembly.combined_assembly_id) ] [ text assembly.assembly_name ]
+            , div [ class "scrollable" ] [ body ]
             ]
         ]
 

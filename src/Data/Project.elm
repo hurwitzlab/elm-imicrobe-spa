@@ -35,9 +35,9 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
-    , assemblies : List Assembly
-    , combined_assemblies : List CombinedAssembly
     , project_groups : List ProjectGroup
+    , assembly_count : Int
+    , combined_assembly_count : Int
     }
 
 
@@ -107,9 +107,9 @@ decoder =
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
-        |> optional "assemblies" (Decode.list decoderAssembly) []
-        |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
+        |> optional "assembly_count" Decode.int 0
+        |> optional "combined_assembly_count" Decode.int 0
 
 
 decoderProjectGroup : Decoder ProjectGroup
