@@ -42,10 +42,18 @@ app.ports.loadMap.subscribe(function(model) {
 
     var myLatlng = new Google.maps.LatLng(model.lat, model.lng);
     var mapOptions = {
-      zoom: 6,
-      center: myLatlng
+        zoom: 8,
+        center: myLatlng
     };
+
     var gmap = new Google.maps.Map(mapDiv, mapOptions);
+
+    var marker = new google.maps.Marker({
+        position: myLatlng,
+        map: gmap
+        //title: ''
+    });
+
     app.ports.receiveMap.send(gmap);
 });
 
