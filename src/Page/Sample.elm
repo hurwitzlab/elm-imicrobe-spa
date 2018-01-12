@@ -3,6 +3,7 @@ module Page.Sample exposing (Model, Msg(..), ExternalMsg(..), init, update, view
 import Data.Sample as Sample exposing (..)
 import Data.Session as Session exposing (Session)
 import Data.Cart
+import Json.Encode as Encode exposing (Value)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -12,11 +13,14 @@ import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Sample
 import Route
+import Time exposing (Time)
 import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
 import Util exposing ((=>))
+import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
+import List.Extra
 
 
 
@@ -27,6 +31,8 @@ type alias Model =
     { pageTitle : String
     , sample_id : Int
     , sample : Sample
+    , showMap : Bool
+    , mapState : MapState
     , cart : Cart.Model
     , loadingProteins : Bool
     , loadedProteins : Bool
@@ -54,10 +60,25 @@ init session id =
     loadSample
         |> Task.andThen
             (\sample ->
+                let
+                    getAttrValue name =
+                        case List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) sample.sample_attrs of
+                            Nothing -> 0
+
+                            Just attr -> (Result.withDefault 0 (String.toFloat attr.attr_value))
+
+                    lat =
+                        getAttrValue "latitude"
+
+                    lng =
+                        getAttrValue "longitude"
+                in
                 Task.succeed
                     { pageTitle = "Sample"
                     , sample_id = id
                     , sample = sample
+                    , showMap = False
+                    , mapState = MapState (Encode.string "google map here") (LatLng lat lng)
                     , cart = Cart.init session.cart Cart.Editable
                     , loadingProteins = False
                     , loadedProteins = False
@@ -83,7 +104,9 @@ init session id =
 
 
 type Msg
-    = SetAttrQuery String
+    = MapTick Time
+    | JSMap Value
+    | SetAttrQuery String
     | SetProteinQuery String
     | SetCentrifugeQuery String
     | SetAttrTableState Table.State
@@ -106,6 +129,12 @@ type ExternalMsg
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
+        JSMap gmap ->
+            { model | mapState = MapState gmap model.mapState.center } => Cmd.none => NoOp
+
+        MapTick _ ->
+            { model | showMap = True } => loadMap model.mapState.center => NoOp
+
         SetAttrQuery newQuery ->
             { model | attrQuery = newQuery } => Cmd.none => NoOp
 
@@ -200,6 +229,7 @@ view model =
                     ]
                 ]
             , viewSample model.sample
+            , viewMap model.showMap
             , viewFiles model.sample.sample_files
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
@@ -211,7 +241,7 @@ view model =
         ]
 
 
-viewSample : Sample -> Html msg
+viewSample : Sample -> Html Msg
 viewSample sample =
     let
         numFiles =
@@ -239,6 +269,32 @@ viewSample sample =
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
             ]
+        ]
+
+
+mapStyles : Html.Attribute msg
+mapStyles =
+    style
+        [ ( "display", "block" )
+        , ( "height", "200px" )
+        , ( "width", "400px" )
+        ]
+
+
+viewMap : Bool -> Html Msg
+viewMap showMap =
+    let
+        hideorShow =
+            case showMap of
+                True ->
+                    style [ ( "display", "block") ]
+
+                False ->
+                    style [ ( "display", "none") ]
+    in
+    div []
+        [ button [ class "btn btn-xs btn-default", onClick (MapTick Time.millisecond) ] [ text "View Map" ]
+        , div [ hideorShow ] [ gmap [ mapStyles ] [] ] -- needs to be always rendered for port to work
         ]
 
 
