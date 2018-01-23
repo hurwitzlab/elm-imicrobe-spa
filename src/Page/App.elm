@@ -199,8 +199,18 @@ update session msg model =
                 errorMsg =
                     case error of
                         Http.BadStatus response ->
-                            --Just (response.body |> Decode.decodeString Agave.decoderJobError |> Result.withDefault "")
-                            Just response.body
+                            let
+                                maintenance_msg =
+                                    Just "This app is currently unavailable due to CyVerse maintenance. Please try again later."
+                            in
+                            case response.status.code of
+                                400 -> maintenance_msg
+                                
+                                412 -> maintenance_msg
+
+                                _ ->
+                                    --Just (response.body |> Decode.decodeString Agave.decoderJobError |> Result.withDefault "")
+                                    Just response.body
 
                         _ -> Just (toString error)
             in
