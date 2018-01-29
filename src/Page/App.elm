@@ -85,8 +85,26 @@ init session id =
     in
     loadApp |> Task.andThen
         (\app ->
-            ((loadAppFromProvider app) app.app_name |> Task.andThen
-                (\agaveApp -> Task.succeed (Model "App" id app agaveApp (inputs agaveApp) (params agaveApp) cart False [] [] False Nothing Nothing "All Types"))
+            ((loadAppFromProvider app) app.app_name
+                |> Task.andThen
+                    (\agaveApp ->
+                        Task.succeed
+                            { pageTitle = "App"
+                            , app_id = id
+                            , app = app
+                            , agaveApp = agaveApp
+                            , inputs = (inputs agaveApp)
+                            , parameters = (params agaveApp)
+                            , cart = cart
+                            , cartLoaded = False
+                            , samples = []
+                            , files = []
+                            , showRunDialog = False
+                            , cartDialogInputId = Nothing
+                            , dialogError = Nothing
+                            , filterFileType = "All Types"
+                        }
+                    )
             )
         )
         |> Task.mapError Error.handleLoadError
@@ -129,6 +147,7 @@ update session msg model =
 
                 newInputs = Dict.insert id newValue model.inputs
 
+--          Verify file types FIXME
 --                exts =
 --                    String.split ";" value |> List.map (\a -> String.split "." a |> List.reverse |> List.head)
 --
@@ -345,6 +364,10 @@ viewApp model =
         app = model.app
 
         agaveApp = model.agaveApp
+
+        _ = Debug.log "model.inputs" (toString model.inputs)
+
+        _ = Debug.log "agaveApp.inputs" (toString agaveApp.inputs)
 
         inputs =
             case agaveApp.inputs of
