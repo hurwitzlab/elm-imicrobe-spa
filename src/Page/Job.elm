@@ -27,6 +27,7 @@ import List.Extra
 
 type alias Model =
     { pageTitle : String
+    , username : String
     , job_id : String
     , job : Agave.Job
     , loadingJob : Bool
@@ -58,6 +59,12 @@ init session id =
 
         loadApp app_name =
             Request.App.getByName app_name |> Http.toTask
+
+        username =
+            case session.profile of
+                Nothing -> ""
+
+                Just profile -> profile.username
     in
     loadJob
         |> Task.andThen
@@ -67,6 +74,7 @@ init session id =
                         ( \app ->
                             Task.succeed
                                 { pageTitle = "Job"
+                                , username = username
                                 , job_id = job.id
                                 , job = job
                                 , loadingJob = False
@@ -409,10 +417,13 @@ viewOutputs model =
 
                 _ ->
                     [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
+
+        de_url =
+            "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id
     in
     div []
         [ h2 [] [ text "Outputs" ]
-        , div [] [ text "Browse and view output files in the ", a [ target "_blank", href "https://de.cyverse.org/de/" ] [ text "CyVerse Data Store" ], text "." ]
+        , div [] [ text "Browse and view output files in the ", a [ target "_blank", href de_url ] [ text "CyVerse Data Store" ], text "." ]
         , table [ class "table" ]
             [ tbody [] body
             ]
