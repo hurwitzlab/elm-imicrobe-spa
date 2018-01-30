@@ -21,6 +21,7 @@ import View.Cart as Cart
 import DictList exposing (DictList)
 import List.Extra
 import String.Extra
+import Maybe exposing (withDefault)
 import Util exposing ((=>))
 import Set
 
@@ -269,7 +270,7 @@ update session msg model =
                     List.filterMap match model.files |> String.join ";"
 
                 msg =
-                    SetInput "agave" (Maybe.withDefault "" model.cartDialogInputId) filesStr
+                    SetInput "agave" (withDefault "" model.cartDialogInputId) filesStr
             in
             update session msg { model | cartDialogInputId = Nothing }
 
@@ -494,7 +495,10 @@ viewAppParameter input =
 
                         Just enum ->
                             select [ onInput (SetParameter id) ]
-                                (enum |> List.map (List.head >> Maybe.withDefault ("error", "error")) |> List.map (\(val, label) -> option [ value val] [ text label ]))
+                                (enum
+                                    |> List.map (List.head >> withDefault ("error", "error"))
+                                    |> List.map (\(value_, label) -> option [ value value_, selected (value_ == val) ] [ text label ])
+                                )
 
                 _ ->
                     defaultInput 40
