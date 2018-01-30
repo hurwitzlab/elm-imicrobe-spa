@@ -8,6 +8,7 @@
     ],
     "exposed-modules": [],
     "dependencies": {
+        "Gizra/elm-dictlist": "2.1.0 <= v < 3.0.0",
         "NoRedInk/elm-decode-pipeline": "3.0.0 <= v < 4.0.0",
         "abadi199/elm-input-extra": "5.2.0 <= v <= 5.2.0",
         "cuducos/elm-format-number": "4.0.2 <= v <= 4.0.2",

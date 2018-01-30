@@ -18,7 +18,7 @@ import Route
 import Ports
 import Task exposing (Task)
 import View.Cart as Cart
-import Dict as Dict exposing (Dict)
+import DictList exposing (DictList)
 import List.Extra
 import String.Extra
 import Util exposing ((=>))
@@ -34,8 +34,8 @@ type alias Model =
     , app_id : Int
     , app : App
     , agaveApp : Agave.App
-    , inputs : Dict String String
-    , parameters : Dict String String
+    , inputs : DictList String String
+    , parameters : DictList String String
     , cart : Cart.Model
     , cartLoaded : Bool
     , samples : List Sample
@@ -75,10 +75,10 @@ init session id =
                 Agave.BoolValue bool -> ""
 
         inputs app =
-            app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> Dict.fromList
+            app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> DictList.fromList
 
         params app =
-            app.parameters |> List.map (\param -> (param.id, default param.value.default)) |> Dict.fromList
+            app.parameters |> List.map (\param -> (param.id, default param.value.default)) |> DictList.fromList
 
         cart =
             Cart.init session.cart Cart.Selectable
@@ -145,7 +145,7 @@ update session msg model =
                                 True -> String.Extra.replace "/iplant/home" "" value
                                 False -> value
 
-                newInputs = Dict.insert id newValue model.inputs
+                newInputs = DictList.insert id newValue model.inputs
 
 --          Verify file types FIXME
 --                exts =
@@ -173,17 +173,17 @@ update session msg model =
 
         SetParameter id value ->
             let
-                newParams = Dict.insert id value model.parameters
+                newParams = DictList.insert id value model.parameters
             in
             { model | parameters = newParams } => Cmd.none
 
         RunJob ->
             let
                 jobInputs =
-                    Dict.toList model.inputs |> List.map (\(k, v) -> Agave.JobInput k v)
+                    DictList.toList model.inputs |> List.map (\(k, v) -> Agave.JobInput k v)
 
                 jobParameters =
-                    Dict.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
+                    DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
 
                 jobName = "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
 
@@ -365,19 +365,21 @@ viewApp model =
 
         agaveApp = model.agaveApp
 
-        _ = Debug.log "model.inputs" (toString model.inputs)
-
-        _ = Debug.log "agaveApp.inputs" (toString agaveApp.inputs)
-
         inputs =
             case agaveApp.inputs of
-                [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] [ tbody [] (List.map viewAppInput (List.Extra.zip (List.sortBy .id agaveApp.inputs) (Dict.values model.inputs))) ] --FIXME simplify this
+                [] ->
+                    div [] [ text "None" ]
+
+                _  ->
+                    table [ class "table" ] [ tbody [] (List.Extra.zip agaveApp.inputs (DictList.values model.inputs) |> List.map viewAppInput) ]
 
         parameters =
             case agaveApp.parameters of
-                [] -> div [] [ text "None" ]
-                _  -> table [ class "table" ] [ tbody [] (List.map viewAppParameter (List.Extra.zip (List.sortBy .id agaveApp.parameters) (Dict.values model.parameters))) ] --FIXME simplify this
+                [] ->
+                    div [] [ text "None" ]
+
+                _  ->
+                    table [ class "table" ] [ tbody [] (List.Extra.zip agaveApp.parameters (DictList.values model.parameters) |> List.map viewAppParameter) ]
     in
     div []
     [ table [ class "table" ]
