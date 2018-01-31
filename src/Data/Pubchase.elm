@@ -27,8 +27,8 @@ decoder : Decoder Article
 decoder =
     decode Article
         |> required "pubchase_id" Decode.int
-        |> required "article_id" Decode.int
-        |> required "title" Decode.string
+        |> optional "article_id" Decode.int 0
+        |> optional "title" Decode.string "NA"
         |> optional "journal_title" Decode.string "NA"
         |> optional "doi" Decode.string "NA"
         |> optional "authors" Decode.string "NA"

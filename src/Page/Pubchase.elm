@@ -1,15 +1,17 @@
 module Page.Pubchase exposing (Model, Msg, init, update, view)
 
-import Data.Pubchase
+import Data.Pubchase as Pubchase
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Pubchase
-import Table
+import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing (truncate)
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 
 
 
@@ -18,7 +20,7 @@ import Util exposing (truncate)
 
 type alias Model =
     { pageTitle : String
-    , articles : List Data.Pubchase.Article
+    , articles : List Pubchase.Article
     , tableState : Table.State
     , query : String
     }
@@ -27,7 +29,6 @@ type alias Model =
 init : Task PageLoadError Model
 init =
     let
-        -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Recommended Reading"
 
@@ -35,7 +36,7 @@ init =
             Request.Pubchase.list |> Http.toTask
 
         tblState =
-            Task.succeed (Table.initialSort "Name")
+            Task.succeed (Table.initialSort "Title")
 
         qry =
             Task.succeed ""
@@ -67,9 +68,9 @@ update msg model =
             )
 
 
-config : Table.Config Data.Pubchase.Article Msg
+config : Table.Config Pubchase.Article Msg
 config =
-    Table.config
+    Table.customConfig
         { toId = toString << .pubchase_id
         , toMsg = SetTableState
         , columns =
@@ -77,10 +78,18 @@ config =
             , authorColumn
             , journalColumn
             ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs }
         }
 
 
-titleColumn : Table.Column Data.Pubchase.Article Msg
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table"
+    ]
+
+
+titleColumn : Table.Column Pubchase.Article Msg
 titleColumn =
     Table.veryCustomColumn
         { name = "Title"
@@ -89,19 +98,14 @@ titleColumn =
         }
 
 
-titleLink : Data.Pubchase.Article -> Table.HtmlDetails Msg
+titleLink : Pubchase.Article -> Table.HtmlDetails Msg
 titleLink article =
     Table.HtmlDetails []
-        [ a
-            [ href <|
-                "http://www.pubchase.com/article/"
-                    ++ toString article.article_id
-            ]
-            [ text article.title ]
+        [ a [ href ("http://www.pubchase.com/article/" ++ toString article.article_id), target "_blank" ] [ text article.title ]
         ]
 
 
-authorColumn : Table.Column Data.Pubchase.Article Msg
+authorColumn : Table.Column Pubchase.Article Msg
 authorColumn =
     Table.veryCustomColumn
         { name = "Authors"
@@ -110,12 +114,12 @@ authorColumn =
         }
 
 
-authorLink : Data.Pubchase.Article -> Table.HtmlDetails msg
+authorLink : Pubchase.Article -> Table.HtmlDetails msg
 authorLink article =
     Table.HtmlDetails [] [ text <| Util.truncate article.authors ]
 
 
-journalColumn : Table.Column Data.Pubchase.Article Msg
+journalColumn : Table.Column Pubchase.Article Msg
 journalColumn =
     Table.veryCustomColumn
         { name = "Journal"
@@ -124,7 +128,7 @@ journalColumn =
         }
 
 
-journalText : Data.Pubchase.Article -> Table.HtmlDetails msg
+journalText : Pubchase.Article -> Table.HtmlDetails msg
 journalText article =
     Table.HtmlDetails [] [ text <| Util.truncate article.journal_title ]
 
@@ -149,15 +153,38 @@ view model =
                 )
                 |> String.toLower
 
-        acceptablePeople =
+        acceptableArticles =
             List.filter
                 (\article -> String.contains lowerQuery (catter article))
                 model.articles
+
+        numShowing =
+            let
+                myLocale =
+                    { usLocale | decimals = 0 }
+
+                count =
+                    List.length acceptableArticles
+
+                numStr =
+                    count |> toFloat |> format myLocale
+            in
+            case count of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h2 [] [ text model.pageTitle ]
-            , input [ placeholder "Search by Name", onInput SetQuery ] []
-            , Table.view config model.tableState acceptablePeople
+            [ h1 []
+                [ text (model.pageTitle ++ " ")
+                , numShowing
+                , small [ class "right" ]
+                    [ input [ placeholder "Search", onInput SetQuery ] [] ]
+                ]
+            , Table.view config model.tableState acceptableArticles
             ]
         ]

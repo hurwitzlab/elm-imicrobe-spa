@@ -6,8 +6,6 @@ import Navigation exposing (Location)
 import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, string)
 
 
--- ROUTING --
-
 
 type Route
     = Home
@@ -30,14 +28,14 @@ type Route
     | Logout
     | Map String String
     | MetaSearch
-    | Publication Int
-    | Publications
     | Profile
     | Project Int
     | Projects
     | ProjectGroups
     | ProjectGroup Int
     | Pubchase
+    | Publication Int
+    | Publications
     | Sample Int
     | Samples
     | Search String
@@ -81,14 +79,7 @@ routeMather =
         , Url.map Search (s "search" </> Url.string)
         , Url.map TaxonomySearch (s "taxonomy_search" </> Url.string)
         , Url.map ProteinSearch (s "protein_search" </> Url.string)
-
-        --    When needing parameters on the form base/item/3
-        --    , Url.map Item (s "item" </> Item.itemParser)
         ]
-
-
-
--- INTERNAL --
 
 
 routeToString : Route -> String
@@ -194,16 +185,8 @@ routeToString page =
 
                 ProteinSearch query ->
                     [ "protein_search", query ]
-
-        --    When needing parameters on the form base/item/3
-        --                    Item ->
-        --                    [ "item", Item.itemToString item ]
     in
     "#/" ++ String.join "/" pagePath
-
-
-
--- PUBLIC HELPERS --
 
 
 href : Route -> Attribute msg

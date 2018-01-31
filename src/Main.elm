@@ -1339,17 +1339,6 @@ viewHeader page isLoading session =
                     ]
                 , div [ class "navbar-collapse collapse" ]
                     [ ul [ class "nav navbar-nav" ]
---                      [ li [ class "dropdown" ]
---                            [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
---                                [ text "Search"
---                                , span [ class "caret" ] []
---                                ]
---                            , ul
---                                [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-----                                [ li [] [ a [ Route.href Route.Search ] [ text "General Search" ] ]
---                                [ li [] [ a [ Route.href Route.MetaSearch ] [ text "Sample Search" ] ]
---                                ]
---                            ]
                         [ li [ class "dropdown" ]
                             [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
                                 [ text "Browse"
@@ -1365,7 +1354,7 @@ viewHeader page isLoading session =
 --                                , li [] [ a [ Route.href Route.CombinedAssemblies ] [ text "CombinedAssemblies" ] ]
                                 , li [] [ a [ Route.href Route.Samples ] [ text "Samples" ] ]
                                 , li [] [ a [ Route.href Route.Publications ] [ text "Publications" ] ]
---                                , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
+                                , li [] [ a [ Route.href Route.Pubchase ] [ text "Recommended Readings" ] ]
                                 ]
                             ]
                         , li [ class "dropdown" ]
