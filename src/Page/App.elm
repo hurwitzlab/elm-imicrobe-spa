@@ -16,6 +16,7 @@ import Request.PlanB
 import Request.Sample
 import Route
 import Ports
+import Json.Decode as Decode
 import Task exposing (Task)
 import View.Cart as Cart
 import DictList exposing (DictList)
@@ -219,18 +220,17 @@ update session msg model =
                 errorMsg =
                     case error of
                         Http.BadStatus response ->
-                            let
-                                maintenance_msg =
-                                    Just "This app is currently unavailable due to CyVerse maintenance. Please try again later."
-                            in
                             case response.status.code of
-                                400 -> maintenance_msg
-                                
-                                412 -> maintenance_msg
+                                412 ->
+                                    Just "This app is currently unavailable due to CyVerse maintenance. Please try again later."
 
                                 _ ->
-                                    --Just (response.body |> Decode.decodeString Agave.decoderJobError |> Result.withDefault "")
-                                    Just response.body
+                                    case Decode.decodeString Agave.decoderJobError response.body of
+                                        Ok result ->
+                                            Just result.message
+
+                                        Err error ->
+                                            Just response.body
 
                         _ -> Just (toString error)
             in
@@ -519,7 +519,10 @@ runDialogConfig model =
                     div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
                 Just error ->
-                    text error
+                    div [ class "alert alert-danger" ]
+                        [ p [] [ text "An error occurred:" ]
+                        , p [] [ text error ]
+                        ]
 
         footer =
             case model.dialogError of
