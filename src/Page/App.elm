@@ -531,7 +531,7 @@ runDialogConfig model =
                 _ ->
                     Just
                         (button
-                            [ class "btn btn-success"
+                            [ class "btn btn-default"
                             , onClick CloseRunDialog
                             ]
                             [ text "OK" ]
