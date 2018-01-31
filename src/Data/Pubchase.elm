@@ -2,8 +2,7 @@ module Data.Pubchase exposing (Article, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Json.Encode as Encode exposing (Value)
-import Json.Encode.Extra as EncodeExtra
+
 
 
 type alias Article =
@@ -35,15 +34,3 @@ decoder =
         |> optional "article_date" Decode.string "NA"
         |> optional "created_on" Decode.string "NA"
         |> optional "url" Decode.string "NA"
-
-
-
-{--
-encode : Pubchase -> Value
-encode inv =
-    Encode.object
-        [ "investigator_id" => Encode.int inv.investigator_id
-        , "investigator_name" => Encode.string inv.investigator_name
-        , "institution" => Encode.string inv.institution
-        ]
-        --}
