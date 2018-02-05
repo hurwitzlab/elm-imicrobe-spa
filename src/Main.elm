@@ -2,9 +2,11 @@ module Main exposing (..)
 
 import Config as Config
 import Data.Session as Session exposing (Session)
-import Data.Profile
+import Data.User as User
+import Data.Agave as Agave
 import Data.App
 import Data.Cart
+import Data.ORCID as ORCID
 import Debug exposing (log)
 import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
@@ -14,6 +16,7 @@ import Http
 import Navigation exposing (Location)
 import OAuth
 import OAuth.Implicit
+import OAuth.AuthorizationCode
 import Page.App as App
 import Page.Apps as Apps
 import Page.Assembly as Assembly
@@ -49,7 +52,8 @@ import Page.TaxonomySearch as TaxonomySearch
 import Page.ProteinSearch as ProteinSearch
 import Route exposing (..)
 import Request.Agave
-import Request.Login
+import Request.ORCID
+import Request.User
 import Ports
 import Task exposing (Task)
 import Time exposing (Time)
@@ -133,6 +137,7 @@ type Msg
     | AssembliesMsg Assemblies.Msg
     | Authorize
     | Deauthorize
+    | AuthenticateORCID (Result Http.Error ORCID.TokenResponse)
     | CartLoaded (Result PageLoadError Cart.Model)
     | CartMsg Cart.Msg
     | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
@@ -161,8 +166,8 @@ type Msg
     | MapMsg Map.Msg
     | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
     | MetaSearchMsg MetaSearch.Msg
-    | LoadProfile Data.Profile.Profile
-    | LoginRecorded Request.Login.Login
+    | LoadProfile Agave.Profile
+    | LoginRecorded User.Login
     | ProfileLoaded (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
@@ -411,6 +416,17 @@ updatePage page msg model =
                     { session | token = "", profile = Nothing }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+
+        AuthenticateORCID res ->
+            case res of
+                Err err ->
+                    { model | error = Just "unable to authenticate ORCID" } ! []
+
+                Ok { access_token, orcid } ->
+                    let
+                        _ = Debug.log "orcid " (toString orcid)
+                    in
+                    model => Route.modifyUrl Route.Profile
 
         AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => scrollToTop
@@ -706,7 +722,7 @@ updatePage page msg model =
                     { session | profile = Just profile }
 
                 recordLogin username =
-                    Request.Login.record username |> Http.toTask |> Task.attempt handleRecordLogin
+                    Request.User.recordLogin username |> Http.toTask |> Task.attempt handleRecordLogin
 
                 handleRecordLogin login =
                     case login of
@@ -728,7 +744,7 @@ updatePage page msg model =
                 session = model.session
 
                 newSession =
-                    { session | user_id = Just login.user_id }
+                    { session | user = Just login.user }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession ] --, Route.modifyUrl Route.Home ]
 
@@ -751,6 +767,14 @@ updatePage page msg model =
 
         ProfileLoaded (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
+
+        ProfileMsg subMsg ->
+            case page of
+                Profile subModel ->
+                    toPage Profile ProfileMsg Profile.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
 
         ProjectsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Projects subModel) } => scrollToTop
@@ -1440,8 +1464,6 @@ init flags location =
     let
         _ = Debug.log "flags" flags
 
-        _ = Debug.log "location" (toString location)
-
         session = --TODO use Maybe Session instead
             case flags.session of
                 "" -> Session.empty
@@ -1454,7 +1476,7 @@ init flags location =
                 , clientId = Config.oauthClientId
                 , redirectUri = location.origin --location.origin ++ location.pathname
                 }
-            , session = session
+            , session = { session | url = location.href }
             , query = ""
             , error = Nothing
             , pageState = Loaded initialPage
@@ -1464,9 +1486,8 @@ init flags location =
         -- Kludge for Agave not returning required "token_type=bearer" in OAuth redirect
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
-    in
-    case OAuth.Implicit.parse location2 of
-        Ok { token, state } ->
+
+        handleOAuthImplicit token state =
             let
                 url =
                     case state of
@@ -1495,27 +1516,46 @@ init flags location =
                 , Task.attempt handleProfile loadProfile
                 ]
 
-        Err OAuth.Empty ->
+        handleOAuthAuthorizationCode code =
             let
-                _ =
-                    Debug.log "OAuth.Empty" ""
+                authenticate =
+                    Request.ORCID.authenticate "orcid" code (Maybe.map .user_id session.user) session.url
             in
-            setRoute (Route.fromLocation location) model
+                model ! [ Http.send AuthenticateORCID authenticate ]
 
-        Err (OAuth.OAuthErr err) ->
-            let
-                _ =
-                    Debug.log "OAuth.OAuthErr" err
-            in
-            { model | error = Just <| OAuth.showErrCode err.error }
-                ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+        handleOAuthError error =
+            case error of
+                OAuth.Empty ->
+                    let
+                        _ =
+                            Debug.log "OAuth.Empty" ""
+                    in
+                    setRoute (Route.fromLocation location) model
 
-        Err a ->
-            let
-                _ =
-                    Debug.log "Error" (toString a ++ toString location2)
-            in
-            { model | error = Just "parsing error" } ! []
+                (OAuth.OAuthErr err) ->
+                    let
+                        _ =
+                            Debug.log "OAuth.OAuthErr" err
+                    in
+                    { model | error = Just <| OAuth.showErrCode err.error }
+                        ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Error" (toString error ++ toString location2)
+                    in
+                    { model | error = Just "parsing error" } ! []
+    in
+    case ( OAuth.Implicit.parse location2, OAuth.AuthorizationCode.parse location ) of
+        ( Ok { token, state }, _ ) ->
+            handleOAuthImplicit token state
+
+        ( _, Ok { code } ) ->
+            handleOAuthAuthorizationCode code
+
+        ( Err error, _ ) ->
+            handleOAuthError error
 
 
 decodeSessionFromJson : String -> Session

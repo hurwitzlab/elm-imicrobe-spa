@@ -1,13 +1,19 @@
 module Page.Profile exposing (Model, Msg, init, update, view)
 
-import Data.Profile as Profile exposing (Profile)
+import Data.Agave as Agave exposing (Profile)
+import Data.User as User exposing (User)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
+import Request.User
 import Task exposing (Task)
+import OAuth
+import OAuth.AuthorizationCode
+import Config exposing (orcidOAuthUrl, orcidClientId)
 
 
 
@@ -16,23 +22,37 @@ import Task exposing (Task)
 
 type alias Model =
     { pageTitle : String
-    , token : String
     , profile : Profile
+    , user : User
+    , redirectUri : String
     }
 
 
 init : Session -> Task PageLoadError Model
 init session =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Profile"
-
         loadProfile =
             Request.Agave.getProfile session.token |> Http.toTask |> Task.map .result
+
+        loadUser username =
+            Request.User.getByUsername username |> Http.toTask
     in
-    Task.map3 Model title (Task.succeed session.token) loadProfile
-        |> Task.mapError Error.handleLoadError
+    loadProfile
+        |> Task.andThen
+            (\profile ->
+                (loadUser profile.username
+                    |> Task.andThen
+                        (\user ->
+                            Task.succeed
+                                { pageTitle = "Profile"
+                                , profile = profile
+                                , user = user
+                                , redirectUri = session.url
+                            }
+                        )
+                )
+            )
+            |> Task.mapError Error.handleLoadError
 
 
 
@@ -40,14 +60,23 @@ init session =
 
 
 type Msg
-    = Todo
+    = ORCIDLogin
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Todo ->
-            ( model, Cmd.none )
+        ORCIDLogin ->
+            model
+                ! [ OAuth.AuthorizationCode.authorize
+                        { clientId = Config.orcidClientId
+                        , redirectUri = model.redirectUri
+                        , responseType = OAuth.Code
+                        , scope = [ "/authenticate" ]
+                        , state = Just "000"
+                        , url = Config.orcidOAuthUrl
+                        }
+                  ]
 
 
 
@@ -59,6 +88,14 @@ view model =
     let
         profile =
             model.profile
+
+        orcid =
+            case model.user.orcid of
+                "" ->
+                    button [ class "btn btn-default btn-xs", onClick ORCIDLogin ] [ text "Create or connect an ORCID" ]
+
+                _ ->
+                    text model.user.orcid
     in
     div [ class "container" ]
         [ div [ class "page-header" ]
@@ -73,6 +110,10 @@ view model =
             , tr []
                 [ th [] [ text "Full name" ]
                 , td [] [ text (profile.first_name ++ " " ++ profile.last_name) ]
+                ]
+            , tr []
+                [ th [] [ text "ORCID" ]
+                , td [] [ orcid ]
                 ]
             ]
         , div [ class "alert alert-info" ]

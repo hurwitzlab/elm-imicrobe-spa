@@ -198,7 +198,7 @@ update session msg model =
                 launchPlanB = Request.PlanB.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
-                sendAppRun = Request.App.run model.app_id session.user_id (Agave.encodeJobRequest jobRequest |> toString)
+                sendAppRun = Request.App.run model.app_id (Maybe.map .user_id session.user) (Agave.encodeJobRequest jobRequest |> toString)
                     |> Http.send AppRunCompleted
 
                 launchApp =
