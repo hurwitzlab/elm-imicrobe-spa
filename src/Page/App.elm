@@ -76,6 +76,8 @@ init session id =
 
                 Agave.BoolValue bool -> ""
 
+                Agave.NumberValue num -> toString num
+
         inputs app =
             app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> DictList.fromList
 

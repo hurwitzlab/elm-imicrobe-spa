@@ -70,6 +70,7 @@ type DefaultValue
     = StringValue String
     | ArrayValue (List String)
     | BoolValue Bool -- workaround for BowtieBatch app
+    | NumberValue Int
 
 
 type alias JobRequest =
@@ -205,6 +206,7 @@ decoderDefaultValue =
         [ Decode.map StringValue Decode.string
         , Decode.map ArrayValue (Decode.list Decode.string)
         , Decode.map BoolValue Decode.bool
+        , Decode.map NumberValue Decode.int
         ]
 
 
