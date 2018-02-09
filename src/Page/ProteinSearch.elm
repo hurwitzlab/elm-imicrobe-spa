@@ -205,6 +205,7 @@ view model =
                             ( (String.contains lowerQuery (String.toLower (toString result.sample.sample_name)))
                                 || (String.contains lowerQuery (String.toLower (toString result.sample.project.project_name)))
                                 || (String.contains lowerQuery (String.toLower (toString result.read_count))) )
+                                && result.read_count >= model.minReadCount
 
                         results =
                             case List.head model.pfamResults of
@@ -223,6 +224,7 @@ view model =
                             ( (String.contains lowerQuery (String.toLower (toString result.sample.sample_name)))
                                 || (String.contains lowerQuery (String.toLower (toString result.sample.project.project_name)))
                                 || (String.contains lowerQuery (String.toLower (toString result.read_count))) )
+                                && result.read_count >= model.minReadCount
 
                         results =
                             case List.head model.keggResults of
