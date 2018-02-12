@@ -28,6 +28,7 @@ type alias Model =
     , searchTerm : String
     , query : String
     , taxId : String
+    , isSearching : Bool
     , minAbundance : Float
     , tableState : Table.State
     , cart : Cart.Model
@@ -45,6 +46,7 @@ init session searchTerm =
                     , searchTerm = searchTerm
                     , query = ""
                     , taxId = searchTerm
+                    , isSearching = False
                     , minAbundance = 0
                     , tableState = Table.initialSort "Abundance"
                     , cart = (Cart.init session.cart Cart.Editable)
@@ -103,7 +105,7 @@ update session msg model =
             { model | taxId = strValue } => Cmd.none => NoOp
 
         Search ->
-            model => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
+            { model | isSearching = True } => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
 
         SearchKeyDown key ->
             if key == 13 then -- enter key
@@ -199,16 +201,21 @@ view model =
                         ]
 
         display =
-            case model.searchTerm of
-                "" -> text ""
+            case model.isSearching of
+                True ->
+                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-                _ ->
-                    case acceptableSamples of
-                        [] ->
-                            text "No results"
+                False ->
+                    case model.searchTerm of
+                        "" -> text ""
 
                         _ ->
-                            Table.view (tableConfig model.cart) model.tableState acceptableSamples
+                            case acceptableSamples of
+                                [] ->
+                                    text "No results"
+
+                                _ ->
+                                    Table.view (tableConfig model.cart) model.tableState acceptableSamples
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -219,8 +226,8 @@ view model =
                 , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
-                [ text "NCBI Tax ID "
-                , input [ value model.taxId, size 10, onInput SetTaxId, onKeyDown SearchKeyDown ] []
+                [ text "Species Name or NCBI Tax ID: "
+                , input [ value model.taxId, size 20, onInput SetTaxId, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 ]

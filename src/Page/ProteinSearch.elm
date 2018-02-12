@@ -28,6 +28,7 @@ type alias Model =
     , searchTerm : String
     , query : String
     , accession : String
+    , isSearching : Bool
     , minReadCount : Int
     , proteinFilterType : String
     , tableState : Table.State
@@ -47,6 +48,7 @@ init session searchTerm =
                     , searchTerm = searchTerm
                     , query = ""
                     , accession = searchTerm
+                    , isSearching = False
                     , minReadCount = 0
                     , proteinFilterType = autoFilterType pfamResults keggResults
                     , tableState = Table.initialSort "Reads"
@@ -110,7 +112,7 @@ update session msg model =
             { model | accession = strValue } => Cmd.none => NoOp
 
         Search ->
-            model => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
+            { model | isSearching = True } => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
 
         SearchKeyDown key ->
             if key == 13 then -- enter key
@@ -254,10 +256,15 @@ view model =
                         [ text numStr ]
 
         body =
-            case resultCount of
-                0 -> div [] [ text "No results" ]
+            case model.isSearching of
+                True ->
+                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-                _ -> resultTable
+                False ->
+                    case resultCount of
+                        0 -> div [] [ text "No results" ]
+
+                        _ -> resultTable
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -268,7 +275,7 @@ view model =
                 , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
-                [ text "PFAM/KEGG Accession "
+                [ text "Protein Name or Accession: "
                 , input [ value model.accession, size 10, onInput SetAccession, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
