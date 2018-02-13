@@ -78,6 +78,7 @@ config =
         , toMsg = SetTableState
         , columns =
             [ nameColumn
+            , Table.stringColumn "Type" (.project_type)
             , domainColumn
             ]
         , customizations =
@@ -135,8 +136,13 @@ view model =
         lowerQuery =
             String.toLower query
 
+        filter project =
+            (String.contains lowerQuery (String.toLower project.project_name)) ||
+            (String.contains lowerQuery (String.toLower project.project_type)) ||
+            (List.map (String.contains lowerQuery << .domain_name) project.domains |> List.foldr (||) False)
+
         acceptableProjects =
-            List.filter (String.contains lowerQuery << String.toLower << .project_name) model.projects
+            List.filter filter model.projects
 
         numShowing =
             let
