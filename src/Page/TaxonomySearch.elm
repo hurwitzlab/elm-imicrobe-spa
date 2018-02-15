@@ -298,7 +298,7 @@ abundanceColumn =
     Table.veryCustomColumn
         { name = "Abundance"
         , viewData = nowrapColumn 7 << toString << .abundance << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (toString << .abundance << .sample_to_centrifuge)
+        , sorter = Table.decreasingOrIncreasingBy (.abundance << .sample_to_centrifuge)
         }
 
 
@@ -307,7 +307,7 @@ numReadsColumn =
     Table.veryCustomColumn
         { name = "Reads"
         , viewData = nowrapColumn 4 << toString << .num_reads << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (toString << .num_reads << .sample_to_centrifuge)
+        , sorter = Table.decreasingOrIncreasingBy (.num_reads << .sample_to_centrifuge)
         }
 
 
@@ -316,7 +316,7 @@ numUniqueReadsColumn =
     Table.veryCustomColumn
         { name = "Unique Reads"
         , viewData = nowrapColumn 8 << toString << .num_unique_reads << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (toString << .num_unique_reads << .sample_to_centrifuge)
+        , sorter = Table.decreasingOrIncreasingBy (.num_unique_reads << .sample_to_centrifuge)
         }
 
 
