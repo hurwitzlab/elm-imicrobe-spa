@@ -1,7 +1,8 @@
 module Data.Session exposing (Session, empty, decoder, encode, store)
 
 import Data.Cart as Cart exposing (Cart)
-import Data.Profile as Profile exposing (Profile)
+import Data.Agave as Agave exposing (Profile)
+import Data.User as User exposing (User)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
@@ -15,14 +16,15 @@ import Set
 type alias Session =
     { cart : Cart
     , token : String
-    , user_id : Maybe Int
+    , user : Maybe User
     , profile : Maybe Profile
+    , url : String
     }
 
 
 empty : Session
 empty =
-    Session (Cart Set.empty) "" Nothing Nothing
+    Session (Cart Set.empty) "" Nothing Nothing ""
 
 
 decoder : Decoder Session
@@ -30,8 +32,9 @@ decoder =
     decode Session
         |> required "cart" Cart.decoder
         |> optional "token" Decode.string ""
-        |> optional "user_id" (Decode.nullable Decode.int) Nothing
-        |> optional "profile" (Decode.nullable Profile.decoder) Nothing
+        |> optional "user" (Decode.nullable User.decoder) Nothing
+        |> optional "profile" (Decode.nullable Agave.decoderProfile) Nothing
+        |> optional "url" Decode.string ""
 
 
 encode : Session -> Value
@@ -39,8 +42,9 @@ encode session =
     Encode.object
         [ "cart" => Cart.encode session.cart
         , "token" => Encode.string session.token
-        , "user_id" => EncodeExtra.maybe Encode.int session.user_id
-        , "profile" => EncodeExtra.maybe Profile.encode session.profile
+        , "user" => EncodeExtra.maybe User.encode session.user
+        , "profile" => EncodeExtra.maybe Agave.encodeProfile session.profile
+        , "url" => Encode.string session.url
         ]
 
 

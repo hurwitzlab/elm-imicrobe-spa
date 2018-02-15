@@ -44,3 +44,25 @@ dataCommonsUrl =
 planbBaseUrl : String
 planbBaseUrl =
     "https://www.imicrobe.us/plan-b"
+
+
+
+---- ORCID API ----
+
+
+-- OAuth2 Client ID
+orcidClientId : String
+orcidClientId =
+    ""
+
+
+-- OAuth2 URL
+orcidOAuthUrl : String
+orcidOAuthUrl =
+    "https://sandbox.orcid.org/oauth/authorize"
+
+
+-- Base URL
+orcidBaseUrl : String
+orcidBaseUrl =
+    "https://api.sandbox.orcid.org/v2.0"

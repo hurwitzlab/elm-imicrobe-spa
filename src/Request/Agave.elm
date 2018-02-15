@@ -1,6 +1,5 @@
 module Request.Agave exposing (..)
 
-import Data.Profile as Profile exposing (Profile)
 import Data.Agave as Agave exposing (..)
 import Http
 import HttpBuilder
@@ -37,7 +36,7 @@ getProfile token =
         , headers = headers
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (responseDecoder Profile.decoder)
+        , expect = Http.expectJson (responseDecoder decoderProfile)
         , timeout = Nothing
         , withCredentials = False
         }
