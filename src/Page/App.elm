@@ -374,7 +374,9 @@ viewApp model =
                     div [] [ text "None" ]
 
                 _  ->
-                    table [ class "table" ] [ tbody [] (List.Extra.zip agaveApp.inputs (DictList.values model.inputs) |> List.map viewAppInput) ]
+                    table [ class "table" ]
+                        [ tbody [] (List.Extra.zip agaveApp.inputs (DictList.values model.inputs) |> List.map viewAppInput)
+                        ]
 
         parameters =
             case agaveApp.parameters of
@@ -382,7 +384,9 @@ viewApp model =
                     div [] [ text "None" ]
 
                 _  ->
-                    table [ class "table" ] [ tbody [] (List.Extra.zip agaveApp.parameters (DictList.values model.parameters) |> List.map viewAppParameter) ]
+                    table [ class "table" ]
+                        [ tbody [] (List.Extra.zip agaveApp.parameters (DictList.values model.parameters) |> List.map viewAppParameter)
+                        ]
     in
     div []
     [ table [ class "table" ]
@@ -504,8 +508,17 @@ viewAppParameter input =
 
                 _ ->
                     defaultInput 40
+
+        -- Hide parameters with ID's that start with double-underscore (requested by Ken/Josh)
+        hidden =
+            case String.startsWith "__" param.id of
+                True ->
+                    [ style [("display", "none")] ]
+
+                False ->
+                    []
     in
-    tr []
+    tr hidden
     [ th [ class "col-md-3" ] [ text param.details.label ]
     , td [ class "nowrap" ] [ interface ]
     , td [] [ text param.details.description ]
