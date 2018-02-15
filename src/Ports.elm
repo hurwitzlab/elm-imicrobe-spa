@@ -34,7 +34,8 @@ port updateAnalytics : String -> Cmd msg
 ---- Sequence Similarity Plots ----
 
 
-port createSimPlot : (String, List (String, String)) -> Cmd msg
+-- TODO change to accept record instead of list of tuples
+port createSimPlot : (String, List (String, String, String)) -> Cmd msg
 
 
 

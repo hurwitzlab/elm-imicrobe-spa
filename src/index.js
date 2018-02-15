@@ -202,21 +202,31 @@ app.ports.createSimPlot.subscribe(function(args) {
         return;
     }
 
+    var element = $("#"+elementId);
+
     datasets.forEach(d => {
-        var dataType = d[1];
-        var data = d[0];
+        var dataType = d[0];
+        var filepath = d[1];
+        var data = d[2];
 
         dataType = dataType.toLowerCase();
-        console.log(dataType);
+        console.log("Plot type:", dataType, filepath);
 
-        if (dataType == "matrix") {
-            simplots.heatmap(elementId, data);
+        if (dataType == "matrix") { // similarity matrix
+            simplots.symmetricalHeatmap(elementId, data);
             simplots.edgeboundary(elementId, data);
             simplots.pcoaPlot(elementId, data, { padding: 0, width: 600, height: 400 } );
         }
-        else if (dataType == "centrifuge") {
+        else if (dataType == "centrifuge") { // centrifuge format
             simplots.bubblePlot(elementId, data);
         }
+        else if (dataType == "blast-tab") { // blast tabular format
+            var basename = filepath.split('/').reverse()[0];
+            element.append("<div>" + basename + ": Frequency of HSPs by sample and depth (m)</div>")
+            simplots.heatmap(elementId, data);
+        }
+
+        element.append("<hr style='border:0;clear:both'>")
     });
 });
 

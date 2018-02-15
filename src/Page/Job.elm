@@ -11,8 +11,8 @@ import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
 import Request.PlanB
 import Request.App
-import Ports
 import Route
+import Ports
 import Task exposing (Task)
 import Dict exposing (Dict)
 import Util exposing ((=>))
@@ -36,7 +36,7 @@ type alias Model =
     , app : App.App
     , loadingResults : Bool
     , loadedResults : Bool
-    , results : Maybe (List String)
+    , results : Maybe (List (String, String))
     , startTime : Maybe Time
     , lastPollTime : Maybe Time
     }
@@ -101,7 +101,7 @@ type Msg
     = GetOutputs
     | SetOutputs (List Agave.JobOutput)
     | GetResults
-    | SetResults (Result Http.Error (List String))
+    | SetResults (Result Http.Error (List (String, String)))
     | SetJob Agave.Job
     | PollJob Time
 
@@ -119,7 +119,7 @@ update session msg model =
         GetOutputs ->
             let
                 loadOutputs =
-                    Request.Agave.getJobOutputs username session.token model.job_id |> Http.toTask |> Task.map .result
+                    Request.Agave.getJobOutputs username session.token model.job_id Nothing |> Http.toTask |> Task.map .result
 
                 handleOutputs outputs =
                     case outputs of
@@ -141,13 +141,38 @@ update session msg model =
             in
             { model | outputs = filtered } => Cmd.none
 
-        GetResults ->
+        GetResults -> -- this code is a little complicated
             let
-                loadResultData result =
-                    Request.Agave.getJobOutput username session.token model.job_id result.path |> Http.toTask
+                loadOutputs path =
+                    Request.Agave.getJobOutputs username session.token model.job_id (Just path)
+                        |> Http.toTask
+                        |> Task.map .result
+                        |> Task.map (List.filter (\r -> r.name /= ".") >> List.map .path) -- filter out current path "."
+
+                -- Expects relative path
+                loadOutput path =
+                    Request.Agave.getJobOutput username session.token model.job_id path
+                        |> Http.toTask |> Task.map (\data -> List.singleton (path, data))
+
+                -- Expects full path
+                loadFile path =
+                    Request.Agave.getFile session.token path
+                        |> Http.toTask |> Task.map (\data -> List.singleton (path, data))
+
+                -- Gets a single file or every file in a directory if path ends in "/"
+                loadResultData path =
+                    case String.endsWith "/" path of
+                        False ->
+                            loadOutput path
+
+                        True ->
+                            -- Get contents of every file in the path
+                            loadOutputs path
+                                |> Task.andThen
+                                    (\outputs -> outputs |> List.map loadFile |> Task.sequence |> Task.map List.concat)
 
                 loadResults =
-                    List.map loadResultData model.app.app_results |> Task.sequence
+                    model.app.app_results |> List.map (loadResultData << .path) |> Task.sequence |> Task.map List.concat
             in
             { model | loadingResults = True } => Task.attempt SetResults loadResults
 
@@ -158,7 +183,8 @@ update session msg model =
                 _ ->
                     let
                         datasets =
-                            List.map (.app_data_type >> .name) model.app.app_results |> List.Extra.zip results
+                            List.Extra.lift2 (\a b -> (a.app_data_type.name, Tuple.first b, Tuple.second b)) model.app.app_results results
+                            -- TODO change createSimPlot port to accept record instead of list of tuples
                     in
                     { model | loadedResults = True, results = Just results } => Ports.createSimPlot ("sim-plot", datasets)
 

@@ -88,13 +88,21 @@ getJob token id =
         |> HttpBuilder.toRequest
 
 
-getJobOutputs : String -> String -> String -> Http.Request (Response (List JobOutput))
-getJobOutputs username token id =
+getJobOutputs : String -> String -> String -> Maybe String -> Http.Request (Response (List JobOutput))
+getJobOutputs username token id path =
     let
-        url =
+        baseUrl =
             -- Changed Agave endpoint for PlanB support
             --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/listings"
             agaveBaseUrl ++ "/files/v2/listings/" ++ username ++ "/archive/jobs/job-" ++ id
+
+        url =
+            case path of
+                Nothing ->
+                    baseUrl
+
+                Just path ->
+                    baseUrl ++ "/" ++ path
 
         headers =
             [( "Authorization", token)]
@@ -105,13 +113,20 @@ getJobOutputs username token id =
         |> HttpBuilder.toRequest
 
 
-getJobOutput : String -> String -> String -> String -> Http.Request String
-getJobOutput username token id path =
+getFile : String -> String -> Http.Request String
+getFile token path =
     let
+        path2 =
+            case String.startsWith "/" path of
+                True ->
+                    String.dropLeft 1 path
+
+                False ->
+                    path
         url =
             -- Changed Agave endpoint after adding archive=True
             --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
-            agaveBaseUrl ++ "/files/v2/media/" ++ username ++ "/archive/jobs/job-" ++ id ++ "/" ++ path
+            agaveBaseUrl ++ "/files/v2/media/" ++ path2
 
         headers =
             [( "Authorization", token)]
@@ -120,6 +135,15 @@ getJobOutput username token id path =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
+
+
+getJobOutput : String -> String -> String -> String -> Http.Request String
+getJobOutput username token id path =
+    let
+        jobPath =
+            username ++ "/archive/jobs/job-" ++ id ++ "/" ++ path
+    in
+    getFile token jobPath
 
 
 launchJob : String -> JobRequest -> Http.Request (Response JobStatus)
