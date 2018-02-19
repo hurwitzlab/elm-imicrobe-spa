@@ -517,7 +517,7 @@ showTypes samples =
 
 mkCheckbox : String -> Html Msg
 mkCheckbox val =
-    label [ style [("padding-left", "1em")]]
+    span [ style [("padding-left", "1em")]]
         [ input [ type_ "checkbox", onCheck (SelectType val) ] []
         , text (" " ++ val)
         ]
