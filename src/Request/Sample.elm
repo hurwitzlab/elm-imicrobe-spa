@@ -4,6 +4,8 @@ import Data.Sample as Sample exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
+import Json.Encode as Encode exposing (Value)
+import Util exposing ((=>))
 import String exposing (join)
 import Config exposing (apiBaseUrl)
 
@@ -116,4 +118,26 @@ protein_kegg_search query =
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderKEGGProtein))
+        |> HttpBuilder.toRequest
+
+
+create : String -> String -> Int -> Http.Request Sample
+create token sample_name project_id =
+    let
+        url =
+            apiBaseUrl ++ "/samples"
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "sample_name" => Encode.string sample_name
+                , "project_id" => Encode.int project_id
+                ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest

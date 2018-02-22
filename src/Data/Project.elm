@@ -38,6 +38,8 @@ type alias Project =
     , project_groups : List ProjectGroup
     , assembly_count : Int
     , combined_assembly_count : Int
+    , users : List User
+    , private : Int
     }
 
 
@@ -85,6 +87,12 @@ type alias CombinedAssembly =
     }
 
 
+type alias User =
+    { user_id : Int
+    , user_name : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -110,6 +118,8 @@ decoder =
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "assembly_count" Decode.int 0
         |> optional "combined_assembly_count" Decode.int 0
+        |> optional "users" (Decode.list decoderUser) []
+        |> optional "private" Decode.int 0
 
 
 decoderProjectGroup : Decoder ProjectGroup
@@ -174,6 +184,13 @@ decoderCombinedAssembly =
     decode CombinedAssembly
         |> required "combined_assembly_id" Decode.int
         |> optional "assembly_name" Decode.string ""
+
+
+decoderUser : Decoder User
+decoderUser =
+    decode User
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
 
 
 encode : Project -> Value

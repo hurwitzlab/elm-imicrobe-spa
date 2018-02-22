@@ -25,10 +25,11 @@ import Page.Cart as Cart
 import Page.CombinedAssembly as CombinedAssembly
 import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Contact as Contact
+import Page.Dashboard as Dashboard
 import Page.Domain as Domain
 import Page.Domains as Domains
-import Page.Files as Files
 import Page.Error as Error exposing (PageLoadError, redirectLoadError)
+import Page.Files as Files
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
@@ -90,6 +91,7 @@ type Page
     | CombinedAssemblies CombinedAssemblies.Model
     | CombinedAssembly Int CombinedAssembly.Model
     | Contact Contact.Model
+    | Dashboard Dashboard.Model
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
@@ -146,6 +148,8 @@ type Msg
     | CombinedAssembliesMsg CombinedAssemblies.Msg
     | ContactLoaded (Result PageLoadError Contact.Model)
     | ContactMsg Contact.Msg
+    | DashboardLoaded (Result PageLoadError Dashboard.Model)
+    | DashboardMsg Dashboard.Msg
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
@@ -264,8 +268,8 @@ setRoute maybeRoute model =
         Just Route.Contact ->
             transition ContactLoaded (Contact.init model.session)
 
-        Just Route.Home ->
-            transition HomeLoaded (Home.init model.session)
+        Just Route.Dashboard ->
+            transition DashboardLoaded (Dashboard.init model.session)
 
         Just Route.Domains ->
             transition DomainsLoaded Domains.init
@@ -275,6 +279,9 @@ setRoute maybeRoute model =
 
         Just Route.Files ->
             transition FilesLoaded (Files.init model.session)
+
+        Just Route.Home ->
+            transition HomeLoaded (Home.init model.session)
 
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
@@ -540,6 +547,20 @@ updatePage page msg model =
             case page of
                 Contact subModel ->
                     toPage Contact ContactMsg Contact.update subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
+        DashboardLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Dashboard subModel) } => scrollToTop
+
+        DashboardLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
+
+        DashboardMsg subMsg ->
+            case page of
+                Dashboard subModel ->
+                    toPage Dashboard DashboardMsg (Dashboard.update session) subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -1153,6 +1174,11 @@ viewPage session isLoading page =
                 |> Html.map ContactMsg
                 |> layout Page.Contact
 
+        Dashboard subModel ->
+            Dashboard.view subModel
+                |> Html.map DashboardMsg
+                |> layout Page.Dashboard
+
         Domains subModel ->
             Domains.view subModel
                 |> Html.map DomainsMsg
@@ -1304,6 +1330,7 @@ viewHeader page isLoading session =
                             ]
                         , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
                             [ li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
+                            , li [] [ a [ Route.href Route.Dashboard ] [ text "Dashboard" ] ]
                             , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                             ]
                         ]

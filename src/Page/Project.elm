@@ -3,14 +3,17 @@ module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, vie
 import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup)
 import Data.Session as Session exposing (Session)
 import Data.Cart
+import Data.Sample
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
+import Dialog
 import Http
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
+import Request.Sample
 import Route
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
@@ -37,6 +40,10 @@ type alias Model =
     , combined_assemblies : List CombinedAssembly
     , combinedAssemblyTableState : Table.State
     , combinedAssemblyQuery : String
+    , isEditable : Bool
+    , showNewSampleDialog : Bool
+    , showNewSampleBusy : Bool
+    , newSampleName : String
     }
 
 
@@ -45,6 +52,15 @@ init session id =
     let
         loadProject =
             Request.Project.get id |> Http.toTask
+
+        isEditable project =
+            case session.user of
+                Nothing ->
+                    False
+
+                Just user ->
+                    List.map .user_name project.users |> List.member user.user_name
+
     in
     loadProject
         |> Task.andThen
@@ -64,6 +80,10 @@ init session id =
                     , combined_assemblies = []
                     , combinedAssemblyTableState = Table.initialSort "Name"
                     , combinedAssemblyQuery = ""
+                    , isEditable = isEditable project
+                    , showNewSampleDialog = False
+                    , showNewSampleBusy = False
+                    , newSampleName = ""
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -83,6 +103,11 @@ type Msg
     | SetCombinedAssemblies (List CombinedAssembly)
     | SetCombinedAssemblyQuery String
     | SetCombinedAssemblyTableState Table.State
+    | OpenNewSampleDialog
+    | CloseNewSampleDialog
+    | SetNewSampleName String
+    | CreateNewSample
+    | CreateNewSampleCompleted (Result Http.Error Data.Sample.Sample)
 
 
 type ExternalMsg
@@ -156,6 +181,28 @@ update session msg model =
         SetCombinedAssemblyTableState newState ->
             { model | combinedAssemblyTableState = newState } => Cmd.none => NoOp
 
+        OpenNewSampleDialog ->
+            { model | showNewSampleDialog = True } => Cmd.none => NoOp
+
+        CloseNewSampleDialog ->
+            { model | showNewSampleDialog = False } => Cmd.none => NoOp
+
+        SetNewSampleName name ->
+            { model | newSampleName = name } => Cmd.none => NoOp
+
+        CreateNewSample ->
+            let
+                createSample =
+                    Request.Sample.create session.token model.newSampleName model.project_id |> Http.toTask
+            in
+            { model | showNewSampleBusy = True } => Task.attempt CreateNewSampleCompleted createSample => NoOp
+
+        CreateNewSampleCompleted (Ok sample) ->
+            model => Route.modifyUrl (Route.Sample sample.sample_id) => NoOp
+
+        CreateNewSampleCompleted (Err error) ->
+            model => Cmd.none => NoOp
+
 
 
 -- VIEW --
@@ -163,27 +210,43 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        privateButton =
+            case model.project.private of
+                1 ->
+                    button [ class "btn btn-default pull-right" ]
+                        [ span [ class "glyphicon glyphicon-lock" ] [], text " Project is Private" ]
+
+                _ ->
+                    span [] []
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
-                    , small []
-                        [ text model.project.project_name ]
+                    , small [] [ text model.project.project_name ]
+                    , privateButton
                     ]
                 ]
-            , viewProject model.project
-            , viewInvestigators model.project.investigators
-            , viewPubs model.project.publications
-            , viewSamples model.cart model.project.samples
+            , viewProject model.project model.isEditable
+            , viewInvestigators model.project.investigators model.isEditable
+            , viewPublications model.project.publications model.isEditable
+            , viewSamples model.cart model.project.samples model.isEditable
             , viewAssemblies model
             , viewCombinedAssemblies model
             ]
+        , Dialog.view
+            (if model.showNewSampleDialog then
+                Just (newSampleDialogConfig model)
+             else
+                Nothing
+            )
         ]
 
 
-viewProject : Project -> Html msg
-viewProject project =
+viewProject : Project -> Bool -> Html msg
+viewProject project isEditable =
     let
         numDomains =
             List.length project.domains
@@ -195,9 +258,19 @@ viewProject project =
 
                 _ ->
                     "Domains"
+
+        editButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+
+                False ->
+                    span [] []
     in
     table [ class "table" ]
-        [ tr []
+        [ colgroup []
+            [ col [ class "col-md-2" ] [] ]
+        , tr []
             [ th [] [ text "Name" ]
             , td [] [ text project.project_name ]
             ]
@@ -221,20 +294,18 @@ viewProject project =
             [ th [] [ text "URL" ]
             , td [] [ a [ href project.url, target "_blank" ] [ text project.url ] ]
             ]
-        ]
-
-viewInvestigator : Investigator -> Html msg
-viewInvestigator investigator =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Investigator investigator.investigator_id) ]
-                [ text investigator.investigator_name ]
+--        , tr []
+--            [ th [] [ text "Description" ]
+--            , td [] [ text project.description ]
+--            ]
+        , tr []
+            [ td [] [ editButton ]
             ]
         ]
 
 
-viewInvestigators : List Investigator -> Html msg
-viewInvestigators investigators =
+viewInvestigators : List Investigator -> Bool -> Html msg
+viewInvestigators investigators isEditable =
     let
         numInvs =
             List.length investigators
@@ -257,13 +328,32 @@ viewInvestigators investigators =
                 _ ->
                     table [ class "table table-condensed" ]
                         [ tbody [] (List.map viewInvestigator investigators) ]
+
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm pull-right" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Investigator" ]
+
+                False ->
+                    span [] []
     in
     div []
         [ h2 []
             [ text "Investigators "
             , label
+            , addButton
             ]
         , body
+        ]
+
+
+viewInvestigator : Investigator -> Html msg
+viewInvestigator investigator =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.Investigator investigator.investigator_id) ]
+                [ text investigator.investigator_name ]
+            ]
         ]
 
 
@@ -282,25 +372,76 @@ viewDomains domains =
             List.intersperse (text ", ") (List.map viewDomain domains)
 
 
-viewPublication : Publication -> Html msg
-viewPublication pub =
-    let
-        authorList =
-            case pub.author of
-                "" ->
-                    ""
+viewProjectGroup : ProjectGroup -> Html msg
+viewProjectGroup group =
+    a [ Route.href (Route.ProjectGroup group.project_group_id) ]
+        [ text group.group_name ]
 
-                "NA" ->
-                    ""
+
+viewProjectGroups : List ProjectGroup -> List (Html msg)
+viewProjectGroups groups =
+    case List.length groups of
+        0 ->
+            [ text "None" ]
+
+        _ ->
+            List.intersperse (text ", ") (List.map viewProjectGroup groups)
+
+
+viewPublications : List Publication -> Bool -> Html msg
+viewPublications pubs isEditable =
+    let
+        numPubs =
+            List.length pubs
+
+        label =
+            case numPubs of
+                0 ->
+                    span [] []
 
                 _ ->
-                    " (" ++ pub.author ++ ")"
+                    span [ class "badge" ]
+                        [ text (toString numPubs)
+                        ]
+
+        body =
+            case numPubs of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table table-condensed" ] [ tbody [] (List.map viewPublication pubs) ]
+
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm pull-right" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Publication" ]
+
+                False ->
+                    span [] []
     in
-    text (pub.title ++ authorList)
+    div []
+        [ h2 []
+            [ text "Publications "
+            , label
+            , addButton
+            ]
+        , body
+        ]
 
 
-viewSamples : Cart.Model -> List Sample -> Html Msg
-viewSamples cart samples =
+viewPublication : Publication -> Html msg
+viewPublication pub =
+    tr []
+        [ td []
+            [ a [ Route.href (Route.Publication pub.publication_id) ]
+                [ text pub.title ]
+            ]
+        ]
+
+
+viewSamples : Cart.Model -> List Sample -> Bool -> Html Msg
+viewSamples cart samples isEditable =
     let
         numSamples =
             List.length samples
@@ -338,11 +479,19 @@ viewSamples cart samples =
             else
                 div [ class "scrollable" ] [ tbl ]
 
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm pull-right", onClick OpenNewSampleDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Sample" ]
+
+                False ->
+                    span [] []
     in
     div []
         [ h2 []
             [ text "Samples "
             , label
+            , addButton
             ]
         , body
         ]
@@ -589,60 +738,30 @@ viewCombinedAssemblies model =
         ]
 
 
-viewPubs : List Publication -> Html msg
-viewPubs pubs =
+newSampleDialogConfig : Model -> Dialog.Config Msg
+newSampleDialogConfig model =
     let
-        numPubs =
-            List.length pubs
+        content =
+            case model.showNewSampleBusy of
+                False ->
+                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new sample", onInput SetNewSampleName ] []
 
-        label =
-            case numPubs of
-                0 ->
-                    span [] []
+                True ->
+                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
 
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numPubs)
-                        ]
-
-        body =
-            case numPubs of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ] [ tbody [] (List.map pubRow pubs) ]
+        footer =
+            let
+                disable =
+                    disabled model.showNewSampleBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseNewSampleDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick CreateNewSample, disable ] [ text "OK" ]
+                    ]
     in
-    div []
-        [ h2 []
-            [ text "Publications "
-            , label
-            ]
-        , body
-        ]
-
-
-pubRow : Publication -> Html msg
-pubRow pub =
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Publication pub.publication_id) ]
-                [ text pub.title ]
-            ]
-        ]
-
-
-viewProjectGroup : ProjectGroup -> Html msg
-viewProjectGroup group =
-    a [ Route.href (Route.ProjectGroup group.project_group_id) ]
-        [ text group.group_name ]
-
-
-viewProjectGroups : List ProjectGroup -> List (Html msg)
-viewProjectGroups groups =
-    case List.length groups of
-        0 ->
-            [ text "None" ]
-
-        _ ->
-            List.intersperse (text ", ") (List.map viewProjectGroup groups)
+    { closeMessage = Just CloseNewSampleDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "New Sample" ])
+    , body = Just content
+    , footer = Just footer
+    }

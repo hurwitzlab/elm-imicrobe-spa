@@ -112,6 +112,25 @@ getJobOutputs username token id path =
         |> HttpBuilder.toRequest
 
 
+getFileList : String -> String -> Http.Request (Response (List FileResult))
+getFileList token path =
+    let
+        url =
+            agaveBaseUrl ++ "/files/v2/listings/" ++ path
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [("limit", "9999")]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderFileResult)))
+        |> HttpBuilder.toRequest
+
+
 getFile : String -> String -> Http.Request String
 getFile token path =
     let
