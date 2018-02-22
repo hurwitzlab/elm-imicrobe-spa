@@ -102,6 +102,8 @@ type alias Sample =
     , sample_attrs : List Attribute
     , protein_count : Int
     , centrifuge_count : Int
+    , users : List User
+    , private : Int
     }
 
 
@@ -260,6 +262,12 @@ type alias CentrifugeSample =
     }
 
 
+type alias User =
+    { user_id : Int
+    , user_name : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -369,6 +377,8 @@ decoder =
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0
         |> optional "centrifuge_count" Decode.int 0
+        |> optional "users" (Decode.list decoderUser) []
+        |> optional "private" Decode.int 0
 
 
 decoderSampleFile : Decoder SampleFile
@@ -541,6 +551,13 @@ decoderCentrifugeSample =
         |> required "project_id" Decode.int
         |> required "project" decoderProject
         |> required "sample_to_centrifuge" decoderSampleToCentrifuge2
+
+
+decoderUser : Decoder User
+decoderUser =
+    decode User
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
 
 
 encode : Sample -> Value

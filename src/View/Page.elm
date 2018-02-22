@@ -11,6 +11,7 @@ type ActivePage
     | CombinedAssembly
     | CombinedAssemblies
     | Contact
+    | Dashboard
     | Domains
     | Domain
     | Files

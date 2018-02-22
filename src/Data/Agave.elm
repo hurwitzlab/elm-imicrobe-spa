@@ -139,6 +139,19 @@ type alias JobOutput =
     }
 
 
+type alias FileResult =
+    { name : String
+    , path : String
+    , type_ : String
+    , format : String
+    , mimeType : String
+    , lastModified : String
+    , length : Int
+    , permissions : String
+    , system : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -259,6 +272,20 @@ decoderJobOutput =
         |> required "name" Decode.string
         |> required "path" Decode.string
         |> required "type" Decode.string
+
+
+decoderFileResult : Decoder FileResult
+decoderFileResult =
+    decode FileResult
+        |> required "name" Decode.string
+        |> required "path" Decode.string
+        |> required "type" Decode.string
+        |> required "format" Decode.string
+        |> required "mimeType" Decode.string
+        |> required "lastModified" Decode.string
+        |> required "length" Decode.int
+        |> required "permissions" Decode.string
+        |> required "system" Decode.string
 
 
 encodeProfile : Profile -> Value

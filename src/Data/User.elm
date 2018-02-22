@@ -12,6 +12,23 @@ type alias User =
     , user_name : String
     , date : String
     , orcid : String
+    , projects : List Project
+    , samples : List Sample
+    }
+
+
+type alias Project =
+    { project_id : Int
+    , project_name : String
+    , project_code : String
+    , project_type : String
+    }
+
+
+type alias Sample =
+    { sample_id : Int
+    , sample_name : String
+    , sample_type : String
     }
 
 
@@ -33,6 +50,25 @@ decoder =
         |> required "user_name" Decode.string
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
+        |> optional "projects" (Decode.list decoderProject) []
+        |> optional "samples" (Decode.list decoderSample) []
+
+
+decoderProject : Decoder Project
+decoderProject =
+    decode Project
+        |> required "project_id" Decode.int
+        |> required "project_name" Decode.string
+        |> optional "project_code" Decode.string ""
+        |> optional "project_type" Decode.string ""
+
+
+decoderSample : Decoder Sample
+decoderSample =
+    decode Sample
+        |> required "sample_id" Decode.int
+        |> required "sample_name" Decode.string
+        |> optional "sample_type" Decode.string ""
 
 
 decoderLogin : Decoder Login

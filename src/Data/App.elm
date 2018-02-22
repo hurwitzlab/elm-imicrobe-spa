@@ -106,10 +106,9 @@ decoderAppResult =
         |> required "app_data_type" decoderAppDataType
 
 
-encodeAppRun : Int -> Maybe Int -> String -> Encode.Value
-encodeAppRun app_id user_id params =
+encodeAppRun : Int -> String -> Encode.Value
+encodeAppRun app_id params =
     Encode.object
         [ "app_id" => Encode.int app_id
-        , "user_id" => EncodeExtra.maybe Encode.int user_id
         , "params" => Encode.string params
         ]

@@ -119,6 +119,24 @@ tr.padded > td {
 
 
 /*
+ * Dashboard styles
+ */
+
+.menu-button {
+    border: none;
+    margin: 1em;
+}
+
+table.info-table {
+    border-collapse: collapse;
+}
+
+table.info-table > th, table.info-table > td {
+    padding: 5px;
+}
+
+
+/*
  * Modify bootstrap styles
  */
 

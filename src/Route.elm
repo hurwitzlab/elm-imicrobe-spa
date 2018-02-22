@@ -3,7 +3,7 @@ module Route exposing (Route(..), routeToString, fromLocation, href, modifyUrl)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Navigation exposing (Location)
-import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, s, string)
+import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, map, s, string, int, intParam)
 
 
 
@@ -17,6 +17,7 @@ type Route
     | CombinedAssemblies
     | CombinedAssembly Int
     | Contact
+    | Dashboard
     | Domains
     | Domain Int
     | Files
@@ -46,39 +47,40 @@ type Route
 routeMather : Parser (Route -> a) a
 routeMather =
     oneOf
-        [ Url.map Apps (s "apps")
-        , Url.map App (s "apps" </> Url.int)
-        , Url.map Assemblies (s "assemblies")
-        , Url.map Assembly (s "assemblies" </> Url.int)
-        , Url.map Cart (s "cart")
-        , Url.map CombinedAssemblies (s "combined_assemblies")
-        , Url.map CombinedAssembly (s "combined_assemblies" </> Url.int)
-        , Url.map Contact (s "contact")
-        , Url.map Home (s "")
-        , Url.map Domains (s "domains")
-        , Url.map Domain (s "domains" </> Url.int)
-        , Url.map Files (s "files")
-        , Url.map Investigator (s "investigators" </> Url.int)
-        , Url.map Investigators (s "investigators")
-        , Url.map Jobs (s "jobs")
-        , Url.map Job (s "jobs" </> Url.string)
-        , Url.map Login (s "login")
-        , Url.map Logout (s "logout")
-        , Url.map Map (s "map" </> Url.string </> Url.string)
-        , Url.map MetaSearch (s "metasearch")
-        , Url.map Pubchase (s "pubchase")
-        , Url.map Publication (s "publications" </> Url.int)
-        , Url.map Publications (s "publications")
-        , Url.map Profile (s "profile")
-        , Url.map Project (s "projects" </> Url.int)
-        , Url.map Projects (s "projects")
-        , Url.map ProjectGroup (s "project_groups" </> Url.int)
-        , Url.map ProjectGroups (s "project_groups")
-        , Url.map Sample (s "samples" </> Url.int)
-        , Url.map Samples (s "samples")
-        , Url.map Search (s "search" </> Url.string)
-        , Url.map TaxonomySearch (s "taxonomy_search" </> Url.string)
-        , Url.map ProteinSearch (s "protein_search" </> Url.string)
+        [ map Apps (s "apps")
+        , map App (s "apps" </> int)
+        , map Assemblies (s "assemblies")
+        , map Assembly (s "assemblies" </> int)
+        , map Cart (s "cart")
+        , map CombinedAssemblies (s "combined_assemblies")
+        , map CombinedAssembly (s "combined_assemblies" </> int)
+        , map Contact (s "contact")
+        , map Dashboard (s "dashboard")
+        , map Domains (s "domains")
+        , map Domain (s "domains" </> int)
+        , map Files (s "files")
+        , map Home (s "")
+        , map Investigator (s "investigators" </> int)
+        , map Investigators (s "investigators")
+        , map Jobs (s "jobs")
+        , map Job (s "jobs" </> string)
+        , map Login (s "login")
+        , map Logout (s "logout")
+        , map Map (s "map" </> string </> string)
+        , map MetaSearch (s "metasearch")
+        , map Pubchase (s "pubchase")
+        , map Publication (s "publications" </> int)
+        , map Publications (s "publications")
+        , map Profile (s "profile")
+        , map Project (s "projects" </> int) -- map Project (s "projects" </> int <?> intParam "edit") -- query param parsing not working
+        , map Projects (s "projects")
+        , map ProjectGroup (s "project_groups" </> int)
+        , map ProjectGroups (s "project_groups")
+        , map Sample (s "samples" </> int)
+        , map Samples (s "samples")
+        , map Search (s "search" </> string)
+        , map TaxonomySearch (s "taxonomy_search" </> string)
+        , map ProteinSearch (s "protein_search" </> string)
         ]
 
 
@@ -110,6 +112,9 @@ routeToString page =
 
                 Contact ->
                     [ "contact" ]
+
+                Dashboard ->
+                    [ "dashboard" ]
 
                 Home ->
                     []

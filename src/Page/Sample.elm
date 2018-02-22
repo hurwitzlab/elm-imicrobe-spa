@@ -9,6 +9,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
+import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Sample
@@ -48,6 +49,7 @@ type alias Model =
     , proteinQuery : String
     , centrifugeQuery : String
     , proteinFilterType : String
+    , isEditable : Bool
     }
 
 
@@ -56,6 +58,14 @@ init session id =
     let
         loadSample =
             Request.Sample.get id |> Http.toTask
+
+        isEditable sample =
+            case session.user of
+                Nothing ->
+                    False
+
+                Just user ->
+                    List.map .user_name sample.users |> List.member user.user_name
     in
     loadSample
         |> Task.andThen
@@ -94,6 +104,7 @@ init session id =
                     , proteinQuery = ""
                     , centrifugeQuery = ""
                     , proteinFilterType = "PFAM"
+                    , isEditable = isEditable sample
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -217,6 +228,16 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        privateButton =
+            case model.sample.private of
+                1 ->
+                    button [ class "btn btn-default" ]
+                        [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
+
+                _ ->
+                    text ""
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -225,33 +246,50 @@ view model =
                     , small []
                         [ text model.sample.sample_name ]
                     , div [ class "pull-right" ]
-                        [ Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg ]
+                        [ privateButton
+                        , text " "
+                        , Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg
+                        ]
                     ]
                 ]
-            , viewSample model.sample
+            , viewSample model.sample model.isEditable
             , viewMap model.showMap
-            , viewFiles model.sample.sample_files
+            , viewFiles model.sample.sample_files model.isEditable
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
-            , viewOntologies model.sample.ontologies
-            , viewAttributes model
+            , viewAttributes model model.isEditable
             , viewProteins model
             , viewCentrifugeResults model
             ]
         ]
 
 
-viewSample : Sample -> Html Msg
-viewSample sample =
+viewSample : Sample -> Bool -> Html Msg
+viewSample sample isEditable =
     let
         numFiles =
             List.length sample.sample_files
 
-        numOntologies =
-            List.length sample.ontologies
+        ontologies =
+            case sample.ontologies of
+                [] ->
+                    "none"
+
+                _ ->
+                    List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
+
+        editButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+
+                False ->
+                    text ""
     in
     table [ class "table" ]
-        [ tr []
+        [ colgroup []
+            [ col [ class "col-md-2" ] [] ]
+        , tr []
             [ th [] [ text "Project" ]
             , td []
                 [ a [ Route.href (Route.Project sample.project_id) ] [ text sample.project.project_name ]
@@ -268,6 +306,13 @@ viewSample sample =
         , tr []
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
+            ]
+        , tr []
+            [ th [] [ text "Ontologies" ]
+            , td [] [ text ontologies ]
+            ]
+        , tr []
+            [ td [] [ editButton ]
             ]
         ]
 
@@ -298,8 +343,8 @@ viewMap showMap =
         ]
 
 
-viewFiles : List SampleFile2 -> Html msg
-viewFiles files =
+viewFiles : List SampleFile2 -> Bool -> Html msg
+viewFiles files isEditable =
     let
         numFiles =
             List.length files
@@ -307,7 +352,7 @@ viewFiles files =
         label =
             case numFiles of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -328,11 +373,20 @@ viewFiles files =
                 _ ->
                     table [ class "table table-condensed" ]
                         [ tbody [] (cols :: (List.map viewFile files)) ]
+
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm pull-right" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)" ]
+
+                False ->
+                    text ""
     in
     div []
         [ h2 []
             [ text "Files "
             , label
+            , addButton
             ]
         , body
         ]
@@ -359,7 +413,7 @@ viewAssemblies assemblies =
         label =
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -406,7 +460,7 @@ viewCombinedAssemblies assemblies =
         label =
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -440,60 +494,6 @@ viewCombinedAssembly assembly =
     tr []
         [ td []
             [ a [ Route.href (Route.CombinedAssembly assembly.combined_assembly_id) ] [ text assembly.assembly_name ]
-            ]
-        ]
-
-
-viewOntologies : List Ontology -> Html msg
-viewOntologies ontologies =
-    let
-        numOntologies =
-            List.length ontologies
-
-        label =
-            case numOntologies of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numOntologies)
-                        ]
-
-        body =
-            case numOntologies of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ]
-                        [ tbody [] (List.map viewOntology ontologies) ]
-    in
-    div []
-        [ h2 []
-            [ text "Ontologies "
-            , label
-            ]
-        , body
-        ]
-
-
-viewOntology : Ontology -> Html msg
-viewOntology ont =
-    let
-        display =
-            ont.ontology_acc
-                ++ (case ont.label of
-                        "" ->
-                            ""
-
-                        _ ->
-                            " (" ++ ont.label ++ ")"
-                   )
-    in
-    tr []
-        [ td []
-            [ text display
             ]
         ]
 
@@ -550,8 +550,8 @@ valueColumn =
         }
 
 
-viewAttributes : Model -> Html Msg
-viewAttributes model =
+viewAttributes : Model -> Bool -> Html Msg
+viewAttributes model isEditable =
     let
         lowerQuery =
             String.toLower model.attrQuery
@@ -577,11 +577,19 @@ viewAttributes model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+                    span [ class "badge" ] [ text numStr ]
+
+        searchBar =
+            case acceptableAttributes of
+                [] ->
+                    text ""
+
+                _ ->
+                    small [] [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
+
         display =
             case acceptableAttributes of
                 [] ->
@@ -590,14 +598,21 @@ viewAttributes model =
                 _ ->
                     Table.view attrTableConfig model.attrTableState acceptableAttributes
 
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
+
+                False ->
+                    text ""
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text "Attributes "
                 , numShowing
-                , small [ class "right" ]
-                    [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
+                , div [ class "pull-right" ]
+                    [ addButton, searchBar ]
                 ]
             , div [ class "scrollable" ] [ display ]
             ]
@@ -714,10 +729,10 @@ viewProteins model =
         searchBar =
             case model.proteins.pfam of
                 [] ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    small [ class "right" ]
+                    small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
 
         filterButton label =
@@ -811,7 +826,7 @@ viewProteins model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -949,7 +964,7 @@ viewCentrifugeResults model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -958,10 +973,10 @@ viewCentrifugeResults model =
         searchBar =
             case model.centrifugeResults of
                 [] ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    small [ class "right" ]
+                    small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetCentrifugeQuery ] [] ]
 
         body =
