@@ -141,3 +141,27 @@ create token sample_name project_id =
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
+
+
+addAttribute : String -> Int -> String -> String -> String -> Http.Request Sample
+addAttribute token sample_id attr_type attr_aliases attr_value =
+    let
+        url =
+            apiBaseUrl ++ "/samples/attributes"
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "sample_id" => Encode.int sample_id
+                , "attr_type" => Encode.string attr_type
+                , "attr_aliases" => Encode.string attr_aliases
+                , "attr_value" => Encode.string attr_value
+                ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
