@@ -131,6 +131,10 @@ table.info-table {
     border-collapse: collapse;
 }
 
+table.info-table > tr {
+    vertical-align: top;
+}
+
 table.info-table > th, table.info-table > td {
     padding: 5px;
 }
