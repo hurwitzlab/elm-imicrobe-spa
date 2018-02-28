@@ -50,7 +50,18 @@ type alias Model =
     , centrifugeQuery : String
     , proteinFilterType : String
     , isEditable : Bool
+    , showNewAttributeDialog : Bool
+    , showNewAttributeBusy : Bool
+    , newAttributeType : String
+    , newAttributeAliases : String
+    , newAttributeValue : String
+    , dialogError : Maybe String
     }
+
+
+type PFAMorKEGG
+    = PFAM UProC_PFAM
+    | KEGG UProC_KEGG
 
 
 init : Session -> Int -> Task PageLoadError Model
@@ -105,6 +116,12 @@ init session id =
                     , centrifugeQuery = ""
                     , proteinFilterType = "PFAM"
                     , isEditable = isEditable sample
+                    , showNewAttributeDialog = False
+                    , showNewAttributeBusy = False
+                    , newAttributeType = ""
+                    , newAttributeAliases = ""
+                    , newAttributeValue = ""
+                    , dialogError = Nothing
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -129,6 +146,14 @@ type Msg
     | SetProteins Proteins
     | GetCentrifugeResults
     | SetCentrifugeResults (List SampleToCentrifuge)
+    | OpenNewAttributeDialog
+    | CloseNewAttributeDialog
+    | CreateNewAttribute
+    | CreateNewAttributeCompleted (Result Http.Error Sample)
+    | SetNewAttributeType String
+    | SetNewAttributeAliases String
+    | SetNewAttributeValue String
+    | CloseErrorDialog
     | CartMsg Cart.Msg
 
 
@@ -212,6 +237,41 @@ update session msg model =
         SetCentrifugeResults results ->
             { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
+        OpenNewAttributeDialog ->
+            { model | showNewAttributeDialog = True, showNewAttributeBusy = False } => Cmd.none => NoOp
+
+        CloseNewAttributeDialog ->
+            { model | showNewAttributeDialog = False } => Cmd.none => NoOp
+
+        CreateNewAttribute ->
+            let
+                createAttribute =
+                    Request.Sample.addAttribute session.token model.sample_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+            in
+            { model | showNewAttributeBusy = True } => Task.attempt CreateNewAttributeCompleted createAttribute => NoOp
+
+        CreateNewAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | showNewAttributeDialog = False, sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        CreateNewAttributeCompleted (Err error) ->
+            { model | showNewAttributeDialog = False, dialogError = Just (toString error) } => Cmd.none => NoOp
+
+        SetNewAttributeType val ->
+            { model | newAttributeType = val } => Cmd.none => NoOp
+
+        SetNewAttributeAliases val ->
+            { model | newAttributeAliases = val } => Cmd.none => NoOp
+
+        SetNewAttributeValue val ->
+            { model | newAttributeValue = val } => Cmd.none => NoOp
+
+        CloseErrorDialog ->
+            { model | dialogError = Nothing } => Cmd.none => NoOp
+
         CartMsg subMsg ->
             let
                 _ = Debug.log "Sample.CartMsg" (toString subMsg)
@@ -261,6 +321,14 @@ view model =
             , viewProteins model
             , viewCentrifugeResults model
             ]
+        , Dialog.view
+            (if (model.dialogError /= Nothing) then
+                Just (errorDialogConfig model)
+             else if model.showNewAttributeDialog then
+                Just (newAttributeDialogConfig model)
+             else
+                Nothing
+            )
         ]
 
 
@@ -601,7 +669,7 @@ viewAttributes model isEditable =
         addButton =
             case isEditable of
                 True ->
-                    button [ class "btn btn-default btn-sm" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
+                    button [ class "btn btn-default btn-sm", onClick OpenNewAttributeDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
 
                 False ->
                     text ""
@@ -619,9 +687,76 @@ viewAttributes model isEditable =
         ]
 
 
-type PFAMorKEGG
-    = PFAM UProC_PFAM
-    | KEGG UProC_KEGG
+newAttributeDialogConfig : Model -> Dialog.Config Msg
+newAttributeDialogConfig model =
+    let
+        content =
+            case model.showNewAttributeBusy of
+                False ->
+                    Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Type" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", onInput SetNewAttributeType ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Aliases" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetNewAttributeAliases ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Value" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetNewAttributeValue ] []
+                        ]
+                    ]
+
+                True ->
+                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+
+        footer =
+            let
+                disable =
+                    disabled model.showNewAttributeBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseNewAttributeDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick CreateNewAttribute, disable ] [ text "Add" ]
+                    ]
+    in
+    { closeMessage = Just CloseNewAttributeDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Add Attribute" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+errorDialogConfig : Model -> Dialog.Config Msg
+errorDialogConfig model =
+    let
+        error_message =
+            case model.dialogError of
+                Nothing
+                    -> "Unknown"
+
+                Just error
+                    -> error
+
+        content =
+            div [ class "alert alert-danger" ]
+                [ p [] [ text "An error occurred:" ]
+                , p [] [ text error_message ]
+                ]
+
+        footer =
+            div []
+                [ button [ class "btn btn-primary", onClick CloseErrorDialog ] [ text "Ok" ]
+                ]
+    in
+    { closeMessage = Just CloseErrorDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Error" ])
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 pfamTableConfig : Table.Config UProC_PFAM Msg
