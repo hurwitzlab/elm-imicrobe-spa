@@ -325,7 +325,7 @@ setRoute maybeRoute model =
             transition (ProjectLoaded id) (Project.init model.session id)
 
         Just Route.Projects ->
-            transition ProjectsLoaded Projects.init
+            transition ProjectsLoaded (Projects.init model.session)
 
         Just (Route.ProjectGroup id) ->
             transition (ProjectGroupLoaded id) (ProjectGroup.init id)
@@ -420,7 +420,7 @@ updatePage page msg model =
         Deauthorize ->
             let
                 newSession =
-                    { session | token = "", profile = Nothing }
+                    { session | token = "", user = Nothing, profile = Nothing }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
@@ -760,14 +760,12 @@ updatePage page msg model =
 
         LoginRecorded login ->
             let
-                _ = Debug.log "login" login
-
                 session = model.session
 
                 newSession =
                     { session | user = Just login.user }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession ] --, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession ]
 
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
@@ -1013,22 +1011,18 @@ updatePage page msg model =
                 Just newSession ->
                     case page of
                         Cart subModel ->
---                            toPage Cart CartMsg (Cart.update newSession) (Cart.SetSession newSession) subModel
                             let
                                 ( ( pageModel, cmd ), msgFromPage ) =
                                     Cart.update model.session (Cart.SetSession newSession) subModel
                             in
-                            { model | pageState = Loaded (Cart pageModel) }
-                                => Cmd.map CartMsg cmd
+                            { model | pageState = Loaded (Cart pageModel) } => Cmd.map CartMsg cmd
 
                         Samples subModel ->
---                            toPage Samples SamplesMsg (Samples.update newSession) (Samples.SetSession newSession) subModel
                             let
                                 ( ( pageModel, cmd ), msgFromPage ) =
                                     Samples.update model.session (Samples.SetSession newSession) subModel
                             in
-                            { model | pageState = Loaded (Samples pageModel) }
-                                => Cmd.map SamplesMsg cmd
+                            { model | pageState = Loaded (Samples pageModel) } => Cmd.map SamplesMsg cmd
 
                         _ ->
                             { model | session = newSession } => Cmd.none
@@ -1490,6 +1484,8 @@ init : Flags -> Location -> ( Model, Cmd Msg )
 init flags location =
     let
         _ = Debug.log "flags" flags
+
+        _ = Debug.log "location" (toString location)
 
         session = --TODO use Maybe Session instead
             case flags.session of
