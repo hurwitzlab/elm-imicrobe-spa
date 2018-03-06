@@ -18,6 +18,7 @@ import Route
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import Util exposing ((=>))
 
 
@@ -609,7 +610,7 @@ viewAssemblies model =
                         False ->
                             case model.loadingAssemblies of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetAssemblies ] [ text "Show Results" ] ] ] ] ]
@@ -721,7 +722,7 @@ viewCombinedAssemblies model =
                         False ->
                             case model.loadingCombinedAssemblies of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCombinedAssemblies ] [ text "Show Results" ] ] ] ] ]
@@ -747,7 +748,7 @@ newSampleDialogConfig model =
                     input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new sample", onInput SetNewSampleName ] []
 
                 True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
         footer =
             let

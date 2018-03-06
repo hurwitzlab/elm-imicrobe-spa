@@ -19,6 +19,7 @@ import Ports
 import Json.Decode as Decode
 import Task exposing (Task)
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import DictList exposing (DictList)
 import List.Extra
 import String.Extra
@@ -531,7 +532,7 @@ runDialogConfig model =
         content =
             case model.dialogError of
                 Nothing ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
                 Just error ->
                     div [ class "alert alert-danger" ]

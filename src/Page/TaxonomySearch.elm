@@ -16,6 +16,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import Events exposing (onKeyDown)
 
 
@@ -203,7 +204,7 @@ view model =
         display =
             case model.isSearching of
                 True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
                 False ->
                     case model.searchTerm of

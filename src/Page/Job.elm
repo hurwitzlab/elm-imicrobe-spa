@@ -19,6 +19,7 @@ import Util exposing ((=>))
 import Time exposing (Time)
 import String.Extra
 import List.Extra
+import View.Spinner exposing (spinner)
 
 
 
@@ -434,7 +435,7 @@ viewOutputs model =
                             case model.loadingOutputs of
                                 False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
 
-                                True -> [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ]
+                                True -> [ tr [] [ td [] [ spinner ] ] ]
 
                         _ -> (List.map viewOutput model.outputs)
 
@@ -482,7 +483,7 @@ viewResults model =
                         False ->
                             case model.loadingResults of
                                 True ->
-                                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                                    spinner
 
                                 False ->
                                     button [ class "btn btn-default", onClick GetResults ] [ text "Show Results" ]
