@@ -147,8 +147,6 @@ type alias FileResult =
     , mimeType : String
     , lastModified : String
     , length : Int
-    , permissions : String
-    , system : String
     }
 
 
@@ -284,8 +282,6 @@ decoderFileResult =
         |> required "mimeType" Decode.string
         |> required "lastModified" Decode.string
         |> required "length" Decode.int
-        |> required "permissions" Decode.string
-        |> required "system" Decode.string
 
 
 encodeProfile : Profile -> Value

@@ -15,10 +15,11 @@ import Http
 import Route
 import Request.Project
 import Request.User
-import Request.Agave
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
 import Util exposing ((=>))
+import View.FileBrowser as FileBrowser
+import View.Spinner exposing (spinner)
 
 
 
@@ -36,16 +37,7 @@ type alias Model =
     , dsTableState : Table.State
     , selectedProjectRowId : Int
     , selectedSampleRowId : Int
-    , selectedDsRowId : String
-    , dataStoreFiles : List FileResult
-    , topDsPath : String
-    , currentDsPath : String
-    , dsBusy : Bool
-    , dsPathFilterType : String
-    , errorMessage : Maybe String
-    , newFolderName : String
-    , showNewFolderDialog : Bool
-    , showNewFolderBusy : Bool
+    , fileBrowser : FileBrowser.Model
     }
 
 
@@ -82,16 +74,7 @@ init session =
                     , dsTableState = Table.initialSort "Name"
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
-                    , selectedDsRowId = ""
-                    , dataStoreFiles = []
-                    , topDsPath = "/" ++ user.user_name
-                    , currentDsPath = "/" ++ user.user_name
-                    , dsBusy = False
-                    , dsPathFilterType = "Home"
-                    , errorMessage = Nothing
-                    , newFolderName = ""
-                    , showNewFolderDialog = False
-                    , showNewFolderBusy = False
+                    , fileBrowser = FileBrowser.init session
                     }
             )
             |> Task.mapError Error.handleLoadError
@@ -109,23 +92,10 @@ type Msg
     | CreateNewProjectCompleted (Result Http.Error Project)
     | SetProjectTableState Table.State
     | SetSampleTableState Table.State
-    | SetDSTableState Table.State
     | SelectContent ContentType
     | SelectProjectRow Int
     | SelectSampleRow Int
-    | SelectDsRow String
-    | OpenDsRow String
-    | RefreshDsPath
-    | GetDataStoreCompleted (Result Http.Error (List FileResult))
-    | SetDsPath String
-    | FilterDsPathType String
-    | OpenNewFolderDialog
-    | CloseNewFolderDialog
-    | SetNewFolderName String
-    | CreateNewFolder
-    | CreateNewFolderCompleted (Result Http.Error (Request.Agave.Response FileResult))
-    | DeletePath String
-    | DeletePathCompleted (Result Http.Error Request.Agave.EmptyResponse)
+    | FileBrowserMsg FileBrowser.Msg
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -154,26 +124,22 @@ update session msg model =
             model => Cmd.none
 
         SelectContent contentType ->
-            let
-                (cmd, busy) =
-                    case contentType of
-                        Storage ->
-                            ( Task.attempt GetDataStoreCompleted (Request.Agave.getFileList session.token model.currentDsPath |> Http.toTask |> Task.map .result)
-                            , True
-                            )
+            case contentType of
+                Storage ->
+                    let
+                        (subModel, subCmd) =
+                            FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+                    in
+                    { model | selectedContentType = contentType, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
 
-                        _ ->
-                            ( Cmd.none, False )
-            in
-            { model | selectedContentType = contentType, dsBusy = busy, errorMessage = Nothing } => cmd
+                _ ->
+                    { model | selectedContentType = contentType } => Cmd.none
+
 
         SetProjectTableState newState ->
             { model | projectTableState = newState } => Cmd.none
 
         SetSampleTableState newState ->
-            { model | sampleTableState = newState } => Cmd.none
-
-        SetDSTableState newState ->
             { model | sampleTableState = newState } => Cmd.none
 
         SelectProjectRow id ->
@@ -196,125 +162,12 @@ update session msg model =
             in
             { model | selectedSampleRowId = selectedRowId } => Cmd.none
 
-        SelectDsRow id ->
+        FileBrowserMsg subMsg ->
             let
-                selectedRowId =
-                    if model.selectedDsRowId == id then
-                        "" -- unselect
-                    else
-                        id
+                ( newFileBrowser, subCmd ) =
+                    FileBrowser.update session subMsg model.fileBrowser
             in
-            { model | selectedDsRowId = selectedRowId } => Cmd.none
-
-        OpenDsRow id ->
-            update session (SelectContent Storage) { model | currentDsPath = id }
-
-        RefreshDsPath ->
-            update session (OpenDsRow model.currentDsPath) model
-
-        GetDataStoreCompleted (Ok files) ->
-            let
-                -- Manufacture a previous path
-                previous =
-                    { name = ".. (previous)"
-                    , path = determinePreviousPath model.currentDsPath
-                    , type_ = "dir"
-                    , format = ""
-                    , length = 0
-                    , lastModified = ""
-                    , permissions = ""
-                    , mimeType = ""
-                    , system = ""
-                    }
-
-                -- Remove current path
-                filtered =
-                    List.filter (\f -> f.name /= ".") files
-
-                newFiles =
-                    -- Only show previous path if not at top-level
-                    if model.topDsPath /= model.currentDsPath then
-                        previous :: filtered
-                    else
-                        filtered
-            in
-            { model | dataStoreFiles = newFiles, dsBusy = False } => Cmd.none
-
-        GetDataStoreCompleted (Err error) ->
-            let
-                (msg, cmd) =
-                    case error of
-                        Http.NetworkError ->
-                            ("Cannot connect to remote host", Cmd.none)
-
-                        Http.BadStatus response ->
-                            case response.status.code of
-                                401 -> ("Unauthorized", Route.modifyUrl Route.Login) -- redirect to Login page
-
-                                403 -> ("Permission denied", Cmd.none)
-
-                                _ ->
-                                    case String.length response.body of
-                                        0 ->
-                                            ("Bad status", Cmd.none)
-
-                                        _ ->
-                                            (response.body, Cmd.none)
-
-                        _ ->
-                            (toString error, Cmd.none)
-            in
-            { model | errorMessage = Just msg, dsBusy = False } => cmd
-
-        SetDsPath path ->
-            { model | currentDsPath = path } => Cmd.none
-
-        FilterDsPathType filterType ->
-            let
-                path =
-                    case filterType of
-                        "Shared" ->
-                            "/shared"
-
-                        _ -> -- Home
-                            "/" ++ model.user.user_name
-            in
-            update session (OpenDsRow path) { model | currentDsPath = path, dsPathFilterType = filterType }
-
-        OpenNewFolderDialog ->
-            { model | showNewFolderDialog = True } => Cmd.none
-
-        CloseNewFolderDialog ->
-            { model | showNewFolderDialog = False } => Cmd.none
-
-        SetNewFolderName name ->
-            { model | newFolderName = name } => Cmd.none
-
-        CreateNewFolder ->
-            let
-                createFolder =
-                    Request.Agave.mkdir session.token model.currentDsPath model.newFolderName |> Http.toTask
-            in
-            { model | showNewFolderBusy = True } => Task.attempt CreateNewFolderCompleted createFolder
-
-        CreateNewFolderCompleted (Ok _) ->
-            update session RefreshDsPath { model | showNewFolderDialog = False }
-
-        CreateNewFolderCompleted (Err error) ->
-            { model | showNewFolderDialog = False } => Cmd.none
-
-        DeletePath path ->
-            let
-                delete =
-                    Request.Agave.delete session.token path |> Http.toTask
-            in
-            { model | dsBusy = True } => Task.attempt DeletePathCompleted delete
-
-        DeletePathCompleted (Ok _) ->
-            update session RefreshDsPath { model | showNewFolderDialog = False }
-
-        DeletePathCompleted (Err error) ->
-            { model | dsBusy = False } => Cmd.none
+            { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd
 
 
 
@@ -330,8 +183,6 @@ view model =
         , Dialog.view
             (if model.showNewProjectDialog then
                 Just (newProjectDialogConfig model)
-             else if model.showNewFolderDialog then
-                Just (newFolderDialogConfig model)
              else
                 Nothing
             )
@@ -389,7 +240,7 @@ viewContent model =
                     ( "Samples", Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples, List.length model.user.samples )
 
                 Storage ->
-                    ( "Data Store", viewFileTable model, List.length model.dataStoreFiles )
+                    ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser )
 
                 Activity ->
                     ( "Activity", text "", 0 )
@@ -419,65 +270,6 @@ viewContent model =
         ]
 
 
-viewFileTable : Model -> Html Msg
-viewFileTable model =
-    let
-        filterButton label =
-            let
-                classes =
-                    if label == model.dsPathFilterType then
-                        "btn btn-default active"
-                    else
-                        "btn btn-default"
-            in
-            button [ class classes, type_ "button", onClick (FilterDsPathType label) ] [ text label ]
-    in
-    div []
-        [ Html.form [ class "form-inline" ]
-            [ div [ class "form-group" ]
-                [ --label [ type_ "text" ] [ text "Path: " ]
-                div [ class "input-group" ]
-                    [ div [ class "input-group-btn" ]
-                        [ filterButton "Home"
-                        , filterButton "Shared"
-                        ]
-                    , input [ class "form-control", type_ "text", size 45, value model.currentDsPath, onInput SetDsPath ] []
-                    , span [ class "input-group-btn" ]
-                        [ button [ class "btn btn-default", type_ "button", onClick (OpenDsRow model.currentDsPath) ] [ text "Go " ]
-                        ]
-                    ]
-                , button [ style [("visibility","hidden")] ] [ text " " ] -- FIXME: spacer
-                , button [ class "btn btn-default btn-sm", type_ "button", onClick OpenNewFolderDialog ] [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
-                , div [ class "btn-group" ]
-                    [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
-                        [ span [ class "glyphicon glyphicon-cloud-upload" ] []
-                        , text " Upload File "
-                        , span [ class "caret" ] []
-                        ]
-                    , ul [ class "dropdown-menu" ]
-                        [ li [] [ a [] [ text "From local" ] ]
-                        , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
-                        , li [] [ a [] [ text "From NCBI" ] ]
-                        , li [] [ a [] [ text "From EBI" ] ]
-                        ]
-                    ]
-                ]
-            ]
-        , br [] []
-        , case model.errorMessage of
-            Nothing ->
-                case model.dsBusy of
-                    True ->
-                        div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
-
-                    False ->
-                        Table.view (dsTableConfig model.selectedDsRowId) model.dsTableState model.dataStoreFiles
-
-            Just msg ->
-                div [ class "alert alert-danger" ] [ text msg ]
-        ]
-
-
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
     [ attribute "class" "table table-hover"
@@ -498,17 +290,6 @@ toSampleRowAttrs : Int -> Data.User.Sample -> List (Attribute Msg)
 toSampleRowAttrs selectedRowId data =
     onClick (SelectSampleRow data.sample_id)
     :: (if (data.sample_id == selectedRowId) then
-            [ attribute "class" "active" ]
-        else
-            []
-        )
-
-
-toDsRowAttrs : String -> FileResult -> List (Attribute Msg)
-toDsRowAttrs selectedPath data =
-    onClick (SelectDsRow data.path)
-    :: onDoubleClick (OpenDsRow data.path)
-    :: (if (data.path == selectedPath) then
             [ attribute "class" "active" ]
         else
             []
@@ -577,50 +358,6 @@ sampleLink sample =
         ]
 
 
-dsTableConfig : String -> Table.Config FileResult Msg
-dsTableConfig selectedRowId =
-    Table.customConfig
-        { toId = .path
-        , toMsg = SetDSTableState
-        , columns =
-            [ dsNameColumn
-            , dsSizeColumn
-            ]
-        , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toDsRowAttrs selectedRowId }
-        }
-
-
-dsNameColumn : Table.Column FileResult Msg
-dsNameColumn =
-    Table.veryCustomColumn
-        { name = "Name"
-        , viewData = dsLink
-        , sorter =
-            Table.increasingOrDecreasingBy
-                (\data -> if data.type_ == "dir" then "..." ++ data.name else data.name) -- sort dirs before files
-        }
-
-
-dsLink : FileResult -> Table.HtmlDetails Msg
-dsLink file =
-    if file.type_ == "dir" then
-        Table.HtmlDetails []
-            [ a [ onClick (OpenDsRow file.path) ] [ text file.name ]
-            ]
-    else
-        Table.HtmlDetails [] [ text file.name ]
-
-
-dsSizeColumn : Table.Column FileResult Msg
-dsSizeColumn =
-    Table.veryCustomColumn
-        { name = "Size"
-        , viewData = (\file -> Table.HtmlDetails [] [ if (file.length > 0) then (text (toString file.length)) else text "" ])
-        , sorter = Table.increasingOrDecreasingBy .length
-        }
-
-
 viewInfo : Model -> Html Msg
 viewInfo model =
     let
@@ -643,7 +380,7 @@ viewInfo model =
                             viewSampleInfo sample
 
                 Storage ->
-                    case List.filter (\f -> f.path == model.selectedDsRowId) model.dataStoreFiles of
+                    case FileBrowser.getSelected model.fileBrowser of
                         [] ->
                             p [] [ text "Here are the contents of your CyVerse Data Store home directory.", br [] [], text "Double-click to open a directory." ]
 
@@ -694,6 +431,22 @@ viewSampleInfo sample =
 
 viewFileInfo : FileResult -> Html Msg
 viewFileInfo file =
+    let
+        myLocale =
+            { usLocale | decimals = 0 }
+
+        deleteText =
+            "Are you sure you want to remove the " ++
+                (if file.type_ == "dir" then
+                    "directory"
+                 else
+                    file.type_
+                ) ++
+                " '" ++ file.name ++ "'?"
+
+        deleteMsg =
+            FileBrowserMsg (FileBrowser.OpenConfirmationDialog deleteText (FileBrowser.DeletePath file.path))
+    in
     div []
         [ table [ class "info-table" ]
             [ tr []
@@ -706,7 +459,7 @@ viewFileInfo file =
                 ]
             , tr []
                 [ th [] [ text "Size " ]
-                , td [] [ text (toString file.length) ]
+                , td [] [ text ((file.length |> toFloat |> format myLocale) ++ " bytes") ]
                 ]
             , tr []
                 [ th [] [ text "Last modified " ]
@@ -722,7 +475,11 @@ viewFileInfo file =
                 [ td [] [ button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-cloud-download" ] [], text "Download" ] ]
                 ]
             , tr []
-                [ td [] [ button [ class "btn btn-default btn-xs", onClick (DeletePath file.path) ] [ span [ class "glyphicon glyphicon-trash" ] [], text "Delete" ] ]
+                [ td []
+                    [ button [ class "btn btn-default btn-xs", onClick deleteMsg ]
+                        [ span [ class "glyphicon glyphicon-trash" ] [], text "Delete"
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -737,7 +494,7 @@ newProjectDialogConfig model =
                     input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project", onInput SetNewProjectName ] []
 
                 True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
         footer =
             let
@@ -755,43 +512,3 @@ newProjectDialogConfig model =
     , body = Just content
     , footer = Just footer
     }
-
-
-newFolderDialogConfig : Model -> Dialog.Config Msg
-newFolderDialogConfig model =
-    let
-        content =
-            case model.showNewFolderBusy of
-                False ->
-                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new folder", onInput SetNewFolderName ] []
-
-                True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
-
-        footer =
-            let
-                disable =
-                    disabled model.showNewFolderBusy
-            in
-                div []
-                    [ button [ class "btn btn-default pull-left", onClick CloseNewFolderDialog, disable ] [ text "Cancel" ]
-                    , button [ class "btn btn-primary", onClick CreateNewFolder, disable ] [ text "OK" ]
-                    ]
-    in
-    { closeMessage = Just CloseNewFolderDialog
-    , containerClass = Nothing
-    , header = Just (h3 [] [ text "Create New Folder" ])
-    , body = Just content
-    , footer = Just footer
-    }
-
-
-determinePreviousPath : String -> String
-determinePreviousPath path =
-    let
-        l =
-            String.split "/" path
-        n =
-            List.length l
-    in
-    List.take (n-1) l |> String.join "/"

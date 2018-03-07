@@ -186,7 +186,7 @@ launchJob token request =
         |> HttpBuilder.toRequest
 
 
-mkdir : String -> String -> String -> Http.Request (Response FileResult)
+mkdir : String -> String -> String -> Http.Request EmptyResponse
 mkdir token path dirname =
     let
         url =
@@ -204,7 +204,7 @@ mkdir token path dirname =
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
-        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderFileResult))
+        |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
         |> HttpBuilder.toRequest
 
 

@@ -11,6 +11,7 @@
         "Gizra/elm-dictlist": "2.1.0 <= v < 3.0.0",
         "NoRedInk/elm-decode-pipeline": "3.0.0 <= v < 4.0.0",
         "abadi199/elm-input-extra": "5.2.0 <= v <= 5.2.0",
+        "basti1302/elm-human-readable-filesize": "1.1.0 <= v < 2.0.0",
         "cuducos/elm-format-number": "4.0.2 <= v <= 4.0.2",
         "debois/elm-mdl": "8.1.0 <= v <= 8.1.0",
         "elm-community/json-extra": "2.3.0 <= v <= 2.3.0",
