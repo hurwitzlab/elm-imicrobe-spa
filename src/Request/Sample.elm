@@ -147,15 +147,14 @@ addAttribute : String -> Int -> String -> String -> String -> Http.Request Sampl
 addAttribute token sample_id attr_type attr_aliases attr_value =
     let
         url =
-            apiBaseUrl ++ "/samples/attributes"
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/attributes"
 
         headers =
             [( "Authorization", token)]
 
         body =
             Encode.object
-                [ "sample_id" => Encode.int sample_id
-                , "attr_type" => Encode.string attr_type
+                [ "attr_type" => Encode.string attr_type
                 , "attr_aliases" => Encode.string attr_aliases
                 , "attr_value" => Encode.string attr_value
                 ]
@@ -163,5 +162,43 @@ addAttribute token sample_id attr_type attr_aliases attr_value =
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
+
+
+updateAttribute : String -> Int -> Int -> String -> String -> String -> Http.Request Sample
+updateAttribute token sample_id attr_id attr_type attr_aliases attr_value =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/attributes/" ++ (toString attr_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "attr_type" => Encode.string attr_type
+                , "attr_aliases" => Encode.string attr_aliases
+                , "attr_value" => Encode.string attr_value
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
+
+
+removeAttribute : String -> Int -> Int -> Http.Request Sample
+removeAttribute token sample_id sample_attr_id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/attributes/" ++ (toString sample_attr_id)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest

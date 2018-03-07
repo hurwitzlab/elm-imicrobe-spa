@@ -19,6 +19,8 @@ import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
+import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
+import View.Spinner exposing (spinner)
 import Util exposing ((=>))
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
 import List.Extra
@@ -55,6 +57,11 @@ type alias Model =
     , newAttributeType : String
     , newAttributeAliases : String
     , newAttributeValue : String
+    , showModifyAttributeDialog : Bool
+    , showModifyAttributeBusy : Bool
+    , attributeToModify : Maybe Sample.Attribute
+    , confirmationDialog : Maybe (Dialog.Config Msg)
+    , infoDialog : Maybe (Dialog.Config Msg)
     , dialogError : Maybe String
     }
 
@@ -121,6 +128,11 @@ init session id =
                     , newAttributeType = ""
                     , newAttributeAliases = ""
                     , newAttributeValue = ""
+                    , showModifyAttributeDialog = False
+                    , showModifyAttributeBusy = False
+                    , attributeToModify = Nothing
+                    , confirmationDialog = Nothing
+                    , infoDialog = Nothing
                     , dialogError = Nothing
                     }
             )
@@ -153,6 +165,16 @@ type Msg
     | SetNewAttributeType String
     | SetNewAttributeAliases String
     | SetNewAttributeValue String
+    | RemoveAttribute Int
+    | RemoveAttributeCompleted (Result Http.Error Sample)
+    | OpenModifyAttributeDialog Sample.Attribute
+    | CloseModifyAttributeDialog
+    | UpdateAttribute Int
+    | UpdateAttributeCompleted (Result Http.Error Sample)
+    | OpenConfirmationDialog String Msg
+    | OpenInfoDialog String
+    | CloseConfirmationDialog
+    | CloseInfoDialog
     | CloseErrorDialog
     | CartMsg Cart.Msg
 
@@ -269,8 +291,74 @@ update session msg model =
         SetNewAttributeValue val ->
             { model | newAttributeValue = val } => Cmd.none => NoOp
 
+        OpenModifyAttributeDialog attr ->
+            { model
+                | attributeToModify = Just attr
+                , showModifyAttributeBusy = False
+                , newAttributeType = attr.sample_attr_type.type_
+                , newAttributeAliases = aliasesToString attr.sample_attr_type.sample_attr_type_aliases
+                , newAttributeValue = attr.attr_value
+            } => Cmd.none => NoOp
+
+        CloseModifyAttributeDialog ->
+            { model | attributeToModify = Nothing } => Cmd.none => NoOp
+
+        UpdateAttribute attr_id ->
+            let
+                updateAttribute =
+                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+            in
+            { model | showModifyAttributeBusy = True } => Task.attempt UpdateAttributeCompleted updateAttribute => NoOp
+
+        UpdateAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | attributeToModify = Nothing, sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        UpdateAttributeCompleted (Err error) ->
+            { model | attributeToModify = Nothing, dialogError = Just (toString error) } => Cmd.none => NoOp
+
+        RemoveAttribute attr_id ->
+            let
+                removeAttribute =
+                    Request.Sample.removeAttribute session.token model.sample_id attr_id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveAttributeCompleted removeAttribute => NoOp
+
+        RemoveAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        RemoveAttributeCompleted (Err error) ->
+            model => Cmd.none => NoOp
+
+        OpenConfirmationDialog confirmationText yesMsg ->
+            let
+                dialog =
+                    confirmationDialogConfig confirmationText CloseConfirmationDialog yesMsg
+            in
+            { model | confirmationDialog = Just dialog } => Cmd.none => NoOp
+
+        CloseConfirmationDialog ->
+            { model | confirmationDialog = Nothing } => Cmd.none => NoOp
+
         CloseErrorDialog ->
             { model | dialogError = Nothing } => Cmd.none => NoOp
+
+        OpenInfoDialog infoText ->
+            let
+                dialog =
+                    infoDialogConfig infoText CloseInfoDialog
+            in
+            { model | infoDialog = Just dialog } => Cmd.none => NoOp
+
+        CloseInfoDialog ->
+            { model | infoDialog = Nothing } => Cmd.none => NoOp
 
         CartMsg subMsg ->
             let
@@ -292,7 +380,11 @@ view model =
         privateButton =
             case model.sample.private of
                 1 ->
-                    button [ class "btn btn-default" ]
+                    let
+                        infoText =
+                            "This feature is currently under development.  Soon you will be able to 'publish' your sample (making it publicly accessible) or share with particular collaborators."
+                    in
+                    button [ class "btn btn-default", onClick (OpenInfoDialog infoText) ]
                         [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
 
                 _ ->
@@ -323,11 +415,20 @@ view model =
             ]
         , Dialog.view
             (if (model.dialogError /= Nothing) then
-                Just (errorDialogConfig model)
+                Just (errorDialogConfig (Maybe.withDefault "Unknown error" model.dialogError) CloseErrorDialog)
+            else if (model.infoDialog /= Nothing) then
+                model.infoDialog
+             else if (model.confirmationDialog /= Nothing) then
+                model.confirmationDialog
              else if model.showNewAttributeDialog then
-                Just (newAttributeDialogConfig model)
+                Just (newAttributeDialogConfig model.showNewAttributeBusy)
              else
-                Nothing
+                case model.attributeToModify of
+                    Nothing ->
+                        Nothing
+
+                    Just attr ->
+                        Just (editAttributeDialogConfig model attr.sample_attr_id model.showModifyAttributeBusy)
             )
         ]
 
@@ -566,16 +667,28 @@ viewCombinedAssembly assembly =
         ]
 
 
-attrTableConfig : Table.Config Sample.Attribute Msg
-attrTableConfig =
+attrTableConfig : Bool -> Table.Config Sample.Attribute Msg
+attrTableConfig isEditable =
+    let
+        columns =
+            case isEditable of
+                False ->
+                    [ attrTypeColumn
+                    , attrAliasColumn
+                    , attrValueColumn
+                    ]
+
+                True ->
+                    [ attrTypeColumn
+                    , attrAliasColumn
+                    , attrValueColumn
+                    , attrEditColumn
+                    ]
+    in
     Table.customConfig
         { toId = toString << .sample_attr_id
         , toMsg = SetAttrTableState
-        , columns =
-            [ typeColumn
-            , aliasColumn
-            , valueColumn
-            ]
+        , columns = columns
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
         }
@@ -586,8 +699,8 @@ toTableAttrs =
     [ attribute "class" "table table-condensed" ]
 
 
-typeColumn : Table.Column Sample.Attribute Msg
-typeColumn =
+attrTypeColumn : Table.Column Sample.Attribute Msg
+attrTypeColumn =
     Table.customColumn
         { name = "Type"
         , viewData = .type_ << .sample_attr_type
@@ -595,8 +708,8 @@ typeColumn =
         }
 
 
-aliasColumn : Table.Column Sample.Attribute Msg
-aliasColumn =
+attrAliasColumn : Table.Column Sample.Attribute Msg
+attrAliasColumn =
     Table.customColumn
         { name = "Aliases"
         , viewData = aliasesToString << .sample_attr_type_aliases << .sample_attr_type
@@ -609,13 +722,30 @@ aliasesToString aliases =
     String.join ", " (List.map .alias_ aliases)
 
 
-valueColumn : Table.Column Sample.Attribute Msg
-valueColumn =
+attrValueColumn : Table.Column Sample.Attribute Msg
+attrValueColumn =
     Table.customColumn
         { name = "Value"
         , viewData = .attr_value
         , sorter = Table.increasingOrDecreasingBy .attr_value
         }
+
+
+attrEditColumn : Table.Column Sample.Attribute Msg
+attrEditColumn =
+    Table.veryCustomColumn
+        { name = ""
+        , viewData = attrEditView
+        , sorter = Table.unsortable
+        }
+
+
+attrEditView : Sample.Attribute -> Table.HtmlDetails Msg
+attrEditView attr =
+    Table.HtmlDetails [ class "col-md-2", style [("text-align","right")] ]
+        [ button [ class "btn btn-default btn-xs", onClick (OpenModifyAttributeDialog attr) ] [ text "Modify" ]
+        , button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Are you sure you to remove this attribute?" (RemoveAttribute attr.sample_attr_id)) ] [ text "Remove" ]
+        ]
 
 
 viewAttributes : Model -> Bool -> Html Msg
@@ -664,7 +794,7 @@ viewAttributes model isEditable =
                     text "None"
 
                 _ ->
-                    Table.view attrTableConfig model.attrTableState acceptableAttributes
+                    Table.view (attrTableConfig isEditable) model.attrTableState acceptableAttributes
 
         addButton =
             case isEditable of
@@ -687,13 +817,14 @@ viewAttributes model isEditable =
         ]
 
 
-newAttributeDialogConfig : Model -> Dialog.Config Msg
-newAttributeDialogConfig model =
+newAttributeDialogConfig : Bool -> Dialog.Config Msg
+newAttributeDialogConfig isBusy =
     let
         content =
-            case model.showNewAttributeBusy of
-                False ->
-                    Html.form []
+            if isBusy then
+                spinner
+            else
+                Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Type" ]
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", onInput SetNewAttributeType ] []
@@ -708,13 +839,10 @@ newAttributeDialogConfig model =
                         ]
                     ]
 
-                True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
-
         footer =
             let
                 disable =
-                    disabled model.showNewAttributeBusy
+                    disabled isBusy
             in
                 div []
                     [ button [ class "btn btn-default pull-left", onClick CloseNewAttributeDialog, disable ] [ text "Cancel" ]
@@ -729,31 +857,41 @@ newAttributeDialogConfig model =
     }
 
 
-errorDialogConfig : Model -> Dialog.Config Msg
-errorDialogConfig model =
+editAttributeDialogConfig : Model -> Int -> Bool -> Dialog.Config Msg
+editAttributeDialogConfig model attr_id isBusy =
     let
-        error_message =
-            case model.dialogError of
-                Nothing
-                    -> "Unknown"
-
-                Just error
-                    -> error
-
         content =
-            div [ class "alert alert-danger" ]
-                [ p [] [ text "An error occurred:" ]
-                , p [] [ text error_message ]
-                ]
+            if isBusy then
+                spinner
+            else
+                Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Type" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", value model.newAttributeType, onInput SetNewAttributeType ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Aliases" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.newAttributeAliases, onInput SetNewAttributeAliases ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Value" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.newAttributeValue, onInput SetNewAttributeValue ] []
+                        ]
+                    ]
 
         footer =
-            div []
-                [ button [ class "btn btn-primary", onClick CloseErrorDialog ] [ text "Ok" ]
-                ]
+            let
+                disable =
+                    disabled isBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseModifyAttributeDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick (UpdateAttribute attr_id), disable ] [ text "Update" ]
+                    ]
     in
-    { closeMessage = Just CloseErrorDialog
+    { closeMessage = Just CloseModifyAttributeDialog
     , containerClass = Nothing
-    , header = Just (h3 [] [ text "Error" ])
+    , header = Just (h3 [] [ text "Modify Attribute" ])
     , body = Just content
     , footer = Just footer
     }
@@ -933,7 +1071,7 @@ viewProteins model =
                         False ->
                             case model.loadingProteins of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
@@ -1132,7 +1270,7 @@ viewCentrifugeResults model =
                         False ->
                             case model.loadingCentrifugeResults of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCentrifugeResults ] [ text "Show Results" ] ] ] ] ]
