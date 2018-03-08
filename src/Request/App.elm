@@ -36,13 +36,17 @@ getByName name =
         |> HttpBuilder.toRequest
 
 
-run : Int -> Maybe Int -> String -> Http.Request AppRun
-run app_id user_id params =
+run : String -> Int -> Maybe Int -> String -> Http.Request AppRun
+run token app_id user_id params =
     let
         url =
             apiBaseUrl ++ "/apps/runs"
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody (encodeAppRun app_id user_id params)
         |> HttpBuilder.withExpect (Http.expectJson decoderAppRun)
         |> HttpBuilder.toRequest
