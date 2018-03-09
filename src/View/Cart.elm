@@ -270,7 +270,7 @@ addToCartButton2 model id =
             button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ text "Remove from Cart" ]
 
         False ->
-            button [ class "btn btn-default", onClick (AddToCart id) ] [ text "Add to Cart" ]
+            button [ class "btn btn-default", onClick (AddToCart id) ] [ span [ class "glyphicon glyphicon-shopping-cart" ] [], text " Add to Cart" ]
 
 
 addAllToCartButton : Model -> List Int -> Html Msg
