@@ -202,3 +202,39 @@ removeAttribute token sample_id sample_attr_id =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
+
+
+addFiles : String -> Int -> List String -> Http.Request Sample
+addFiles token sample_id files =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/files"
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "files" => Encode.list (List.map Encode.string files)
+                ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
+
+
+removeFile : String -> Int -> Int -> Http.Request Sample
+removeFile token sample_id sample_file_id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/files/" ++ (toString sample_file_id)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest

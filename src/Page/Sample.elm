@@ -18,12 +18,13 @@ import Time exposing (Time)
 import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
+import List.Extra
+import Util exposing ((=>))
 import View.Cart as Cart
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
 import View.Spinner exposing (spinner)
-import Util exposing ((=>))
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
-import List.Extra
+import View.FileBrowser as FileBrowser
 
 
 
@@ -62,7 +63,9 @@ type alias Model =
     , attributeToModify : Maybe Sample.Attribute
     , confirmationDialog : Maybe (Dialog.Config Msg)
     , infoDialog : Maybe (Dialog.Config Msg)
+    , showAddFilesDialog : Bool
     , dialogError : Maybe String
+    , fileBrowser : FileBrowser.Model
     }
 
 
@@ -133,7 +136,9 @@ init session id =
                     , attributeToModify = Nothing
                     , confirmationDialog = Nothing
                     , infoDialog = Nothing
+                    , showAddFilesDialog = False
                     , dialogError = Nothing
+                    , fileBrowser = FileBrowser.init session False False
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -173,10 +178,17 @@ type Msg
     | UpdateAttributeCompleted (Result Http.Error Sample)
     | OpenConfirmationDialog String Msg
     | OpenInfoDialog String
+    | OpenAddFilesDialog
     | CloseConfirmationDialog
     | CloseInfoDialog
     | CloseErrorDialog
+    | CloseAddFilesDialog
+    | AddFiles (List String)
+    | AddFilesCompleted (Result Http.Error Sample)
+    | RemoveFile Int
+    | RemoveFileCompleted (Result Http.Error Sample)
     | CartMsg Cart.Msg
+    | FileBrowserMsg FileBrowser.Msg
 
 
 type ExternalMsg
@@ -360,6 +372,53 @@ update session msg model =
         CloseInfoDialog ->
             { model | infoDialog = Nothing } => Cmd.none => NoOp
 
+        OpenAddFilesDialog ->
+            let
+                (subModel, subCmd) =
+                    FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+            in
+            { model | showAddFilesDialog = True, fileBrowser = subModel  } => Cmd.map FileBrowserMsg subCmd => NoOp
+
+        CloseAddFilesDialog ->
+            { model | showAddFilesDialog = False } => Cmd.none => NoOp
+
+        AddFiles files ->
+            let
+                addFiles =
+                    Request.Sample.addFiles session.token model.sample_id files |> Http.toTask
+            in
+            { model | showAddFilesDialog = False } => Task.attempt AddFilesCompleted addFiles => NoOp
+
+        AddFilesCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
+
+        AddFilesCompleted (Err error) ->
+            let
+                _ = Debug.log "error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
+        RemoveFile file_id ->
+            let
+                removeFile =
+                    Request.Sample.removeFile session.token model.sample_id file_id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveFileCompleted removeFile => NoOp
+
+        RemoveFileCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
+
+        RemoveFileCompleted (Err error) ->
+            model => Cmd.none => NoOp
+
         CartMsg subMsg ->
             let
                 _ = Debug.log "Sample.CartMsg" (toString subMsg)
@@ -369,6 +428,12 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
+        FileBrowserMsg subMsg ->
+            let
+                ( newFileBrowser, subCmd ) =
+                    FileBrowser.update session subMsg model.fileBrowser
+            in
+            { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd => NoOp
 
 
 -- VIEW --
@@ -422,6 +487,8 @@ view model =
                 model.confirmationDialog
              else if model.showNewAttributeDialog then
                 Just (newAttributeDialogConfig model.showNewAttributeBusy)
+            else if model.showAddFilesDialog then
+                Just (addFilesDialogConfig model False)
              else
                 case model.attributeToModify of
                     Nothing ->
@@ -512,7 +579,7 @@ viewMap showMap =
         ]
 
 
-viewFiles : List SampleFile2 -> Bool -> Html msg
+viewFiles : List SampleFile2 -> Bool -> Html Msg
 viewFiles files isEditable =
     let
         numFiles =
@@ -532,6 +599,7 @@ viewFiles files isEditable =
             tr []
                 [ th [] [ text "Path" ]
                 , th [] [ text "Type" ]
+                , th [] []
                 ]
 
         body =
@@ -541,12 +609,14 @@ viewFiles files isEditable =
 
                 _ ->
                     table [ class "table table-condensed" ]
-                        [ tbody [] (cols :: (List.map viewFile files)) ]
+                        [ tbody [] (cols :: (List.map (viewFile isEditable) files)) ]
 
         addButton =
             case isEditable of
                 True ->
-                    button [ class "btn btn-default btn-sm pull-right" ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)" ]
+                    button [ class "btn btn-default btn-sm pull-right", onClick OpenAddFilesDialog ]
+                        [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)"
+                        ]
 
                 False ->
                     text ""
@@ -561,8 +631,8 @@ viewFiles files isEditable =
         ]
 
 
-viewFile : SampleFile2 -> Html msg
-viewFile file =
+viewFile : Bool -> SampleFile2 -> Html Msg
+viewFile isEditable file =
     tr []
         [ td []
             [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
@@ -570,7 +640,40 @@ viewFile file =
         , td []
             [ text file.sample_file_type.file_type
             ]
+        , td []
+            [ if isEditable then
+                button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Are you sure you to remove this file?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
+              else
+                text ""
+            ]
         ]
+
+
+addFilesDialogConfig : Model -> Bool -> Dialog.Config Msg
+addFilesDialogConfig model isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                 FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg
+
+        footer =
+            let
+                selectedFilepaths =
+                    FileBrowser.getSelected model.fileBrowser |> List.map .path
+            in
+            div []
+                [ button [ class "btn btn-default pull-left", onClick CloseAddFilesDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick (AddFiles selectedFilepaths) ] [ text "Select" ]
+                ]
+    in
+    { closeMessage = Just CloseAddFilesDialog
+    , containerClass = Just "wide-modal-container"
+    , header = Just (h3 [] [ text "Add Files" ])
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 viewAssemblies : List Assembly -> Html msg
