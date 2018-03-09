@@ -265,12 +265,16 @@ addToCartButton model id =
 -- Kludge
 addToCartButton2 : Model -> Int -> Html Msg
 addToCartButton2 model id =
+    let
+        icon =
+            span [ class "glyphicon glyphicon-shopping-cart" ] []
+    in
     case (Set.member id model.cart.contents) of
         True ->
-            button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ text "Remove from Cart" ]
+            button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ icon, text " Remove from Cart" ]
 
         False ->
-            button [ class "btn btn-default", onClick (AddToCart id) ] [ span [ class "glyphicon glyphicon-shopping-cart" ] [], text " Add to Cart" ]
+            button [ class "btn btn-default", onClick (AddToCart id) ] [ icon, text " Add to Cart" ]
 
 
 addAllToCartButton : Model -> List Int -> Html Msg
