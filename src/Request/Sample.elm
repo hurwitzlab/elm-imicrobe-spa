@@ -143,6 +143,29 @@ create token sample_name project_id =
         |> HttpBuilder.toRequest
 
 
+update : String -> Int -> String -> String -> String -> Http.Request Sample
+update token sample_id sample_name sample_code sample_type =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "sample_name" => Encode.string sample_name
+                , "sample_code" => Encode.string sample_code
+                , "sample_type" => Encode.string sample_type
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
+
+
 addAttribute : String -> Int -> String -> String -> String -> Http.Request Sample
 addAttribute token sample_id attr_type attr_aliases attr_value =
     let

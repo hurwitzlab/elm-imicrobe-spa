@@ -64,6 +64,10 @@ type alias Model =
     , confirmationDialog : Maybe (Dialog.Config Msg)
     , infoDialog : Maybe (Dialog.Config Msg)
     , showAddFilesDialog : Bool
+    , showEditInfoDialog : Bool
+    , newSampleName : String
+    , newSampleCode : String
+    , newSampleType : String
     , dialogError : Maybe String
     , fileBrowser : FileBrowser.Model
     }
@@ -137,8 +141,12 @@ init session id =
                     , confirmationDialog = Nothing
                     , infoDialog = Nothing
                     , showAddFilesDialog = False
+                    , showEditInfoDialog = False
+                    , newSampleName = ""
+                    , newSampleCode = ""
+                    , newSampleType = ""
                     , dialogError = Nothing
-                    , fileBrowser = FileBrowser.init session False False
+                    , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False))
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -179,10 +187,17 @@ type Msg
     | OpenConfirmationDialog String Msg
     | OpenInfoDialog String
     | OpenAddFilesDialog
+    | OpenEditInfoDialog
     | CloseConfirmationDialog
     | CloseInfoDialog
     | CloseErrorDialog
     | CloseAddFilesDialog
+    | CloseEditInfoDialog
+    | SetNewSampleName String
+    | SetNewSampleCode String
+    | SetNewSampleType String
+    | UpdateSampleInfo
+    | UpdateSampleInfoCompleted (Result Http.Error Sample)
     | AddFiles (List String)
     | AddFilesCompleted (Result Http.Error Sample)
     | RemoveFile Int
@@ -419,6 +434,46 @@ update session msg model =
         RemoveFileCompleted (Err error) ->
             model => Cmd.none => NoOp
 
+        OpenEditInfoDialog ->
+            { model
+                | showEditInfoDialog = True
+                , newSampleName = model.sample.sample_name
+                , newSampleCode = model.sample.sample_acc
+                , newSampleType = model.sample.sample_type
+             } => Cmd.none => NoOp
+
+        CloseEditInfoDialog ->
+            { model | showEditInfoDialog = False } => Cmd.none => NoOp
+
+        SetNewSampleName val ->
+            { model | newSampleName = val } => Cmd.none => NoOp
+
+        SetNewSampleCode val ->
+            { model | newSampleCode = val } => Cmd.none => NoOp
+
+        SetNewSampleType val ->
+            { model | newSampleType = val } => Cmd.none => NoOp
+
+        UpdateSampleInfo ->
+            let
+                updateInfo =
+                    Request.Sample.update session.token model.sample_id model.newSampleName model.newSampleCode model.newSampleType |> Http.toTask
+            in
+            { model | showEditInfoDialog = False } => Task.attempt UpdateSampleInfoCompleted updateInfo => NoOp
+
+        UpdateSampleInfoCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_name = sample.sample_name, sample_acc = sample.sample_acc, sample_type = sample.sample_type } } => Cmd.none => NoOp
+
+        UpdateSampleInfoCompleted (Err error) ->
+            let
+                _ = Debug.log "error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
         CartMsg subMsg ->
             let
                 _ = Debug.log "Sample.CartMsg" (toString subMsg)
@@ -489,7 +544,9 @@ view model =
                 Just (newAttributeDialogConfig model.showNewAttributeBusy)
             else if model.showAddFilesDialog then
                 Just (addFilesDialogConfig model False)
-             else
+            else if model.showEditInfoDialog then
+                Just (editInfoDialogConfig model False)
+            else
                 case model.attributeToModify of
                     Nothing ->
                         Nothing
@@ -515,12 +572,10 @@ viewSample sample isEditable =
                     List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
 
         editButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+            else
+                text ""
     in
     table [ class "table" ]
         [ colgroup []
@@ -543,10 +598,10 @@ viewSample sample isEditable =
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
             ]
-        , tr []
-            [ th [] [ text "Ontologies" ]
-            , td [] [ text ontologies ]
-            ]
+--        , tr []
+--            [ th [] [ text "Ontologies" ]
+--            , td [] [ text ontologies ]
+--            ]
         , tr []
             [ td [] [ editButton ]
             ]
@@ -577,6 +632,46 @@ viewMap showMap =
         [ button [ class "btn btn-xs btn-default", onClick (MapTick Time.millisecond) ] [ text "View Map" ]
         , div [ hideorShow ] [ gmap [ mapStyles ] [] ] -- needs to be always rendered for port to work
         ]
+
+
+editInfoDialogConfig : Model -> Bool -> Dialog.Config Msg
+editInfoDialogConfig model isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Sample Name" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the name (required)", value model.newSampleName, onInput SetNewSampleName ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Sample Code" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.newSampleCode, onInput SetNewSampleCode ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Sample Type" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", value model.newSampleType, onInput SetNewSampleType ] []
+                        ]
+                    ]
+
+        footer =
+            let
+                disable =
+                    disabled isBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", disable, onClick CloseEditInfoDialog ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", disable, onClick UpdateSampleInfo ] [ text "Update" ]
+                    ]
+    in
+    { closeMessage = Just CloseEditInfoDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Modify Sample Info" ])
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 viewFiles : List SampleFile2 -> Bool -> Html Msg
@@ -640,9 +735,9 @@ viewFile isEditable file =
         , td []
             [ text file.sample_file_type.file_type
             ]
-        , td []
+        , td [ class "col-md-2" ]
             [ if isEditable then
-                button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Are you sure you to remove this file?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
+                button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you to remove this file from the sample?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
               else
                 text ""
             ]
