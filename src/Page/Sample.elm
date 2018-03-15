@@ -498,17 +498,15 @@ view : Model -> Html Msg
 view model =
     let
         privateButton =
-            case model.sample.private of
-                1 ->
-                    let
-                        infoText =
-                            "This feature is currently under development.  Soon you will be able to 'publish' your sample (making it publicly accessible) or share with particular collaborators."
-                    in
-                    button [ class "btn btn-default", onClick (OpenInfoDialog infoText) ]
-                        [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
-
-                _ ->
-                    text ""
+            if model.sample.private == 1 then
+                let
+                    infoText =
+                        "This feature is currently under development.  Soon you will be able to 'publish' your sample (making it publicly accessible) or share with collaborators."
+                in
+                button [ class "btn btn-default", onClick (OpenInfoDialog infoText) ]
+                    [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
+            else
+                text ""
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -536,17 +534,17 @@ view model =
         , Dialog.view
             (if (model.dialogError /= Nothing) then
                 Just (errorDialogConfig (Maybe.withDefault "Unknown error" model.dialogError) CloseErrorDialog)
-            else if (model.infoDialog /= Nothing) then
+             else if (model.infoDialog /= Nothing) then
                 model.infoDialog
              else if (model.confirmationDialog /= Nothing) then
                 model.confirmationDialog
              else if model.showNewAttributeDialog then
                 Just (newAttributeDialogConfig model.showNewAttributeBusy)
-            else if model.showAddFilesDialog then
+             else if model.showAddFilesDialog then
                 Just (addFilesDialogConfig model False)
-            else if model.showEditInfoDialog then
+             else if model.showEditInfoDialog then
                 Just (editInfoDialogConfig model False)
-            else
+             else
                 case model.attributeToModify of
                     Nothing ->
                         Nothing
@@ -657,14 +655,10 @@ editInfoDialogConfig model isBusy =
                     ]
 
         footer =
-            let
-                disable =
-                    disabled isBusy
-            in
-                div []
-                    [ button [ class "btn btn-default pull-left", disable, onClick CloseEditInfoDialog ] [ text "Cancel" ]
-                    , button [ class "btn btn-primary", disable, onClick UpdateSampleInfo ] [ text "Update" ]
-                    ]
+            div [ disabled isBusy ]
+                [ button [ class "btn btn-default pull-left", onClick CloseEditInfoDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick UpdateSampleInfo ] [ text "Update" ]
+                ]
     in
     { closeMessage = Just CloseEditInfoDialog
     , containerClass = Nothing
@@ -737,7 +731,7 @@ viewFile isEditable file =
             ]
         , td [ class "col-md-2" ]
             [ if isEditable then
-                button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you to remove this file from the sample?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
+                button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this file from the sample?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
               else
                 text ""
             ]
