@@ -121,8 +121,8 @@ protein_kegg_search query =
         |> HttpBuilder.toRequest
 
 
-create : String -> String -> Int -> Http.Request Sample
-create token sample_name project_id =
+create : String -> Int -> String -> Http.Request Sample
+create token project_id sample_name =
     let
         url =
             apiBaseUrl ++ "/samples"
@@ -163,6 +163,21 @@ update token sample_id sample_name sample_code sample_type =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
+        |> HttpBuilder.toRequest
+
+
+remove : String -> Int -> Http.Request String
+remove token sample_id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
 
 

@@ -74,3 +74,48 @@ create token project_name =
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
         |> HttpBuilder.toRequest
+
+
+update : String -> Int -> String -> String -> String -> String -> Http.Request Project
+update token project_id project_name project_code project_type project_url =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString project_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "project_name" => Encode.string project_name
+                , "project_code" => Encode.string project_code
+                , "project_type" => Encode.string project_type
+                , "project_url" => Encode.string project_url
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+addInvestigatorToProject : String -> Int -> Int -> Http.Request Project
+addInvestigatorToProject token project_id investigator_id =
+    let
+        url =
+            apiBaseUrl ++ "/investigators/"
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "investigator_id" => Encode.int investigator_id
+                ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
