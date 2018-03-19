@@ -2,7 +2,6 @@ module Data.ProjectGroup exposing (Project, ProjectGroup, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Util exposing ((=>))
 
 
 
