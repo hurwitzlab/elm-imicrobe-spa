@@ -40,6 +40,7 @@ type alias InternalModel =
     , contents : List FileResult
     , tableState : Table.State
     , isBusy : Bool
+    , config : Config
     , showNewFolderDialog : Bool
     , showNewFolderBusy : Bool
     , newFolderName : String
@@ -48,8 +49,15 @@ type alias InternalModel =
     }
 
 
-init : Session -> Model --Task Http.Error Model
-init session =
+type alias Config =
+    { showNewFolderButton : Bool
+    , showUploadFileButton : Bool
+    , allowDirSelection : Bool
+    }
+
+
+init : Session -> Maybe Config -> Model --Task Http.Error Model
+init session maybeConfig =
     let
         user_name =
             case session.user of
@@ -59,6 +67,14 @@ init session =
 
         startingPath =
             "/" ++ user_name
+
+        config =
+            case maybeConfig of
+                Nothing ->
+                    Config True True True
+
+                Just config ->
+                    config
     in
     Model
         { path = startingPath
@@ -69,6 +85,7 @@ init session =
         , contents = []
         , tableState = Table.initialSort "Name"
         , isBusy = True
+        , config = config
         , showNewFolderDialog = False
         , showNewFolderBusy = False
         , newFolderName = ""
@@ -262,7 +279,7 @@ determinePreviousPath path =
 
 
 view : Model -> Html Msg
-view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy}) =
+view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
     let
         filterButton label =
             let
@@ -287,21 +304,27 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
                     ]
                 , button [ style [("visibility","hidden")] ] -- FIXME make a better spacer than this
                     [ text " " ]
-                , button [ class "btn btn-default btn-sm", type_ "button", onClick OpenNewFolderDialog ]
-                    [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
-                , div [ class "btn-group" ]
-                    [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
-                        [ span [ class "glyphicon glyphicon-cloud-upload" ] []
-                        , text " Upload File "
-                        , span [ class "caret" ] []
+                , if (config.showNewFolderButton) then
+                    button [ class "btn btn-default btn-sm", type_ "button", onClick OpenNewFolderDialog ]
+                        [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
+                  else
+                    text ""
+                , if (config.showUploadFileButton) then
+                    div [ class "btn-group" ]
+                        [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
+                            [ span [ class "glyphicon glyphicon-cloud-upload" ] []
+                            , text " Upload File "
+                            , span [ class "caret" ] []
+                            ]
+                        , ul [ class "dropdown-menu" ]
+                            [ li [] [ a [] [ text "From local" ] ]
+                            , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
+                            , li [] [ a [] [ text "From NCBI" ] ]
+                            , li [] [ a [] [ text "From EBI" ] ]
+                            ]
                         ]
-                    , ul [ class "dropdown-menu" ]
-                        [ li [] [ a [] [ text "From local" ] ]
-                        , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
-                        , li [] [ a [] [ text "From NCBI" ] ]
-                        , li [] [ a [] [ text "From EBI" ] ]
-                        ]
-                    ]
+                    else
+                      text ""
                 ]
             ]
         , br [] []
@@ -310,7 +333,8 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
           else if isBusy then
             spinner
           else
-            Table.view (tableConfig selectedPath) tableState contents
+            div [ style [("overflow-y","auto"),("height","60vh")] ]
+                [ Table.view (tableConfig config selectedPath) tableState contents ]
         , Dialog.view
             (if (confirmationDialog /= Nothing) then
                 confirmationDialog
@@ -328,10 +352,10 @@ toTableAttrs =
     ]
 
 
-toRowAttrs : String -> FileResult -> List (Attribute Msg)
-toRowAttrs selectedPath data =
+toRowAttrs : Config -> String -> FileResult -> List (Attribute Msg)
+toRowAttrs config selectedPath data =
     onClick (SelectPath data.path)
-    :: (if (data.path == selectedPath) then
+    :: (if (data.path == selectedPath && (data.type_ == "file" || config.allowDirSelection)) then
             [ attribute "class" "active" ]
         else
             []
@@ -342,8 +366,8 @@ toRowAttrs selectedPath data =
             []
         )
 
-tableConfig : String -> Table.Config FileResult Msg
-tableConfig selectedRowId =
+tableConfig : Config -> String -> Table.Config FileResult Msg
+tableConfig config selectedRowId =
     Table.customConfig
         { toId = .path
         , toMsg = SetTableState
@@ -352,7 +376,7 @@ tableConfig selectedRowId =
             , sizeColumn
             ]
         , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs config selectedRowId }
         }
 
 

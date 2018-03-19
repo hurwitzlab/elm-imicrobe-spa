@@ -20,6 +20,8 @@ import Task exposing (Task)
 import Util exposing ((=>))
 import View.FileBrowser as FileBrowser
 import View.Spinner exposing (spinner)
+import View.Project
+import View.Sample
 
 
 
@@ -74,7 +76,7 @@ init session =
                     , dsTableState = Table.initialSort "Name"
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
-                    , fileBrowser = FileBrowser.init session
+                    , fileBrowser = FileBrowser.init session Nothing
                     }
             )
             |> Task.mapError Error.handleLoadError
@@ -369,7 +371,7 @@ viewInfo model =
                             p [] [ text "Here are projects you've created.", br [] [], text "To create a new project click the 'New' button." ]
 
                         project :: _ ->
-                            viewProjectInfo project
+                            View.Project.viewInfo project
 
                 Sample ->
                     case List.filter (\s -> s.sample_id == model.selectedSampleRowId) model.user.samples of
@@ -377,7 +379,7 @@ viewInfo model =
                             p [] [ text "Here are samples you've created.", br [] [], text "To create a new sample click the 'New' button." ]
 
                         sample :: _ ->
-                            viewSampleInfo sample
+                            View.Sample.viewInfo sample
 
                 Storage ->
                     case FileBrowser.getSelected model.fileBrowser of
@@ -391,42 +393,6 @@ viewInfo model =
                     text ""
     in
     div [ class "col-sm-3" ] [ info ]
-
-
-viewProjectInfo : Data.User.Project -> Html Msg
-viewProjectInfo project =
-    div []
-        [ table [ class "info-table" ]
-            [ tr []
-                [ th [] [ text "Name " ]
-                , td [] [ text project.project_name ]
-                ]
-            , tr []
-                [ th [] [ text "Type " ]
-                , td [] [ text project.project_type ]
-                ]
-            ]
-        ]
-
-
-viewSampleInfo : Data.User.Sample -> Html Msg
-viewSampleInfo sample =
-    div []
-        [ table [ class "info-table" ]
-            [ tr []
-                [ th [] [ text "ID "]
-                , td [] [ text (toString sample.sample_id) ]
-                ]
-            , tr []
-                [ th [] [ text "Name " ]
-                , td [] [ text sample.sample_name ]
-                ]
-            , tr []
-                [ th [] [ text "Type " ]
-                , td [] [ text sample.sample_type ]
-                ]
-            ]
-        ]
 
 
 viewFileInfo : FileResult -> Html Msg

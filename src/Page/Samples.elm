@@ -1,6 +1,6 @@
 module Page.Samples exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Sample as Sample exposing (Sample)
+import Data.Sample as Sample exposing (Sample, Investigator)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import FormatNumber exposing (format)
@@ -29,6 +29,7 @@ import Task exposing (Task)
 import Time exposing (Time)
 import Util exposing ((=>), truncate)
 import View.Cart as Cart
+import View.Sample
 import Config exposing (apiBaseUrl)
 
 
@@ -50,6 +51,7 @@ type alias Model =
     , possibleOptionValues : Dict String (List JsonType)
     , restrictedParams : Dict String String
     , doSearch : Bool
+    , selectedRowId : Int
     }
 
 
@@ -89,6 +91,7 @@ init session =
                     , possibleOptionValues = Dict.empty
                     , restrictedParams = Dict.empty
                     , doSearch = False
+                    , selectedRowId = 0
                     }
                 )
             )
@@ -114,6 +117,7 @@ type Msg
 --    | Search
     | DelayedSearch Time
     | UpdateSearchResults (WebData (List (Dict String JsonType)))
+    | SelectRow Int
 
 
 type ExternalMsg
@@ -259,9 +263,19 @@ update session msg model =
             in
             newModel => Cmd.none => NoOp
 
+        SelectRow id ->
+            let
+                selectedRowId =
+                    if model.selectedRowId == id then
+                        0 -- unselect
+                    else
+                         id
+            in
+            { model | selectedRowId = selectedRowId } => Cmd.none => NoOp
 
-config : Cart.Model -> Table.Config Sample Msg
-config cart =
+
+config : Cart.Model -> Int -> Table.Config Sample Msg
+config cart selectedRowId =
     Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
@@ -272,14 +286,24 @@ config cart =
             , addToCartColumn cart
             ]
         , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs }
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
         }
 
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table"
+    [ attribute "class" "table table-hover"
     ]
+
+
+toRowAttrs : Int -> Sample -> List (Attribute Msg)
+toRowAttrs selectedRowId data =
+    onClick (SelectRow data.sample_id)
+    :: (if (data.sample_id == selectedRowId) then
+            [ attribute "class" "active" ]
+         else
+            []
+        )
 
 
 
@@ -366,7 +390,7 @@ showSearchResults model results =
             results
                 |> List.filter (\result -> String.contains (String.toLower model.query) (String.toLower (getVal "specimen__sample_name" result)))
                 |> List.filter filterOnType
-                |> List.map (mkResultRow model.cart model.selectedParams)
+                |> List.map (mkResultRow model.selectedRowId model.cart model.selectedParams)
 
         filterOnType result =
             case List.length model.sampleTypeRestriction of
@@ -376,14 +400,33 @@ showSearchResults model results =
                 _ ->
                     List.member (getVal "specimen__sample_type" result) model.sampleTypeRestriction
 
+        (infoPanel, sizeClass) =
+            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
+                [] ->
+                    (text "", "")
+
+                sample :: _ ->
+                    (View.Sample.viewInfo sample, "col-md-8")
+
         body =
             case resultRows of
                 [] ->
                     noResults
 
                 _ ->
-                    div [ style [("padding-top", "1em")] ]
-                        [ table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]
+--                    div [ style [("padding-top", "1em")] ]
+--                        [ table [ class "table table-hover" ]
+--                            [ tbody [] (headerRow ++ resultRows) ]
+--                        , infoPanel
+--                        ]
+                    div [ class "container" ]
+                        [ div [ class "row" ]
+                            [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                                [ table [ class "table table-hover" ]
+                                    [ tbody [] (headerRow ++ resultRows) ]
+                                ]
+                            , infoPanel
+                            ]
                         ]
     in
     div [ class "container" ]
@@ -456,38 +499,53 @@ showAll model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
 
-        body =
-            case count of
-                0 ->
-                    noResults
+        (infoPanel, sizeClass) =
+            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
+                [] ->
+                    (text "", "")
 
-                _ ->
-                    div [] [ Table.view (config model.cart) model.tableState acceptableSamples ]
+                sample :: _ ->
+                    (View.Sample.viewInfo sample, "col-md-8")
+
+        body =
+            if count == 0 then
+                noResults
+            else
+                div [ class "container" ]
+                    [ div [ class "row" ]
+                        [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                            [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
+                        , infoPanel
+                        ]
+                    ]
     in
-        div [ class "container" ]
-            [ div [ class "row" ]
-                [ div [ class "page-header" ]
-                    [ h1 []
-                        [ text (model.pageTitle ++ " ")
-                        , numShowing
-                        , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
-                        ]
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , numShowing
+                    , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
-                , div [ class "panel panel-default" ]
-                    [ div [ class "panel-body" ]
-                        [ showTypes model.samples
-                        , searchView model
-                        ]
-                    ]
-                , body
                 ]
             ]
+        , div [ class "row" ]
+            [ div [ class "panel panel-default" ]
+                [ div [ class "panel-body" ]
+                    [ showTypes model.samples
+                    , searchView model
+                    ]
+                ]
+            ]
+        , div [ class "row" ]
+            [ body ]
+        ]
 
 
 noResults : Html Msg
@@ -962,8 +1020,8 @@ mkRestrictedParams curParams searchResults =
             Dict.empty
 
 
-mkResultRow : Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
-mkResultRow cart fieldList result =
+mkResultRow : Int -> Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
+mkResultRow selectedRowId cart fieldList result =
     let
         mkTd : ( String, String ) -> Html msg
         mkTd ( fldName, dataType ) =
@@ -991,6 +1049,14 @@ mkResultRow cart fieldList result =
                             text name
             in
             td [ style [ ( "text-align", "left" ) ] ] [ projectLink ]
+
+        sample_id =
+            case String.toInt (getVal "specimen__sample_id" result) of
+                Ok sampleId ->
+                    sampleId
+
+                Err _ ->
+                    0
 
         nameCol =
             let
@@ -1029,8 +1095,11 @@ mkResultRow cart fieldList result =
 
         otherCols =
             List.map mkTd fieldList
+
+        isSelected =
+            (sample_id == selectedRowId)
     in
-    tr [] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
+    tr [ onClick (SelectRow sample_id), classList [("active", isSelected)] ] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
 
 
 getVal : String -> Dict String JsonType -> String

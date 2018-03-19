@@ -118,6 +118,18 @@ tr.padded > td {
 }
 
 
+/* Dialog styles
+ *
+ */
+
+.wide-modal-container > .modal-dialog {
+    min-width: 80vw;
+    min-height: 60vh;
+    max-height: 60vh;
+    margin: auto;
+}
+
+
 /*
  * Dashboard styles
  */

@@ -15,6 +15,7 @@ import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Project
 import Util exposing ((=>))
 
 
@@ -219,13 +220,12 @@ view model =
             button [ class classes, onClick (FilterPermType label) ] [ text label ]
 
         (infoPanel, sizeClass) =
-            case viewInfo model of
-                Nothing ->
+            case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
+                [] ->
                     (text "", "")
 
-                Just panel ->
-                    (panel, "col-md-8")
-
+                project :: _ ->
+                    (View.Project.viewInfo project, "col-md-8")
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -253,49 +253,3 @@ view model =
                 ]
            ]
         ]
-
-
-viewInfo : Model -> Maybe (Html Msg)
-viewInfo model =
-    case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
-        [] ->
-            Nothing
-
-        project :: _ ->
-            Just (div [ class "col-md-4" ]
-                [ table [ class "info-table" ]
-                    [ tr []
-                        [ th [] [ text "Name " ]
-                        , td [] [ text project.project_name ]
-                        ]
-                    , tr []
-                        [ th [] [ text "Code " ]
-                        , td [] [ text project.project_code ]
-                        ]
-                    , tr []
-                        [ th [] [ text "Type " ]
-                        , td [] [ text project.project_type ]
-                        ]
-                    , tr []
-                        [ th [] [ text "URL " ]
-                        , td [] [ text project.url ]
-                        ]
---                    , tr []
---                        [ th [] [ text "PI " ]
---                        , td [] [ text project.pi ]
---                        ]
-                    , tr []
-                        [ th [] [ text "Investigators " ]
-                        , td [] (List.map investigatorLink project.investigators |> List.intersperse (text ", "))
-                        ]
-                    , tr []
-                        [ th [] [ text "Type " ]
-                        , td [] [ text project.project_type ]
-                        ]
-                    ]
-                ])
-
-
-investigatorLink : Investigator -> Html Msg
-investigatorLink investigator =
-    a [ Route.href (Route.Investigator investigator.investigator_id) ] [ text investigator.investigator_name ]
