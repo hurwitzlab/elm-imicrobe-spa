@@ -245,7 +245,7 @@ viewContent model =
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser )
 
                 Activity ->
-                    ( "Activity", text "", 0 )
+                    ( "Activity", text "Coming soon ...", 0 )
 
         numShowing =
             let
@@ -412,6 +412,10 @@ viewFileInfo file =
 
         deleteMsg =
             FileBrowserMsg (FileBrowser.OpenConfirmationDialog deleteText (FileBrowser.DeletePath file.path))
+
+        deUrl =
+            "https://de.cyverse.org/de/?type=data&folder=/iplant/home" ++ file.path --TODO move base url to config file
+
     in
     div []
         [ table [ class "info-table" ]
@@ -432,18 +436,25 @@ viewFileInfo file =
                 , td [] [ text file.lastModified ]
                 ]
             , tr []
-                [ td [] [ button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-plus" ] [], text "Add to Sample" ] ]
-                ]
-            , tr []
-                [ td [] [ button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-share-alt" ] [], text "View in CyVerse DE" ] ]
-                ]
-            , tr []
-                [ td [] [ button [ class "btn btn-default btn-xs" ] [ span [ class "glyphicon glyphicon-cloud-download" ] [], text "Download" ] ]
+                [ td [] [ button [ class "btn btn-link btn-xs" ]
+                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
                 ]
             , tr []
                 [ td []
-                    [ button [ class "btn btn-default btn-xs", onClick deleteMsg ]
-                        [ span [ class "glyphicon glyphicon-trash" ] [], text "Delete"
+                    [ button [ class "btn btn-link btn-xs" ]
+                        [ a [ href deUrl, target "_blank" ]
+                            [ span [ class "glyphicon glyphicon-share-alt" ] [], text " View in CyVerse DE" ]
+                        ]
+                    ]
+                ]
+            , tr []
+                [ td [] [ button [ class "btn btn-link btn-xs" ]
+                    [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ] ]
+                ]
+            , tr []
+                [ td []
+                    [ button [ class "btn btn-link btn-xs", onClick deleteMsg ]
+                        [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
                         ]
                     ]
                 ]
