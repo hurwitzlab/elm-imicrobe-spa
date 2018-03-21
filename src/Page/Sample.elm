@@ -19,6 +19,7 @@ import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
 import List.Extra
+import Maybe.Extra
 import Util exposing ((=>))
 import View.Cart as Cart
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
@@ -98,9 +99,11 @@ init session id =
                 let
                     getAttrValue name =
                         case List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) sample.sample_attrs of
-                            Nothing -> 0
+                            Nothing ->
+                                0
 
-                            Just attr -> (Result.withDefault 0 (String.toFloat attr.attr_value))
+                            Just attr ->
+                                Result.withDefault 0 (String.toFloat attr.attr_value)
 
                     lat =
                         getAttrValue "latitude"
@@ -507,6 +510,13 @@ view model =
                     [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
             else
                 text ""
+
+        showMapButton =
+            let
+                attrExists name =
+                    List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) model.sample.sample_attrs |> Maybe.Extra.isJust
+            in
+            attrExists "latitude" && attrExists "longitude"
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -523,13 +533,22 @@ view model =
                     ]
                 ]
             , viewSample model.sample model.isEditable
-            , viewMap model.showMap
+            , if showMapButton then
+                viewMap model.showMap
+              else
+                text ""
             , viewFiles model.sample.sample_files model.isEditable
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
             , viewAttributes model model.isEditable
-            , viewProteins model
-            , viewCentrifugeResults model
+            , if not model.isEditable then
+                viewProteins model
+              else
+                text ""
+            , if not model.isEditable then
+                viewCentrifugeResults model
+              else
+                text ""
             ]
         , Dialog.view
             (if (model.dialogError /= Nothing) then
