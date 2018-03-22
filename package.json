@@ -5,6 +5,9 @@
   "main": "dist/bundle.js",
   "dependencies": {
     "agave-file-browser": "git+https://github.com/hurwitzlab/agave-file-browser.git",
+    "blueimp-canvas-to-blob": "^3.14.0",
+    "blueimp-file-upload": "^9.21.0",
+    "blueimp-load-image": "^2.18.0",
     "bootstrap": "^3.3.7",
     "bootstrap-loader": "^2.1.0",
     "bootstrap-sass": "^3.3.7",
@@ -17,6 +20,7 @@
     "google-maps": "^3.2.1",
     "imports-loader": "^0.7.1",
     "jquery": "^3.2.1",
+    "jquery-ui": "^1.12.1",
     "jstree": "^3.3.5",
     "less": "^2.7.2",
     "less-loader": "^4.0.5",

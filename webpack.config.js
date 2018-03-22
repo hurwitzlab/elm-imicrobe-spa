@@ -37,7 +37,7 @@ module.exports = {
         test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
         loader: 'file-loader',
       },
-        {
+      {
         test: /\.(jpe?g|png|gif|ico)$/,
         loader: 'file-loader?name=./img/[name].[ext]',
       },
@@ -52,9 +52,21 @@ module.exports = {
   plugins: [
     new webpack.ProvidePlugin({
       $: "jquery",
-      jQuery: "jquery"
+      jQuery: "jquery",
+      "window.jQuery":"jquery"
     })
   ],
+  resolve: {
+    // https://stackoverflow.com/questions/31849476/how-to-use-blueimp-file-upload-with-webpack
+    alias: {
+      'load-image': 'blueimp-load-image/js/load-image.js',
+      'load-image-meta': 'blueimp-load-image/js/load-image-meta.js',
+      'load-image-exif': 'blueimp-load-image/js/load-image-exif.js',
+      'load-image-scale': 'blueimp-load-image/js/load-image-scale.js',
+      'canvas-to-blob': 'blueimp-canvas-to-blob/js/canvas-to-blob.js',
+      'jquery-ui/widget': 'blueimp-file-upload/js/vendor/jquery.ui.widget.js'
+    }
+  },
   devServer: {
     inline: true,
     stats: { colors: true },

@@ -20,6 +20,7 @@ import View.Dialog exposing (confirmationDialogConfig)
 import Data.Agave exposing (FileResult)
 import Data.Session exposing (Session)
 import Request.Agave
+import Ports
 import Util exposing ((=>))
 
 
@@ -119,6 +120,7 @@ type Msg
     | DeletePathCompleted (Result Http.Error (Request.Agave.EmptyResponse))
     | OpenConfirmationDialog String Msg
     | CloseConfirmationDialog
+    | UploadFile
     | SetTableState Table.State
 
 
@@ -259,6 +261,9 @@ updateInternal session msg model =
         CloseConfirmationDialog ->
             { model | confirmationDialog = Nothing } => Cmd.none
 
+        UploadFile ->
+            model => Ports.fileUploadOpenBrowser (session.token, model.path)
+
         SetTableState newState ->
             { model | tableState = newState } => Cmd.none
 
@@ -317,7 +322,7 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
                             , span [ class "caret" ] []
                             ]
                         , ul [ class "dropdown-menu" ]
-                            [ li [] [ a [] [ text "From local" ] ]
+                            [ li [] [ a [ onClick UploadFile ] [ text "From local" ] ]
                             , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
                             , li [] [ a [] [ text "From NCBI" ] ]
                             , li [] [ a [] [ text "From EBI" ] ]
@@ -343,6 +348,7 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
              else
                 Nothing
             )
+        , input [ type_ "file", id "fileToUpload", name "fileToUpload", style [("display","none")] ] [] -- hidden input for file upload plugin, "fileToUpload" name is required by Agave
         ]
 
 
@@ -438,6 +444,9 @@ newFolderDialogConfig isBusy =
     , footer = Just footer
     }
 
+
+
+---- HELPER FUNCTIONS ----
 
 numItems : Model -> Int
 numItems (Model {contents}) =

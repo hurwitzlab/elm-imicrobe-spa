@@ -150,6 +150,12 @@ type alias FileResult =
     }
 
 
+type alias UploadResult =
+    { name : String
+    , path : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -282,6 +288,13 @@ decoderFileResult =
         |> required "mimeType" Decode.string
         |> required "lastModified" Decode.string
         |> required "length" Decode.int
+
+
+decoderUploadResult : Decoder UploadResult
+decoderUploadResult =
+    decode UploadResult
+        |> required "name" Decode.string
+        |> required "path" Decode.string
 
 
 encodeProfile : Profile -> Value

@@ -414,10 +414,6 @@ viewParameters params =
 
 viewParameter : (String, String) -> Html msg
 viewParameter (id, value) =
-    let
-        display =
-            "foo"
-    in
     tr []
         [ th [] [ text id ]
         , td [] [ text value ]
@@ -446,7 +442,7 @@ viewOutputs model =
                     [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
 
         de_url =
-            "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id
+            "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id --FIXME move base url to config
     in
     div []
         [ h2 [] [ text "Outputs" ]

@@ -201,6 +201,8 @@ type Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
+    | FileUploadFileSelected (Maybe Ports.FileToUpload)
+    | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
     | PollTimerTick Time
     | InputTimerTick Time
     | SearchBarInput String
@@ -1045,6 +1047,38 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        FileUploadFileSelected file ->
+            case page of
+                Dashboard subModel ->
+                    let
+                        (pageModel, cmd) =
+                            Dashboard.update session (Dashboard.UploadFileBegin file) subModel
+                    in
+                    { model | pageState = Loaded (Dashboard pageModel) } => Cmd.map DashboardMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
+        FileUploadDone result ->
+            case page of
+                Dashboard subModel ->
+                    let
+                        (pageModel, cmd) =
+                            let
+                                _ = Debug.log (toString result)
+                            in
+                            case result of
+                                Nothing ->
+                                    Dashboard.update session Dashboard.UploadFileError subModel
+
+                                _ ->
+                                    Dashboard.update session Dashboard.UploadFileEnd subModel
+                    in
+                    { model | pageState = Loaded (Dashboard pageModel) } => Cmd.map DashboardMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
         PollTimerTick time ->
             case page of
                 Job id subModel ->
@@ -1444,16 +1478,13 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [--pageSubscriptions (getPage model.pageState)
-          Sub.map SetSession sessionChange
+          Sub.map SetSession (Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe))
         , Ports.onFileSelect SelectFile
+        , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
+        , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) PollTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
         ]
-
-
-sessionChange : Sub (Maybe Session)
-sessionChange =
-    Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe)
 
 
 pageSubscriptions : Page -> Sub Msg

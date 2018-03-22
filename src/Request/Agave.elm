@@ -11,12 +11,14 @@ import Config exposing (agaveBaseUrl)
 
 
 
+-- TODO move to Data.Agave
 type alias Response a =
     { status : String
     , result : a
     }
 
 
+-- TODO move to Data.Agave
 type alias EmptyResponse =
     { status : String
     }

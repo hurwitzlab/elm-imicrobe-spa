@@ -22,6 +22,7 @@ import View.FileBrowser as FileBrowser
 import View.Spinner exposing (spinner)
 import View.Project
 import View.Sample
+import Ports
 
 
 
@@ -40,6 +41,8 @@ type alias Model =
     , selectedProjectRowId : Int
     , selectedSampleRowId : Int
     , fileBrowser : FileBrowser.Model
+    , showFileUploadDialog : Bool
+    , fileUploadError : Maybe String
     }
 
 
@@ -77,6 +80,8 @@ init session =
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
                     , fileBrowser = FileBrowser.init session Nothing
+                    , showFileUploadDialog = False
+                    , fileUploadError = Nothing
                     }
             )
             |> Task.mapError Error.handleLoadError
@@ -98,6 +103,10 @@ type Msg
     | SelectProjectRow Int
     | SelectSampleRow Int
     | FileBrowserMsg FileBrowser.Msg
+    | UploadFileBegin (Maybe Ports.FileToUpload)
+    | UploadFileEnd
+    | UploadFileError
+    | CloseFileUploadDialog
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -171,6 +180,22 @@ update session msg model =
             in
             { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd
 
+        UploadFileBegin file ->
+            { model | showFileUploadDialog = True, fileUploadError = Nothing } => Cmd.none
+
+        UploadFileEnd ->
+            let
+                (subModel, subCmd) =
+                    FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+            in
+            { model | showFileUploadDialog = False, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
+
+        UploadFileError ->
+            { model | fileUploadError = Just "An error occurred.  Please ensure that the file doesn't already exist and you have permission to write to the destination path." } => Cmd.none
+
+        CloseFileUploadDialog ->
+            { model | showFileUploadDialog = False } => Cmd.none
+
 
 
 -- VIEW --
@@ -185,6 +210,8 @@ view model =
         , Dialog.view
             (if model.showNewProjectDialog then
                 Just (newProjectDialogConfig model)
+             else if model.showFileUploadDialog then
+                Just (fileUploadDialogConfig model)
              else
                 Nothing
             )
@@ -486,6 +513,28 @@ newProjectDialogConfig model =
     { closeMessage = Just CloseNewProjectDialog
     , containerClass = Nothing
     , header = Just (h3 [] [ text "New Project" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+fileUploadDialogConfig : Model -> Dialog.Config Msg
+fileUploadDialogConfig model =
+    let
+        content =
+            case model.fileUploadError of
+                Nothing ->
+                    spinner
+
+                Just error ->
+                    text error
+
+        footer =
+            button [ class "btn btn-default", onClick CloseFileUploadDialog ] [ text "Cancel" ]
+    in
+    { closeMessage = Just CloseFileUploadDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Uploading File" ])
     , body = Just content
     , footer = Just footer
     }
