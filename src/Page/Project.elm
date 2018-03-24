@@ -2,6 +2,7 @@ module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, vie
 
 import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup)
 import Data.Sample
+import Data.Investigator
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
@@ -14,6 +15,7 @@ import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Request.Sample
+import Request.Investigator
 import Request.Publication
 import Route
 import Task exposing (Task)
@@ -21,6 +23,7 @@ import Table exposing (defaultCustomizations)
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
+import Dict
 import Util exposing ((=>))
 
 
@@ -56,7 +59,9 @@ type alias Model =
     , newSampleName : String
     , showAddInvestigatorDialog : Bool
     , showAddInvestigatorBusy : Bool
+    , newInvestigatorId : Maybe Int
     , newInvestigatorName : String
+    , investigatorSearchResults : List (Int, String)
     , showAddOrEditPublicationDialog : Bool
     , showAddOrEditPublicationBusy : Bool
     , publicationIdToEdit : Maybe Int
@@ -113,7 +118,9 @@ init session id =
                     , newSampleName = ""
                     , showAddInvestigatorDialog = False
                     , showAddInvestigatorBusy = False
+                    , newInvestigatorId = Nothing
                     , newInvestigatorName = ""
+                    , investigatorSearchResults = []
                     , showAddOrEditPublicationDialog = False
                     , showAddOrEditPublicationBusy = False
                     , publicationIdToEdit = Nothing
@@ -163,8 +170,12 @@ type Msg
     | OpenAddInvestigatorDialog
     | CloseAddInvestigatorDialog
     | SetInvestigatorName String
+    | SearchInvestigatorCompleted (Result Http.Error (List Data.Investigator.Investigator))
+    | SelectInvestigatorToAdd Int String
     | AddInvestigator
     | AddInvestigatorCompleted (Result Http.Error Project)
+    | RemoveInvestigator Int
+    | RemoveInvestigatorCompleted (Result Http.Error Project)
     | OpenAddOrEditPublicationDialog (Maybe Publication)
     | CloseAddOrEditPublicationDialog
     | SetPublicationTitle String
@@ -360,26 +371,79 @@ update session msg model =
             model => Cmd.none => NoOp
 
         OpenAddInvestigatorDialog ->
-            { model | showAddInvestigatorDialog = True } => Cmd.none => NoOp
+            { model | showAddInvestigatorDialog = True, showAddInvestigatorBusy = False, newInvestigatorId = Nothing, newInvestigatorName = "" } => Cmd.none => NoOp
 
         CloseAddInvestigatorDialog ->
             { model | showAddInvestigatorDialog = False } => Cmd.none => NoOp
 
         SetInvestigatorName name ->
-            { model | newInvestigatorName = name } => Cmd.none => NoOp
+            let
+                searchByName =
+                    Request.Investigator.searchByName name |> Http.toTask
+                        |> Task.attempt SearchInvestigatorCompleted
+
+                cmd =
+                    if String.length name > 2 then
+                        searchByName
+                    else
+                        Cmd.none
+            in
+            { model | newInvestigatorName = name } => cmd => NoOp
+
+        SearchInvestigatorCompleted (Ok investigators) ->
+            let
+                results = List.map (\i -> (i.investigator_id, i.investigator_name)) investigators
+            in
+            { model | investigatorSearchResults = results } => Cmd.none => NoOp
+
+        SearchInvestigatorCompleted (Err error) -> -- TODO finish this
+            model => Cmd.none => NoOp
+
+        SelectInvestigatorToAdd id name ->
+            { model | newInvestigatorId = Just id, newInvestigatorName = name, investigatorSearchResults = [] } => Cmd.none => NoOp
 
         AddInvestigator ->
---            let
---                addInvestigator =
---                    Request.Project.addInvestigator session.token model.project_id model.newInvestigatorName |> Http.toTask
---            in
---            { model | showAddInvestigatorBusy = True } => Task.attempt AddInvestigatorCompleted addInvestigator => NoOp
-            model => Cmd.none => NoOp
+            case model.newInvestigatorId of
+                Nothing ->
+                    model => Cmd.none => NoOp
+
+                Just id ->
+                    let
+                        addInvestigator =
+                            Request.Project.addInvestigatorToProject session.token model.project_id id |> Http.toTask
+                    in
+                    { model | showAddInvestigatorBusy = True } => Task.attempt AddInvestigatorCompleted addInvestigator => NoOp
 
         AddInvestigatorCompleted (Ok project) ->
-            model => Cmd.none => NoOp
+            let
+                newProject =
+                    model.project
+            in
+            { model | showAddInvestigatorDialog = False, project = { newProject | investigators = project.investigators } } => Cmd.none => NoOp
 
         AddInvestigatorCompleted (Err error) -> -- TODO finish this
+            model => Cmd.none => NoOp
+
+        RemoveInvestigator id ->
+            let
+                removeInvestigator =
+                    Request.Project.removeInvestigatorFromProject session.token model.project_id id |> Http.toTask
+                        |> Task.andThen
+                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveInvestigatorCompleted removeInvestigator => NoOp
+
+        RemoveInvestigatorCompleted (Ok project) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | project = { newProject | investigators = project.investigators } } => Cmd.none => NoOp
+
+        RemoveInvestigatorCompleted (Err error) ->
+            let
+                _ = Debug.log "error" (toString error) -- TODO show to user
+            in
             model => Cmd.none => NoOp
 
         OpenAddOrEditPublicationDialog publication ->
@@ -621,7 +685,7 @@ viewInvestigators investigators isEditable =
 
                 _ ->
                     table [ class "table table-condensed" ]
-                        [ tbody [] (List.map viewInvestigator investigators) ]
+                        [ tbody [] (List.map (viewInvestigator isEditable) investigators) ]
 
         addButton =
             case isEditable of
@@ -641,13 +705,23 @@ viewInvestigators investigators isEditable =
         ]
 
 
-viewInvestigator : Investigator -> Html msg
-viewInvestigator investigator =
+viewInvestigator : Bool -> Investigator -> Html Msg
+viewInvestigator isEditable investigator =
+    let
+        removeButton =
+            if isEditable then
+                [ button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this investigator?" (RemoveInvestigator investigator.investigator_id)) ] [ text "Remove" ]
+                ]
+            else
+                [ text "" ]
+    in
     tr []
         [ td []
             [ a [ Route.href (Route.Investigator investigator.investigator_id) ]
                 [ text investigator.investigator_name ]
             ]
+        , td []
+            removeButton
         ]
 
 
@@ -1129,17 +1203,29 @@ addInvestigatorDialogConfig model =
             if model.showAddInvestigatorBusy then
                 spinner
             else
-                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the investigator to add", onInput SetInvestigatorName ] []
+                let
+                    invOption (id, name) =
+                        tr [ onClick (SelectInvestigatorToAdd id name) ] [ td [] [ text name ] ]
+
+                    resultTable =
+                        div [ style [("overflow-y","auto"),("max-height","10em")] ]
+                            [ table [ class "table-condensed table-hover", style [("width","100%")] ]
+                                [ tbody [] (List.map invOption model.investigatorSearchResults) ]
+                            ]
+                in
+                div []
+                    [ input [ class "form-control", type_ "text", size 20, value model.newInvestigatorName, placeholder "Enter the name of the investigator to add", onInput SetInvestigatorName ] []
+                    , if model.investigatorSearchResults /= [] then
+                        resultTable
+                      else
+                        text ""
+                    ]
 
         footer =
-            let
-                disable =
-                    disabled model.showAddInvestigatorBusy
-            in
-                div []
-                    [ button [ class "btn btn-default pull-left", onClick CloseAddInvestigatorDialog, disable ] [ text "Cancel" ]
-                    , button [ class "btn btn-primary", onClick AddInvestigator, disable ] [ text "Add" ]
-                    ]
+            div [ disabled model.showAddInvestigatorBusy ]
+                [ button [ class "btn btn-default pull-left", onClick CloseAddInvestigatorDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick AddInvestigator ] [ text "Add" ]
+                ]
     in
     { closeMessage = Just CloseAddInvestigatorDialog
     , containerClass = Nothing

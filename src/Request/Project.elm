@@ -104,18 +104,27 @@ addInvestigatorToProject : String -> Int -> Int -> Http.Request Project
 addInvestigatorToProject token project_id investigator_id =
     let
         url =
-            apiBaseUrl ++ "/investigators/"
+            apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/investigators/" ++ (toString investigator_id)
 
         headers =
             [( "Authorization", token)]
-
-        body =
-            Encode.object
-                [ "investigator_id" => Encode.int investigator_id
-                ]
     in
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+removeInvestigatorFromProject : String -> Int -> Int -> Http.Request String
+removeInvestigatorFromProject token project_id investigator_id =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/investigators/" ++ (toString investigator_id)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
