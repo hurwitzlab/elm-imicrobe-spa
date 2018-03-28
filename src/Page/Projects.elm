@@ -25,7 +25,7 @@ import Util exposing ((=>))
 
 type alias Model =
     { pageTitle : String
-    , user_id : Int
+    , user_id : Maybe Int
     , projects : List Project
     , tableState : Table.State
     , query : String
@@ -41,12 +41,7 @@ init session =
             Request.Project.list |> Http.toTask
 
         user_id =
-            case session.user of
-                Nothing ->
-                    0
-
-                Just user ->
-                    user.user_id
+            Maybe.map .user_id session.user
     in
     loadProjects
         |> Task.andThen
@@ -95,7 +90,7 @@ update msg model =
             { model | selectedRowId = selectedRowId } => Cmd.none
 
         FilterPermType filterType ->
-            { model | permFilterType = filterType } => Cmd.none
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none
 
 
 tableConfig : Int -> Table.Config Project Msg
@@ -179,7 +174,12 @@ view model =
                     True
 
                 _ ->
-                    List.map .user_id project.users |> List.member model.user_id
+                    case model.user_id of
+                        Nothing ->
+                            False
+
+                        Just id ->
+                            List.map .user_id project.users |> List.member id
 
         filter project =
             ((String.contains lowerQuery (String.toLower project.project_name))
@@ -226,6 +226,25 @@ view model =
 
                 project :: _ ->
                     (View.Project.viewInfo project, "col-md-8")
+
+        noProjects =
+            if model.user_id /= Nothing then
+                div [ class "well" ]
+                    [ p [] [ text "You don't have any projects yet." ]
+                    , p []
+                        [ text "To create a project, go to the "
+                        , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                        , text " and click 'New'."
+                        ]
+                    ]
+            else
+                div [ class "well" ]
+                    [ p []
+                        [ text "Please "
+                        , a [ Route.href Route.Login ] [ text "login" ]
+                        , text " to see projects you own."
+                        ]
+                    ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -245,7 +264,10 @@ view model =
                 , div [ class "container" ]
                     [ div [ class "row" ]
                         [ div [ class sizeClass ]
-                            [ Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects
+                            [ if acceptableProjects == [] then
+                                noProjects
+                              else
+                                Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects
                             ]
                         , infoPanel
                         ]
