@@ -14,6 +14,7 @@ import Table exposing (defaultCustomizations)
 import Http
 import Route
 import Request.Project
+import Request.Sample
 import Request.User
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
@@ -22,6 +23,7 @@ import View.FileBrowser as FileBrowser
 import View.Spinner exposing (spinner)
 import View.Project
 import View.Sample
+import View.Dialog exposing (confirmationDialogConfig)
 import Ports
 
 
@@ -43,6 +45,7 @@ type alias Model =
     , fileBrowser : FileBrowser.Model
     , showFileUploadDialog : Bool
     , fileUploadError : Maybe String
+    , confirmationDialog : Maybe (Dialog.Config Msg)
     }
 
 
@@ -61,9 +64,6 @@ init session =
                 Nothing -> 0
 
                 Just user -> user.user_id
-
-        loadUser id =
-            Request.User.get id |> Http.toTask
     in
     loadUser user_id
         |> Task.andThen
@@ -82,9 +82,15 @@ init session =
                     , fileBrowser = FileBrowser.init session Nothing
                     , showFileUploadDialog = False
                     , fileUploadError = Nothing
+                    , confirmationDialog = Nothing
                     }
             )
             |> Task.mapError Error.handleLoadError
+
+
+loadUser : Int -> Task Http.Error User
+loadUser id =
+    Request.User.get id |> Http.toTask
 
 
 
@@ -100,8 +106,16 @@ type Msg
     | SetProjectTableState Table.State
     | SetSampleTableState Table.State
     | SelectContent ContentType
+    | RefreshContent
+    | RefreshContentCompleted (Result Http.Error User)
     | SelectProjectRow Int
     | SelectSampleRow Int
+    | RemoveProject Int
+    | RemoveProjectCompleted (Result Http.Error String)
+    | RemoveSample Int
+    | RemoveSampleCompleted (Result Http.Error String)
+    | OpenConfirmationDialog String Msg
+    | CloseConfirmationDialog
     | FileBrowserMsg FileBrowser.Msg
     | UploadFileBegin (Maybe Ports.FileToUpload)
     | UploadFileEnd
@@ -146,6 +160,23 @@ update session msg model =
                 _ ->
                     { model | selectedContentType = contentType } => Cmd.none
 
+        RefreshContent ->
+            case model.selectedContentType of
+                Storage ->
+                    let
+                        (subModel, subCmd) =
+                            FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+                    in
+                    { model | fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
+
+                _ ->
+                    model => Task.attempt RefreshContentCompleted (loadUser model.user.user_id)
+
+        RefreshContentCompleted (Ok user) ->
+            { model | user = user } => Cmd.none
+
+        RefreshContentCompleted (Err error) -> -- TODO finish me
+            model => Cmd.none
 
         SetProjectTableState newState ->
             { model | projectTableState = newState } => Cmd.none
@@ -172,6 +203,42 @@ update session msg model =
                         id
             in
             { model | selectedSampleRowId = selectedRowId } => Cmd.none
+
+        RemoveProject id ->
+            let
+                removeProject =
+                    Request.Project.remove session.token id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveProjectCompleted removeProject
+
+        RemoveProjectCompleted (Ok _) ->
+            update session RefreshContent model
+
+        RemoveProjectCompleted (Err error) -> -- TODO finish me
+            model => Cmd.none
+
+        RemoveSample id ->
+            let
+                removeSample =
+                    Request.Sample.remove session.token id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveSampleCompleted removeSample
+
+        RemoveSampleCompleted (Ok _) ->
+            update session RefreshContent model
+
+        RemoveSampleCompleted (Err error) -> -- TODO finish me
+            model => Cmd.none
+
+        OpenConfirmationDialog confirmationText yesMsg ->
+            let
+                dialog =
+                    confirmationDialogConfig confirmationText CloseConfirmationDialog yesMsg
+            in
+            { model | confirmationDialog = Just dialog } => Cmd.none
+
+        CloseConfirmationDialog ->
+            { model | confirmationDialog = Nothing } => Cmd.none
 
         FileBrowserMsg subMsg ->
             let
@@ -212,6 +279,8 @@ view model =
                 Just (newProjectDialogConfig model)
              else if model.showFileUploadDialog then
                 Just (fileUploadDialogConfig model)
+             else if model.confirmationDialog /= Nothing then
+                model.confirmationDialog
              else
                 Nothing
             )
@@ -249,10 +318,10 @@ viewNewButton =
                 [ a [ onClick OpenNewProjectDialog ]
                     [ text "Project" ]
                 ]
-            , li []
-                [ a [ href "#" ]
-                    [ text "Sample" ]
-                ]
+--            , li []
+--                [ a [ href "#" ]
+--                    [ text "Sample" ]
+--                ]
             ]
         ]
 
@@ -263,10 +332,41 @@ viewContent model =
         (title, viewTable, count) =
             case model.selectedContentType of
                 Project ->
-                    ( "Projects", Table.view (projectTableConfig model.selectedProjectRowId) model.projectTableState model.user.projects, List.length model.user.projects )
+                    let
+                        view =
+                            if model.user.projects == [] then
+                                div [ class "well" ]
+                                    [ p [] [ text "You don't have any projects yet." ]
+                                    , p []
+                                        [ text "Click 'New' then 'Project' to create a new project or just click "
+                                        , a [ onClick OpenNewProjectDialog ] [ text "here" ]
+                                        , text "."
+                                        ]
+                                    ]
+                            else
+                                Table.view (projectTableConfig model.selectedProjectRowId) model.projectTableState model.user.projects
+                    in
+                    ( "Projects", view, List.length model.user.projects )
 
                 Sample ->
-                    ( "Samples", Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples, List.length model.user.samples )
+                    let
+                        view =
+                            if model.user.samples == [] then
+                                div [ class "well" ]
+                                    [ p [] [ text "You don't have any samples yet." ]
+                                    , p []
+                                        [ text "First you need a project: click 'New' then 'Project' to create a new project or just click "
+                                        , a [ onClick OpenNewProjectDialog ] [ text "here" ]
+                                        , text "."
+                                        ]
+                                    , p []
+                                        [ text "To add samples to an existing project, open it and click 'Add Sample'."
+                                        ]
+                                    ]
+                            else
+                                Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples
+                    in
+                    ( "Samples", view, List.length model.user.samples )
 
                 Storage ->
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser )
@@ -395,18 +495,38 @@ viewInfo model =
                 Project ->
                     case List.filter (\p -> p.project_id == model.selectedProjectRowId) model.user.projects of
                         [] ->
-                            p [] [ text "Here are projects you've created.", br [] [], text "To create a new project click the 'New' button." ]
+                            if (model.user.projects == []) then
+                                text ""
+                            else
+                                div []
+                                    [ p [] [ text "Here are projects you've created." ]
+                                    , p [] [ text "Click on a project row to see detailed info." ]
+                                    , p [] [ text "To create a new project click the 'New' button." ]
+                                    ]
 
                         project :: _ ->
-                            View.Project.viewInfo project
+                            div []
+                                [ View.Project.viewInfo project
+                                , View.Project.viewActions (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
+                                ]
 
                 Sample ->
                     case List.filter (\s -> s.sample_id == model.selectedSampleRowId) model.user.samples of
                         [] ->
-                            p [] [ text "Here are samples you've created.", br [] [], text "To create a new sample click the 'New' button." ]
+                            if (model.user.samples == []) then
+                                text ""
+                            else
+                                div []
+                                    [ p [] [ text "Here are samples you've created." ]
+                                    , p [] [ text "Click on a sample row to see detailed info." ]
+                                    , p [] [ text "To create a new sample, create/open a project and click 'Add Sample'." ]
+                                    ]
 
                         sample :: _ ->
-                            View.Sample.viewInfo sample
+                            div []
+                                [ View.Sample.viewInfo sample
+--                                , View.Sample.viewActions (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
+                                ]
 
                 Storage ->
                     case FileBrowser.getSelected model.fileBrowser of
@@ -419,7 +539,8 @@ viewInfo model =
                 Activity ->
                     text ""
     in
-    div [ class "col-sm-3" ] [ info ]
+    div [ class "col-sm-3", style [("margin-top", "5.15em"), ("padding", "1em"), ("border-top","1px solid lightgray"), ("color", "gray")] ]
+        [ info ]
 
 
 viewFileInfo : FileResult -> Html Msg
@@ -462,10 +583,10 @@ viewFileInfo file =
                 [ th [] [ text "Last modified " ]
                 , td [] [ text file.lastModified ]
                 ]
-            , tr []
-                [ td [] [ button [ class "btn btn-link btn-xs" ]
-                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
-                ]
+--            , tr []
+--                [ td [] [ button [ class "btn btn-link btn-xs" ]
+--                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
+--                ]
             , tr []
                 [ td []
                     [ button [ class "btn btn-link btn-xs" ]
@@ -474,10 +595,10 @@ viewFileInfo file =
                         ]
                     ]
                 ]
-            , tr []
-                [ td [] [ button [ class "btn btn-link btn-xs" ]
-                    [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ] ]
-                ]
+--            , tr []
+--                [ td [] [ button [ class "btn btn-link btn-xs" ]
+--                    [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ] ]
+--                ]
             , tr []
                 [ td []
                     [ button [ class "btn btn-link btn-xs", onClick deleteMsg ]

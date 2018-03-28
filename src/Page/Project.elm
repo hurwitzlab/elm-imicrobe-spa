@@ -23,7 +23,8 @@ import Table exposing (defaultCustomizations)
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
-import Dict
+import View.SearchableDropdown
+import View.TagsDropdown
 import Util exposing ((=>))
 
 
@@ -54,14 +55,14 @@ type alias Model =
     , newProjectCode : String
     , newProjectType : String
     , newProjectURL : String
+    , domainDropdownState : View.TagsDropdown.State
+    , groupDropdownState : View.TagsDropdown.State
     , showNewSampleDialog : Bool
     , showNewSampleBusy : Bool
     , newSampleName : String
     , showAddInvestigatorDialog : Bool
     , showAddInvestigatorBusy : Bool
-    , newInvestigatorId : Maybe Int
-    , newInvestigatorName : String
-    , investigatorSearchResults : List (Int, String)
+    , searchInvestigatorDropdownState : View.SearchableDropdown.State
     , showAddOrEditPublicationDialog : Bool
     , showAddOrEditPublicationBusy : Bool
     , publicationIdToEdit : Maybe Int
@@ -113,14 +114,14 @@ init session id =
                     , newProjectCode = ""
                     , newProjectType = ""
                     , newProjectURL = ""
+                    , domainDropdownState = View.TagsDropdown.init (List.map (\d -> (d.domain_id, d.domain_name)) project.domains)
+                    , groupDropdownState = View.TagsDropdown.init (List.map (\g -> (g.project_group_id, g.group_name)) project.project_groups)
                     , showNewSampleDialog = False
                     , showNewSampleBusy = False
                     , newSampleName = ""
                     , showAddInvestigatorDialog = False
                     , showAddInvestigatorBusy = False
-                    , newInvestigatorId = Nothing
-                    , newInvestigatorName = ""
-                    , investigatorSearchResults = []
+                    , searchInvestigatorDropdownState = View.SearchableDropdown.init
                     , showAddOrEditPublicationDialog = False
                     , showAddOrEditPublicationBusy = False
                     , publicationIdToEdit = Nothing
@@ -158,6 +159,10 @@ type Msg
     | SetNewProjectCode String
     | SetNewProjectType String
     | SetNewProjectURL String
+    | AddNewProjectDomain Int String
+    | RemoveNewProjectDomain Int
+    | AddNewProjectGroup Int String
+    | RemoveNewProjectGroup Int
     | UpdateProjectInfo
     | UpdateProjectInfoCompleted (Result Http.Error Project)
     | OpenNewSampleDialog
@@ -306,10 +311,44 @@ update session msg model =
         SetNewProjectURL url ->
             { model | newProjectURL = url } => Cmd.none => NoOp
 
+        AddNewProjectDomain id name ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.add id name model.domainDropdownState
+            in
+            { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
+
+        RemoveNewProjectDomain id ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.remove id model.domainDropdownState
+            in
+            { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
+
+        AddNewProjectGroup id name ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.add id name model.groupDropdownState
+            in
+            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
+
+        RemoveNewProjectGroup id ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.remove id model.groupDropdownState
+            in
+            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
+
         UpdateProjectInfo ->
             let
+                domains =
+                    View.TagsDropdown.selected model.domainDropdownState |> List.map (\t -> Domain (Tuple.first t) (Tuple.second t))
+
+                groups =
+                    View.TagsDropdown.selected model.groupDropdownState |> List.map (\t -> ProjectGroup (Tuple.first t) (Tuple.second t))
+
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL |> Http.toTask
+                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains groups |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
 
@@ -318,7 +357,17 @@ update session msg model =
                 newProject =
                     model.project
             in
-            { model | project = { newProject | project_name = project.project_name, project_code = project.project_code, project_type = project.project_type, url = project.url } } => Cmd.none => NoOp
+            { model
+                | project =
+                    { newProject
+                        | project_name = project.project_name
+                        , project_code = project.project_code
+                        , project_type = project.project_type
+                        , url = project.url
+                        , domains = project.domains
+                        , project_groups = project.project_groups
+                    }
+            } => Cmd.none => NoOp
 
         UpdateProjectInfoCompleted (Err error) ->
             let
@@ -371,7 +420,11 @@ update session msg model =
             model => Cmd.none => NoOp
 
         OpenAddInvestigatorDialog ->
-            { model | showAddInvestigatorDialog = True, showAddInvestigatorBusy = False, newInvestigatorId = Nothing, newInvestigatorName = "" } => Cmd.none => NoOp
+            let
+                dropdownState =
+                    model.searchInvestigatorDropdownState
+            in
+            { model | showAddInvestigatorDialog = True, showAddInvestigatorBusy = False, searchInvestigatorDropdownState = View.SearchableDropdown.init } => Cmd.none => NoOp
 
         CloseAddInvestigatorDialog ->
             { model | showAddInvestigatorDialog = False } => Cmd.none => NoOp
@@ -387,23 +440,34 @@ update session msg model =
                         searchByName
                     else
                         Cmd.none
+
+                dropdownState =
+                    model.searchInvestigatorDropdownState
             in
-            { model | newInvestigatorName = name } => cmd => NoOp
+            { model | searchInvestigatorDropdownState = { dropdownState | value = name } } => cmd => NoOp
 
         SearchInvestigatorCompleted (Ok investigators) ->
             let
-                results = List.map (\i -> (i.investigator_id, i.investigator_name)) investigators
+                results =
+                    List.map (\i -> (i.investigator_id, i.investigator_name)) investigators
+
+                dropdownState =
+                    model.searchInvestigatorDropdownState
             in
-            { model | investigatorSearchResults = results } => Cmd.none => NoOp
+            { model | searchInvestigatorDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
 
         SearchInvestigatorCompleted (Err error) -> -- TODO finish this
             model => Cmd.none => NoOp
 
         SelectInvestigatorToAdd id name ->
-            { model | newInvestigatorId = Just id, newInvestigatorName = name, investigatorSearchResults = [] } => Cmd.none => NoOp
+            let
+                dropdownState =
+                    model.searchInvestigatorDropdownState
+            in
+            { model | searchInvestigatorDropdownState = { dropdownState | value = name, results = [], selectedId = Just id } } => Cmd.none => NoOp
 
         AddInvestigator ->
-            case model.newInvestigatorId of
+            case model.searchInvestigatorDropdownState.selectedId of
                 Nothing ->
                     model => Cmd.none => NoOp
 
@@ -581,8 +645,14 @@ view model =
             , viewInvestigators model.project.investigators model.isEditable
             , viewPublications model.project.publications model.isEditable
             , viewSamples model.cart model.project.samples model.isEditable
-            , viewAssemblies model
-            , viewCombinedAssemblies model
+            , if not model.isEditable then
+                viewAssemblies model
+              else
+                text ""
+            , if not model.isEditable then
+                viewCombinedAssemblies model
+              else
+                text ""
             ]
         , Dialog.view
             (if model.showNewSampleDialog then
@@ -737,7 +807,7 @@ viewDomains domains =
             [ text "None" ]
 
         _ ->
-            List.intersperse (text ", ") (List.map viewDomain domains)
+            List.intersperse (text ", ") (List.map viewDomain (List.sortBy .domain_name domains))
 
 
 viewProjectGroup : ProjectGroup -> Html msg
@@ -753,7 +823,7 @@ viewProjectGroups groups =
             [ text "None" ]
 
         _ ->
-            List.intersperse (text ", ") (List.map viewProjectGroup groups)
+            List.intersperse (text ", ") (List.map viewProjectGroup (List.sortBy .group_name groups))
 
 
 viewPublications : List Publication -> Bool -> Html Msg
@@ -1131,27 +1201,36 @@ editInfoDialogConfig model =
             Html.form []
                 [ div [ class "form-group" ]
                     [ label [] [ text "Name" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the name (required)", value model.newProjectName, onInput SetNewProjectName ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.newProjectName, onInput SetNewProjectName ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Accession" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the accession (required)", value model.newProjectCode, onInput SetNewProjectCode ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the accession (required)", value model.newProjectCode, onInput SetNewProjectCode ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Type" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", value model.newProjectType, onInput SetNewProjectType ] []
+                    , div [ class "input-group" ]
+                        [ input [ class "form-control", type_ "text", value model.newProjectType ] []
+                        , div [ class "input-group-btn" ]
+                            [ div [ class "dropdown" ]
+                                [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
+                                , ul [ class "dropdown-menu dropdown-menu-right" ]
+                                    (List.map (\s -> li [ onClick (SetNewProjectType s) ] [ a [] [ text s ]]) model.project.available_types)
+                                ]
+                            ]
+                        ]
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Domains" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the domains (optional)" ] []
+                    , View.TagsDropdown.view (domainDropdownConfig (List.map (\d -> (d.domain_id, d.domain_name)) model.project.available_domains)) model.domainDropdownState
                     ]
-                , div [ class "form-group" ]
-                    [ label [] [ text "Groups" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the groups (optional)" ] []
-                    ]
+--                , div [ class "form-group" ]
+--                    [ label [] [ text "Groups" ]
+--                    , View.TagsDropdown.view (groupDropdownConfig (List.map (\g -> (g.project_group_id, g.group_name)) model.project.available_groups)) model.groupDropdownState
+--                    ]
                 , div [ class "form-group" ]
                     [ label [] [ text "URL" ]
-                    , input [ class "form-control", type_ "text", size 20, placeholder "Enter the URL (optional)", value model.newProjectURL, onInput SetNewProjectURL ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.newProjectURL, onInput SetNewProjectURL ] []
                     ]
                 ]
 
@@ -1166,6 +1245,22 @@ editInfoDialogConfig model =
     , header = Just (h3 [] [ text "Modify Project Info" ])
     , body = Just content
     , footer = Just footer
+    }
+
+
+domainDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
+domainDropdownConfig domains =
+    { options = domains
+    , addMsg = AddNewProjectDomain
+    , removeMsg = RemoveNewProjectDomain
+    }
+
+
+groupDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
+groupDropdownConfig groups =
+    { options = groups
+    , addMsg = AddNewProjectGroup
+    , removeMsg = RemoveNewProjectGroup
     }
 
 
@@ -1203,23 +1298,7 @@ addInvestigatorDialogConfig model =
             if model.showAddInvestigatorBusy then
                 spinner
             else
-                let
-                    invOption (id, name) =
-                        tr [ onClick (SelectInvestigatorToAdd id name) ] [ td [] [ text name ] ]
-
-                    resultTable =
-                        div [ style [("overflow-y","auto"),("max-height","10em")] ]
-                            [ table [ class "table-condensed table-hover", style [("width","100%")] ]
-                                [ tbody [] (List.map invOption model.investigatorSearchResults) ]
-                            ]
-                in
-                div []
-                    [ input [ class "form-control", type_ "text", size 20, value model.newInvestigatorName, placeholder "Enter the name of the investigator to add", onInput SetInvestigatorName ] []
-                    , if model.investigatorSearchResults /= [] then
-                        resultTable
-                      else
-                        text ""
-                    ]
+                View.SearchableDropdown.view investigatorDropdownConfig model.searchInvestigatorDropdownState
 
         footer =
             div [ disabled model.showAddInvestigatorBusy ]
@@ -1232,6 +1311,14 @@ addInvestigatorDialogConfig model =
     , header = Just (h3 [] [ text "Add Investigator" ])
     , body = Just content
     , footer = Just footer
+    }
+
+
+investigatorDropdownConfig : View.SearchableDropdown.Config Msg Msg
+investigatorDropdownConfig =
+    { placeholder = "Enter the name of the investigator to add "
+    , inputMsg = SetInvestigatorName
+    , selectMsg = SelectInvestigatorToAdd
     }
 
 

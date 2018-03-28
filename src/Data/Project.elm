@@ -35,7 +35,11 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
+    , sample_count : Int
     , project_groups : List ProjectGroup
+    , available_types : List String
+    , available_domains : List Domain
+    , available_groups : List ProjectGroup
     , assembly_count : Int
     , combined_assembly_count : Int
     , users : List User
@@ -115,7 +119,11 @@ decoder =
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
+        |> optional "sample_count" Decode.int 0
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
+        |> optional "available_types" (Decode.list Decode.string) []
+        |> optional "available_domains" (Decode.list decoderDomain) []
+        |> optional "available_groups" (Decode.list decoderProjectGroup) []
         |> optional "assembly_count" Decode.int 0
         |> optional "combined_assembly_count" Decode.int 0
         |> optional "users" (Decode.list decoderUser) []
@@ -198,4 +206,20 @@ encode inv =
     Encode.object
         [ "project_id" => Encode.int inv.project_id
         , "project_name" => Encode.string inv.project_name
+        ]
+
+
+encodeDomain : Domain -> Value
+encodeDomain domain =
+    Encode.object
+        [ "domain_id" => Encode.int domain.domain_id
+        , "domain_name" => Encode.string domain.domain_name
+        ]
+
+
+encodeProjectGroup : ProjectGroup -> Value
+encodeProjectGroup group =
+    Encode.object
+        [ "project_group_id" => Encode.int group.project_group_id
+        , "group_name" => Encode.string group.group_name
         ]

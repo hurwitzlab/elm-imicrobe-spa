@@ -25,6 +25,7 @@ type alias Project =
     , url : String
     , investigators : List Investigator
     , publications : List Publication
+    , sample_count : Int
     }
 
 
@@ -87,6 +88,7 @@ decoderProject =
         |> optional "url" Decode.string ""
         |> optional "investigators" (Decode.list decoderInvestigator) []
         |> optional "publications" (Decode.list decoderPublication) []
+        |> optional "sample_count" Decode.int 0
 
 
 decoderInvestigator : Decoder Investigator
