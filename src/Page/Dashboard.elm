@@ -270,10 +270,9 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ viewMenu model
-        , viewContent model
-        , viewInfo model
+    div [ class "row" ]
+        [ div [ class "col-sm-2" ] [ viewMenu model ]
+        , div [ class "col-sm-10" ] (viewContent model)
         , Dialog.view
             (if model.showNewProjectDialog then
                 Just (newProjectDialogConfig model)
@@ -289,44 +288,42 @@ view model =
 
 viewMenu : Model -> Html Msg
 viewMenu model =
-    div [ class "col-sm-2" ]
-        [ viewNewButton
-        , div []
-            [ button [ class "menu-button", onClick (SelectContent Project) ] [ text "Projects" ]
-            ]
-        , div []
-            [ button [ class "menu-button", onClick (SelectContent Sample) ] [ text "Samples" ]
-            ]
-        , div []
-            [ button [ class "menu-button", onClick (SelectContent Storage) ] [ text "Data Store" ]
-            ]
-        , div []
-            [ button [ class "menu-button", onClick (SelectContent Activity) ] [ text "Activity" ] ]
+    let
+        mkButton title type_ =
+            button [ class "menu-button", classList [("active", model.selectedContentType == type_)], onClick (SelectContent type_) ] [ text title ]
+    in
+    div [ class "menu-panel" ]
+        [ div [] [ mkButton "Projects" Project ]
+        , div [] [ mkButton "Samples" Sample ]
+        , div [] [ mkButton "Data Store" Storage ]
+        , div [] [ mkButton "Activity" Activity ]
         ]
 
 
-viewNewButton : Html Msg
-viewNewButton =
-    div [ class "btn-group" ]
-        [ button [ attribute "aria-expanded" "false", attribute "aria-haspopup" "true", class "btn btn-default dropdown-toggle", attribute "data-toggle" "dropdown", type_ "button" ]
-            [ text "NEW "
-            , span [ class "caret" ]
-                []
-            ]
-        , ul [ class "dropdown-menu" ]
-            [ li []
-                [ a [ onClick OpenNewProjectDialog ]
-                    [ text "Project" ]
-                ]
---            , li []
---                [ a [ href "#" ]
---                    [ text "Sample" ]
+--viewNewButton : Html Msg
+--viewNewButton =
+--    div [ class "btn-group" ]
+--        [ div [ class "menu-button-new" ]
+--            [ button [ class "btn btn-default dropdown-toggle", attribute "aria-expanded" "false", attribute "aria-haspopup" "true", attribute "data-toggle" "dropdown", type_ "button" ]
+--                [ text "NEW "
+--                , span [ class "caret" ]
+--                    []
 --                ]
-            ]
-        ]
+--            ]
+--        , ul [ class "dropdown-menu" ]
+--            [ li []
+--                [ a [ onClick OpenNewProjectDialog ]
+--                    [ text "Project" ]
+--                ]
+----            , li []
+----                [ a [ href "#" ]
+----                    [ text "Sample" ]
+----                ]
+--            ]
+--        ]
 
 
-viewContent : Model -> Html Msg
+viewContent : Model -> List (Html Msg)
 viewContent model =
     let
         (title, viewTable, count) =
@@ -366,13 +363,13 @@ viewContent model =
                             else
                                 Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples
                     in
-                    ( "Samples", view, List.length model.user.samples )
+                    ( "Samples", view, List.length model.user.samples)
 
                 Storage ->
-                    ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser )
+                    ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser)
 
                 Activity ->
-                    ( "Activity", text "Coming soon ...", 0 )
+                    ( "Activity", text "Coming soon ...", 0)
 
         numShowing =
             let
@@ -392,11 +389,15 @@ viewContent model =
         viewHeader =
             div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ] [ text title, text " ", numShowing ]
     in
-    div [ class "col-sm-7" ]
-        [ viewHeader
-        , br [] []
-        , div [ style [("height","80vh"), ("overflow-y","auto")] ] [ viewTable ]
+    [ div [ class "col-sm-12", style [("margin-bottom","1em")] ] [ viewHeader ]
+    , div []
+        [ div [ class "col-sm-8" ]
+            [ div [ style [("height","80vh"), ("overflow-y","auto")] ] [ viewTable ]
+            ]
+        , div [ class "col-sm-4" ]
+            [ viewInfo model ]
         ]
+    ]
 
 
 toTableAttrs : List (Attribute Msg)
@@ -507,6 +508,7 @@ viewInfo model =
                         project :: _ ->
                             div []
                                 [ View.Project.viewInfo project
+                                , br [] []
                                 , View.Project.viewActions (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
                                 ]
 
@@ -539,8 +541,7 @@ viewInfo model =
                 Activity ->
                     text ""
     in
-    div [ class "col-sm-3", style [("margin-top", "5.15em"), ("padding", "1em"), ("border-top","1px solid lightgray"), ("color", "gray")] ]
-        [ info ]
+    div [ class "info-panel" ] [ info ]
 
 
 viewFileInfo : FileResult -> Html Msg
@@ -563,11 +564,12 @@ viewFileInfo file =
 
         deUrl =
             "https://de.cyverse.org/de/?type=data&folder=/iplant/home" ++ file.path --TODO move base url to config file
-
     in
     div []
         [ table [ class "info-table" ]
-            [ tr []
+            [ colgroup []
+                [ col [ class "col-md-1" ] [] ]
+            , tr []
                 [ th [] [ text "Name " ]
                 , td [] [ text file.name ]
                 ]
