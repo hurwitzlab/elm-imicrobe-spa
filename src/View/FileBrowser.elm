@@ -36,7 +36,7 @@ type alias InternalModel =
     { path : String
     , rootPath : String
     , homePath : String
-    , selectedPath : String
+    , selectedPath : Maybe String
     , pathFilter : String
     , contents : List FileResult
     , tableState : Table.State
@@ -81,7 +81,7 @@ init session maybeConfig =
         { path = startingPath
         , rootPath = startingPath
         , homePath = startingPath
-        , selectedPath = ""
+        , selectedPath = Nothing
         , pathFilter = "Home"
         , contents = []
         , tableState = Table.initialSort "Name"
@@ -151,10 +151,15 @@ updateInternal session msg model =
         SelectPath path ->
             let
                 newPath =
-                    if model.selectedPath == path then
-                        "" -- unselect
-                    else
-                        path
+                    case model.selectedPath of
+                        Nothing ->
+                            Just path
+
+                        Just selectedPath ->
+                            if selectedPath == path then
+                                Nothing -- unselect
+                            else
+                                Just path
             in
             { model | selectedPath = newPath } => Cmd.none
 
@@ -162,7 +167,7 @@ updateInternal session msg model =
             updateInternal session (LoadPath model.path) model
 
         LoadPath path ->
-            { model | path = path, selectedPath = "", errorMessage = Nothing, isBusy = True } => Task.attempt LoadPathCompleted (loadPath session.token path)
+            { model | path = path, selectedPath = Nothing, errorMessage = Nothing, isBusy = True } => Task.attempt LoadPathCompleted (loadPath session.token path)
 
         LoadPathCompleted (Ok files) ->
             let
@@ -358,13 +363,18 @@ toTableAttrs =
     ]
 
 
-toRowAttrs : Config -> String -> FileResult -> List (Attribute Msg)
+toRowAttrs : Config -> Maybe String -> FileResult -> List (Attribute Msg)
 toRowAttrs config selectedPath data =
     onClick (SelectPath data.path)
-    :: (if (data.path == selectedPath && (data.type_ == "file" || config.allowDirSelection)) then
-            [ attribute "class" "active" ]
-        else
-            []
+    :: (case selectedPath of
+            Nothing ->
+                []
+
+            Just selectedPath ->
+                if (data.path == selectedPath && (data.type_ == "file" || config.allowDirSelection)) then
+                    [ attribute "class" "active" ]
+                else
+                    []
         )
     |> List.append (if data.type_ == "dir" then
             [ onDoubleClick (LoadPath data.path) ]
@@ -372,7 +382,7 @@ toRowAttrs config selectedPath data =
             []
         )
 
-tableConfig : Config -> String -> Table.Config FileResult Msg
+tableConfig : Config -> Maybe String -> Table.Config FileResult Msg
 tableConfig config selectedRowId =
     Table.customConfig
         { toId = .path
@@ -448,6 +458,7 @@ newFolderDialogConfig isBusy =
 
 ---- HELPER FUNCTIONS ----
 
+
 numItems : Model -> Int
 numItems (Model {contents}) =
     List.length contents
@@ -455,4 +466,9 @@ numItems (Model {contents}) =
 
 getSelected : Model -> List FileResult
 getSelected (Model { selectedPath, contents }) =
-    List.filter (\f -> f.path == selectedPath) contents
+    case selectedPath of
+        Nothing ->
+            []
+
+        Just selectedPath ->
+            List.filter (\f -> f.path == selectedPath) contents
