@@ -78,7 +78,7 @@ init : Session -> Int -> Task PageLoadError Model
 init session id =
     let
         loadProject =
-            Request.Project.get id |> Http.toTask
+            Request.Project.get session.token id |> Http.toTask
 
         isEditable project =
             case session.user of
@@ -203,6 +203,10 @@ type ExternalMsg
 
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
+    let
+        loadProject _ =
+            Request.Project.get session.token model.project_id |> Http.toTask
+    in
     case msg of
         CartMsg subMsg ->
             let
@@ -401,8 +405,7 @@ update session msg model =
             let
                 removeSample =
                     Request.Sample.remove session.token sample_id |> Http.toTask
-                        |> Task.andThen
-                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+                        |> Task.andThen loadProject
             in
             { model | confirmationDialog = Nothing } => Task.attempt RemoveSampleCompleted removeSample => NoOp
 
@@ -492,8 +495,7 @@ update session msg model =
             let
                 removeInvestigator =
                     Request.Project.removeInvestigatorFromProject session.token model.project_id id |> Http.toTask
-                        |> Task.andThen
-                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+                        |> Task.andThen loadProject
             in
             { model | confirmationDialog = Nothing } => Task.attempt RemoveInvestigatorCompleted removeInvestigator => NoOp
 
@@ -547,8 +549,7 @@ update session msg model =
 
                 createPublication =
                     Request.Publication.create session.token model.project_id model.newPublicationTitle model.newPublicationAuthors model.newPublicationDate pubmedId model.newPublicationDOI |> Http.toTask
-                        |> Task.andThen
-                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+                        |> Task.andThen loadProject
             in
             { model | showAddOrEditPublicationBusy = True } => Task.attempt AddPublicationCompleted createPublication => NoOp
 
@@ -572,8 +573,7 @@ update session msg model =
 
                 updatePublication =
                     Request.Publication.update session.token pub_id model.newPublicationTitle model.newPublicationAuthors model.newPublicationDate pubmedId model.newPublicationDOI |> Http.toTask
-                        |> Task.andThen
-                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+                        |> Task.andThen loadProject
             in
             { model | confirmationDialog = Nothing, showAddOrEditPublicationBusy = True } => Task.attempt UpdatePublicationCompleted updatePublication => NoOp
 
@@ -594,8 +594,7 @@ update session msg model =
             let
                 removePublication =
                     Request.Publication.remove session.token pub_id |> Http.toTask
-                        |> Task.andThen
-                            (\_ -> Request.Project.get model.project_id |> Http.toTask)
+                        |> Task.andThen loadProject
             in
             { model | confirmationDialog = Nothing } => Task.attempt RemovePublicationCompleted removePublication => NoOp
 
@@ -1271,7 +1270,7 @@ newSampleDialogConfig model =
             if model.showNewSampleBusy then
                 spinner
             else
-                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new sample", onInput SetNewSampleName ] []
+                input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name of the new sample", onInput SetNewSampleName ] []
 
         footer =
             let

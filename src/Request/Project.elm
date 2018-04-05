@@ -23,13 +23,17 @@ list =
         |> HttpBuilder.toRequest
 
 
-get : Int -> Http.Request Project
-get id =
+get : String -> Int -> Http.Request Project
+get token id =
     let
         url =
             apiBaseUrl ++ "/projects/" ++ toString id
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
         |> HttpBuilder.toRequest
 
