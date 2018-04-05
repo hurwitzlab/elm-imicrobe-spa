@@ -745,7 +745,7 @@ updatePage page msg model =
                     { session | profile = Just profile }
 
                 recordLogin username =
-                    Request.User.recordLogin username |> Http.toTask |> Task.attempt handleRecordLogin
+                    Request.User.recordLogin session.token username |> Http.toTask |> Task.attempt handleRecordLogin
 
                 handleRecordLogin login =
                     case login of
