@@ -16,6 +16,7 @@ import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Project
+import View.FilterButtonGroup
 import Util exposing ((=>))
 
 
@@ -209,15 +210,8 @@ view model =
                     span [ class "badge" ]
                         [ text numStr ]
 
-        filterButton label =
-            let
-                classes =
-                    if label == model.permFilterType then
-                        "btn btn-default active"
-                    else
-                        "btn btn-default"
-            in
-            button [ class classes, onClick (FilterPermType label) ] [ text label ]
+        permissionFilterConfig =
+            View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
 
         (infoPanel, sizeClass) =
             case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
@@ -255,10 +249,7 @@ view model =
                     , small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
-                , div [ class "btn-group" ]
-                    [ filterButton "All"
-                    , filterButton "Mine"
-                    ]
+                , View.FilterButtonGroup.view permissionFilterConfig model.permFilterType
                 , br [] []
                 , br [] []
                 , div [ class "container" ]
