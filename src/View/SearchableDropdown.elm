@@ -1,7 +1,7 @@
 module View.SearchableDropdown exposing (State, Config, init, view)
 
 import Html exposing (Html, text, div, input, table, tbody, tr, td)
-import Html.Attributes exposing (class, style, type_, value, placeholder)
+import Html.Attributes exposing (class, style, type_, value, placeholder, autofocus)
 import Html.Events exposing (onInput, onClick)
 
 
@@ -37,7 +37,7 @@ view config state =
                 ]
     in
     div []
-        [ input [ class "form-control", type_ "text", value state.value, placeholder config.placeholder, onInput config.inputMsg ] []
+        [ input [ class "form-control", type_ "text", autofocus True, value state.value, placeholder config.placeholder, onInput config.inputMsg ] []
         , if state.results /= [] then
             resultTable
           else
