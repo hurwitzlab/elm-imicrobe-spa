@@ -14,6 +14,7 @@ type alias State =
 
 type alias Config msg1 msg2 =
         { placeholder : String
+        , autofocus : Bool
         , inputMsg : String -> msg1
         , selectMsg : Int -> String -> msg2
         }
@@ -37,7 +38,7 @@ view config state =
                 ]
     in
     div []
-        [ input [ class "form-control", type_ "text", autofocus True, value state.value, placeholder config.placeholder, onInput config.inputMsg ] []
+        [ input [ class "form-control", type_ "text", autofocus config.autofocus, value state.value, placeholder config.placeholder, onInput config.inputMsg ] []
         , if state.results /= [] then
             resultTable
           else
