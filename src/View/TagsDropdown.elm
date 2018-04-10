@@ -12,10 +12,10 @@ type alias State =
 
 
 type alias Config msg1 msg2 =
-        { options : List (Int, String)
-        , addMsg : Int -> String -> msg1
-        , removeMsg : Int -> msg2
-        }
+    { options : List (Int, String)
+    , addMsg : Int -> String -> msg1
+    , removeMsg : Int -> msg2
+    }
 
 
 empty : State
