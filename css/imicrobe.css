@@ -129,14 +129,49 @@ tr.padded > td {
     margin: auto;
 }
 
+.narrow-modal-container > .modal-dialog {
+    width: 30em;
+    margin: auto;
+}
+
 
 /*
  * Dashboard styles
  */
 
-.menu-button {
+div.menu-panel {
+    padding-bottom: 1em;
+    padding-left: 2em;
+}
+
+button.menu-button {
     border: none;
-    margin: 1em;
+    margin: 0.5em;
+    padding: 0.5em;
+    padding-left: 1em;
+    padding-right: 0;
+    width: 100%;
+    text-align: left;
+    font-weight: bold;
+    font-size: 1.15em;
+    color: #008d97;
+}
+
+button.menu-button:hover {
+    background: #f4f4f4;
+}
+
+button.menu-button:focus {
+    outline: 0;
+}
+
+button.menu-button.active {
+    background:	#ffc266;
+}
+
+.menu-button-new {
+    margin-bottom: 1em;
+    margin-left: 1em;
 }
 
 table.info-table {
@@ -149,6 +184,12 @@ table.info-table > tr {
 
 table.info-table > th, table.info-table > td {
     padding: 5px;
+}
+
+div.info-panel {
+    padding: 1em;
+    border-top: 1px solid lightgray;
+    color: gray;
 }
 
 
@@ -178,4 +219,12 @@ table.info-table > th, table.info-table > td {
 
 .progress-bar {
     background-color: #2ab4bd;
+}
+
+.table tbody tr.active td {
+    background: #ffc266;
+}
+
+.table tbody tr.active:hover td {
+    background: #ffc266;
 }
