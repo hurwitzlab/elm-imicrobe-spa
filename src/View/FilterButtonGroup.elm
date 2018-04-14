@@ -24,5 +24,5 @@ view config selected =
             button [ class "btn btn-default", classList [("active", label == selected)], onClick (config.toMsg label) ]
                 [ text label ]
     in
-    div [ class "btn-group" ]
+    div [ class "btn-group btn-group-sm" ]
         (List.map filterButton config.options)
