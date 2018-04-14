@@ -10,6 +10,8 @@ import Util exposing ((=>))
 type alias User =
     { user_id : Int
     , user_name : String
+    , first_name : String
+    , last_name : String
     , date : String
     , orcid : String
     , projects : List Project
@@ -72,6 +74,8 @@ decoder =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
+        |> required "first_name" Decode.string
+        |> required "last_name" Decode.string
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
@@ -134,6 +138,8 @@ encode user =
     Encode.object
         [ "user_id" => Encode.int user.user_id
         , "user_name" => Encode.string user.user_name
+        , "first_name" => Encode.string user.first_name
+        , "last_name" => Encode.string user.last_name
         , "date" => Encode.string user.date
         , "orcid" => Encode.string user.orcid
         ]

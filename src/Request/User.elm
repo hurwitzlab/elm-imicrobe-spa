@@ -54,6 +54,25 @@ getByUsername token name =
         |> HttpBuilder.toRequest
 
 
+searchByName : String -> String -> Http.Request (List User)
+searchByName token term =
+    let
+        url =
+            apiBaseUrl ++ "/users/"
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [("term", term)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list User.decoder))
+        |> HttpBuilder.toRequest
+
+
 recordLogin : String -> String -> Http.Request Login
 recordLogin token username =
     let

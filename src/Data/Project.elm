@@ -94,6 +94,9 @@ type alias CombinedAssembly =
 type alias User =
     { user_id : Int
     , user_name : String
+    , first_name : String
+    , last_name : String
+    , permission : String
     }
 
 
@@ -199,13 +202,16 @@ decoderUser =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
+        |> optional "first_name" Decode.string ""
+        |> optional "last_name" Decode.string ""
+        |> optional "permission" Decode.string ""
 
 
 encode : Project -> Value
-encode inv =
+encode project =
     Encode.object
-        [ "project_id" => Encode.int inv.project_id
-        , "project_name" => Encode.string inv.project_name
+        [ "project_id" => Encode.int project.project_id
+        , "project_name" => Encode.string project.project_name
         ]
 
 
@@ -214,6 +220,14 @@ encodeDomain domain =
     Encode.object
         [ "domain_id" => Encode.int domain.domain_id
         , "domain_name" => Encode.string domain.domain_name
+        ]
+
+
+encodeInvestigator : Investigator -> Value
+encodeInvestigator investigator =
+    Encode.object
+        [ "investigator_id" => Encode.int investigator.investigator_id
+        , "investigator_name" => Encode.string investigator.investigator_name
         ]
 
 

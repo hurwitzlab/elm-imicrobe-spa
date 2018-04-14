@@ -1,6 +1,6 @@
 module Request.Project exposing (..)
 
-import Data.Project as Project exposing (Project, Domain, ProjectGroup, Assembly, CombinedAssembly, encodeDomain, encodeProjectGroup)
+import Data.Project as Project exposing (Project, Domain, Investigator, ProjectGroup, Assembly, CombinedAssembly, encodeDomain, encodeInvestigator, encodeProjectGroup)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode
@@ -80,8 +80,8 @@ create token project_name =
         |> HttpBuilder.toRequest
 
 
-update : String -> Int -> String -> String -> String -> String -> List Domain -> List ProjectGroup -> Http.Request Project
-update token project_id project_name project_code project_type project_url domains groups =
+update : String -> Int -> String -> String -> String -> String -> List Domain -> List Investigator -> List ProjectGroup -> Http.Request Project
+update token project_id project_name project_code project_type project_url domains investigators groups =
     let
         url =
             apiBaseUrl ++ "/projects/" ++ (toString project_id)
@@ -96,6 +96,7 @@ update token project_id project_name project_code project_type project_url domai
                 , "project_type" => Encode.string project_type
                 , "project_url" => Encode.string project_url
                 , "domains" => Encode.list (List.map encodeDomain domains)
+                , "investigators" => Encode.list (List.map encodeInvestigator investigators)
                 , "groups" => Encode.list (List.map encodeProjectGroup groups)
                 ]
     in
@@ -141,6 +142,41 @@ removeInvestigatorFromProject token project_id investigator_id =
     let
         url =
             apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/investigators/" ++ (toString investigator_id)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect Http.expectString
+        |> HttpBuilder.toRequest
+
+
+addUserToProject : String -> Int -> Int -> String -> Http.Request Project
+addUserToProject token project_id user_id permission =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/users/" ++ (toString user_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "permission" => Encode.string permission ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+removeUserFromProject : String -> Int -> Int -> Http.Request String
+removeUserFromProject token project_id user_id =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/users/" ++ (toString user_id)
 
         headers =
             [( "Authorization", token)]

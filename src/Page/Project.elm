@@ -1,8 +1,9 @@
 module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup)
+import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup, User)
 import Data.Sample
 import Data.Investigator
+import Data.User
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
@@ -17,15 +18,17 @@ import Request.Project
 import Request.Sample
 import Request.Investigator
 import Request.Publication
+import Request.User
 import Route
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
-import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
+import View.Dialog exposing (confirmationDialogConfig, errorDialogConfig)
 import View.SearchableDropdown
 import View.TagsDropdown
-import Util exposing ((=>))
+import View.Tags
+import Util exposing ((=>), capitalize)
 
 
 
@@ -48,8 +51,10 @@ type alias Model =
     , combinedAssemblyTableState : Table.State
     , combinedAssemblyQuery : String
     , isEditable : Bool
-    , infoDialog : Maybe (Dialog.Config Msg)
+    , currentUserId : Maybe Int
     , confirmationDialog : Maybe (Dialog.Config Msg)
+    , showShareDialog : Bool
+    , shareDropdownState : View.SearchableDropdown.State
     , showEditInfoDialog : Bool
     , newProjectName : String
     , newProjectCode : String
@@ -60,9 +65,8 @@ type alias Model =
     , showNewSampleDialog : Bool
     , showNewSampleBusy : Bool
     , newSampleName : String
-    , showAddInvestigatorDialog : Bool
-    , showAddInvestigatorBusy : Bool
-    , searchInvestigatorDropdownState : View.SearchableDropdown.State
+    , investigatorDropdownState : View.SearchableDropdown.State
+    , newInvestigatorTagState : View.Tags.State
     , showAddOrEditPublicationDialog : Bool
     , showAddOrEditPublicationBusy : Bool
     , publicationIdToEdit : Maybe Int
@@ -80,13 +84,16 @@ init session id =
         loadProject =
             Request.Project.get session.token id |> Http.toTask
 
+        userId =
+            Maybe.map .user_id session.user
+
         isEditable project =
-            case session.user of
+            case userId of
                 Nothing ->
                     False
 
-                Just user ->
-                    List.map .user_name project.users |> List.member user.user_name
+                Just userId ->
+                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) project.users
     in
     loadProject
         |> Task.andThen
@@ -107,8 +114,10 @@ init session id =
                     , combinedAssemblyTableState = Table.initialSort "Name"
                     , combinedAssemblyQuery = ""
                     , isEditable = isEditable project
-                    , infoDialog = Nothing
+                    , currentUserId = userId
                     , confirmationDialog = Nothing
+                    , showShareDialog = False
+                    , shareDropdownState = View.SearchableDropdown.init
                     , showEditInfoDialog = False
                     , newProjectName = ""
                     , newProjectCode = ""
@@ -119,9 +128,8 @@ init session id =
                     , showNewSampleDialog = False
                     , showNewSampleBusy = False
                     , newSampleName = ""
-                    , showAddInvestigatorDialog = False
-                    , showAddInvestigatorBusy = False
-                    , searchInvestigatorDropdownState = View.SearchableDropdown.init
+                    , investigatorDropdownState = View.SearchableDropdown.init
+                    , newInvestigatorTagState = View.Tags.init (List.map (\i -> (i.investigator_id, i.investigator_name)) project.investigators)
                     , showAddOrEditPublicationDialog = False
                     , showAddOrEditPublicationBusy = False
                     , publicationIdToEdit = Nothing
@@ -151,8 +159,14 @@ type Msg
     | SetCombinedAssemblyTableState Table.State
     | OpenConfirmationDialog String Msg
     | CloseConfirmationDialog
-    | OpenInfoDialog String
-    | CloseInfoDialog
+    | OpenShareDialog
+    | CloseShareDialog
+    | SetShareUserName String
+    | SearchUserCompleted (Result Http.Error (List Data.User.User))
+    | ShareWithUser String Int String --FIXME create new type for permission instead of using string
+    | ShareWithUserCompleted (Result Http.Error Project)
+    | UnshareWithUser Int
+    | UnshareWithUserCompleted (Result Http.Error String)
     | OpenEditInfoDialog
     | CloseEditInfoDialog
     | SetNewProjectName String
@@ -172,15 +186,10 @@ type Msg
     | CreateNewSampleCompleted (Result Http.Error Data.Sample.Sample)
     | RemoveSample Int
     | RemoveSampleCompleted (Result Http.Error Project)
-    | OpenAddInvestigatorDialog
-    | CloseAddInvestigatorDialog
     | SetInvestigatorName String
     | SearchInvestigatorCompleted (Result Http.Error (List Data.Investigator.Investigator))
     | SelectInvestigatorToAdd Int String
-    | AddInvestigator
-    | AddInvestigatorCompleted (Result Http.Error Project)
     | RemoveInvestigator Int
-    | RemoveInvestigatorCompleted (Result Http.Error Project)
     | OpenAddOrEditPublicationDialog (Maybe Publication)
     | CloseAddOrEditPublicationDialog
     | SetPublicationTitle String
@@ -281,15 +290,98 @@ update session msg model =
         CloseConfirmationDialog ->
             { model | confirmationDialog = Nothing } => Cmd.none => NoOp
 
-        OpenInfoDialog infoText ->
-            let
-                dialog =
-                    infoDialogConfig infoText CloseInfoDialog
-            in
-            { model | infoDialog = Just dialog } => Cmd.none => NoOp
+        OpenShareDialog ->
+            { model | showShareDialog = True } => Cmd.none => NoOp
 
-        CloseInfoDialog ->
-            { model | infoDialog = Nothing } => Cmd.none => NoOp
+        CloseShareDialog ->
+            { model | showShareDialog = False } => Cmd.none => NoOp
+
+        SetShareUserName name ->
+            let
+                searchByName =
+                    Request.User.searchByName session.token name |> Http.toTask
+                        |> Task.attempt SearchUserCompleted
+
+                cmd =
+                    if String.length name > 2 then
+                        searchByName
+                    else
+                        Cmd.none
+
+                dropdownState =
+                    model.shareDropdownState
+            in
+            { model | shareDropdownState = { dropdownState | value = name } } => cmd => NoOp
+
+        SearchUserCompleted (Ok users) ->
+            let
+                displayName user =
+                    user.first_name ++ " " ++ user.last_name ++ " (" ++ user.user_name ++ ")"
+
+                results =
+                    List.map (\u -> (u.user_id, displayName u)) users
+
+                dropdownState =
+                    model.shareDropdownState
+            in
+            { model | shareDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
+
+        SearchUserCompleted (Err error) -> -- TODO finish this
+            model => Cmd.none => NoOp
+
+        ShareWithUser permission id _ ->
+            let
+                noChange =
+                    List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
+            in
+            if noChange then
+                model => Cmd.none => NoOp
+            else
+                let
+                    addUser =
+                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
+
+                    dropdownState =
+                        model.shareDropdownState
+                in
+                { model | shareDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt ShareWithUserCompleted addUser => NoOp
+
+        ShareWithUserCompleted (Ok project) ->
+            let
+                newProject =
+                    model.project
+
+                _ = Debug.log "users" (toString project.users)
+            in
+            { model | project = { newProject | users = project.users } } => Cmd.none => NoOp
+
+        ShareWithUserCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none => NoOp
+
+        UnshareWithUser id ->
+            let
+                removeUser =
+                    Request.Project.removeUserFromProject session.token model.project_id id |> Http.toTask
+
+                newProject =
+                    model.project
+
+                newUsers =
+                    List.filter (\u -> u.user_id /= id) model.project.users
+            in
+            { model | project = { newProject | users = newUsers } } => Task.attempt UnshareWithUserCompleted removeUser => NoOp
+
+        UnshareWithUserCompleted (Ok _) ->
+            model => Cmd.none => NoOp
+
+        UnshareWithUserCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none => NoOp
 
         OpenEditInfoDialog ->
             { model
@@ -348,11 +440,14 @@ update session msg model =
                 domains =
                     View.TagsDropdown.selected model.domainDropdownState |> List.map (\t -> Domain (Tuple.first t) (Tuple.second t))
 
+                investigators =
+                    View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
+
                 groups =
                     View.TagsDropdown.selected model.groupDropdownState |> List.map (\t -> ProjectGroup (Tuple.first t) (Tuple.second t))
 
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains groups |> Http.toTask
+                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains investigators groups |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
 
@@ -369,6 +464,7 @@ update session msg model =
                         , project_type = project.project_type
                         , url = project.url
                         , domains = project.domains
+                        , investigators = project.investigators
                         , project_groups = project.project_groups
                     }
             } => Cmd.none => NoOp
@@ -422,16 +518,6 @@ update session msg model =
             in
             model => Cmd.none => NoOp
 
-        OpenAddInvestigatorDialog ->
-            let
-                dropdownState =
-                    model.searchInvestigatorDropdownState
-            in
-            { model | showAddInvestigatorDialog = True, showAddInvestigatorBusy = False, searchInvestigatorDropdownState = View.SearchableDropdown.init } => Cmd.none => NoOp
-
-        CloseAddInvestigatorDialog ->
-            { model | showAddInvestigatorDialog = False } => Cmd.none => NoOp
-
         SetInvestigatorName name ->
             let
                 searchByName =
@@ -445,9 +531,9 @@ update session msg model =
                         Cmd.none
 
                 dropdownState =
-                    model.searchInvestigatorDropdownState
+                    model.investigatorDropdownState
             in
-            { model | searchInvestigatorDropdownState = { dropdownState | value = name } } => cmd => NoOp
+            { model | investigatorDropdownState = { dropdownState | value = name } } => cmd => NoOp
 
         SearchInvestigatorCompleted (Ok investigators) ->
             let
@@ -455,9 +541,9 @@ update session msg model =
                     List.map (\i -> (i.investigator_id, i.investigator_name)) investigators
 
                 dropdownState =
-                    model.searchInvestigatorDropdownState
+                    model.investigatorDropdownState
             in
-            { model | searchInvestigatorDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
+            { model | investigatorDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
 
         SearchInvestigatorCompleted (Err error) -> -- TODO finish this
             model => Cmd.none => NoOp
@@ -465,52 +551,22 @@ update session msg model =
         SelectInvestigatorToAdd id name ->
             let
                 dropdownState =
-                    model.searchInvestigatorDropdownState
+                    model.investigatorDropdownState
+
+                tagState =
+                    View.Tags.add id name model.newInvestigatorTagState
             in
-            { model | searchInvestigatorDropdownState = { dropdownState | value = name, results = [], selectedId = Just id } } => Cmd.none => NoOp
-
-        AddInvestigator ->
-            case model.searchInvestigatorDropdownState.selectedId of
-                Nothing ->
-                    model => Cmd.none => NoOp
-
-                Just id ->
-                    let
-                        addInvestigator =
-                            Request.Project.addInvestigatorToProject session.token model.project_id id |> Http.toTask
-                    in
-                    { model | showAddInvestigatorBusy = True } => Task.attempt AddInvestigatorCompleted addInvestigator => NoOp
-
-        AddInvestigatorCompleted (Ok project) ->
-            let
-                newProject =
-                    model.project
-            in
-            { model | showAddInvestigatorDialog = False, project = { newProject | investigators = project.investigators } } => Cmd.none => NoOp
-
-        AddInvestigatorCompleted (Err error) -> -- TODO finish this
-            model => Cmd.none => NoOp
+            { model
+                | investigatorDropdownState = { dropdownState | value = "", results = [], selectedId = Just id }
+                , newInvestigatorTagState = tagState
+            } => Cmd.none => NoOp
 
         RemoveInvestigator id ->
             let
-                removeInvestigator =
-                    Request.Project.removeInvestigatorFromProject session.token model.project_id id |> Http.toTask
-                        |> Task.andThen loadProject
+                tagState =
+                    View.Tags.remove id model.newInvestigatorTagState
             in
-            { model | confirmationDialog = Nothing } => Task.attempt RemoveInvestigatorCompleted removeInvestigator => NoOp
-
-        RemoveInvestigatorCompleted (Ok project) ->
-            let
-                newProject =
-                    model.project
-            in
-            { model | project = { newProject | investigators = project.investigators } } => Cmd.none => NoOp
-
-        RemoveInvestigatorCompleted (Err error) ->
-            let
-                _ = Debug.log "error" (toString error) -- TODO show to user
-            in
-            model => Cmd.none => NoOp
+            { model | newInvestigatorTagState = tagState } => Cmd.none => NoOp
 
         OpenAddOrEditPublicationDialog publication ->
             { model
@@ -618,30 +674,16 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        privateButton =
-            if model.project.private == 1 then
-                let
-                    infoText =
-                        "This feature is currently under development.  Soon you will be able to 'publish' your project (making it publicly accessible) or share with collaborators."
-                in
-                button [ class "btn btn-default pull-right", onClick (OpenInfoDialog infoText) ]
-                    [ span [ class "glyphicon glyphicon-lock" ] [], text " Project is Private" ]
-
-            else
-                text ""
-    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
                     , small [] [ text model.project.project_name ]
-                    , privateButton
+                    , viewShareButton model
                     ]
                 ]
             , viewProject model.project model.isEditable
-            , viewInvestigators model.project.investigators model.isEditable
             , viewPublications model.project.publications model.isEditable
             , viewSamples model.cart model.project.samples model.isEditable
             , if not model.isEditable then
@@ -656,20 +698,40 @@ view model =
         , Dialog.view
             (if model.showNewSampleDialog then
                 Just (newSampleDialogConfig model)
-             else if model.infoDialog /= Nothing then
-                model.infoDialog
+             else if model.showShareDialog then
+                case model.currentUserId of
+                    Nothing ->
+                        Nothing
+
+                    Just id ->
+                        Just (shareDialogConfig id model.project.users model.isEditable model.shareDropdownState)
              else if (model.confirmationDialog /= Nothing) then
                 model.confirmationDialog
              else if model.showEditInfoDialog then
                 Just (editInfoDialogConfig model)
-             else if model.showAddInvestigatorDialog then
-                Just (addInvestigatorDialogConfig model)
              else if model.showAddOrEditPublicationDialog then
                 Just (addOrEditPublicationDialogConfig model)
              else
                 Nothing
             )
         ]
+
+
+viewShareButton : Model -> Html Msg
+viewShareButton model =
+    if model.project.private == 1 then
+        let
+            buttonLabel =
+                if model.project.users == [] then
+                    "Project is Private"
+                else
+                    "Project is Shared"
+        in
+        button [ class "btn btn-default pull-right", onClick OpenShareDialog ]
+            [ span [ class "glyphicon glyphicon-lock" ] [], text " ", text buttonLabel ]
+
+    else
+        text ""
 
 
 viewProject : Project -> Bool -> Html Msg
@@ -714,6 +776,10 @@ viewProject project isEditable =
             , td [] (viewDomains project.domains)
             ]
         , tr []
+            [ th [] [ text "Investigators" ]
+            , td [] (viewInvestigators project.investigators)
+            ]
+        , tr []
             [ th [] [ text "Groups" ]
             , td [] (viewProjectGroups project.project_groups)
             ]
@@ -731,72 +797,20 @@ viewProject project isEditable =
         ]
 
 
-viewInvestigators : List Investigator -> Bool -> Html Msg
-viewInvestigators investigators isEditable =
-    let
-        numInvs =
-            List.length investigators
+viewInvestigators : List Investigator -> List (Html msg)
+viewInvestigators investigators =
+    case List.length investigators of
+        0 ->
+            [ text "None" ]
 
-        label =
-            case numInvs of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numInvs)
-                        ]
-
-        body =
-            case numInvs of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ]
-                        [ tbody [] (List.map (viewInvestigator isEditable) investigators) ]
-
-        addButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-sm pull-right", onClick OpenAddInvestigatorDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Investigator" ]
-
-                False ->
-                    text ""
-    in
-    div []
-        [ h2 []
-            [ text "Investigators "
-            , label
-            , addButton
-            ]
-        , body
-        ]
+        _ ->
+            List.sortBy .investigator_name investigators |> List.map viewInvestigator |> List.intersperse (text ", ")
 
 
-viewInvestigator : Bool -> Investigator -> Html Msg
-viewInvestigator isEditable investigator =
-    let
-        removeButton =
-            if isEditable then
-                [ button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this investigator?" (RemoveInvestigator investigator.investigator_id)) ] [ text "Remove" ]
-                ]
-            else
-                [ text "" ]
-    in
-    tr []
-        [ td []
-            [ a [ Route.href (Route.Investigator investigator.investigator_id) ]
-                [ text investigator.investigator_name ]
-            ]
-        , td []
-            removeButton
-        ]
-
-
-viewDomain : Domain -> Html msg
-viewDomain domain =
-    text domain.domain_name
+viewInvestigator : Investigator -> Html msg
+viewInvestigator investigator =
+    a [ Route.href (Route.Investigator investigator.investigator_id) ]
+        [ text investigator.investigator_name ]
 
 
 viewDomains : List Domain -> List (Html msg)
@@ -806,13 +820,12 @@ viewDomains domains =
             [ text "None" ]
 
         _ ->
-            List.intersperse (text ", ") (List.map viewDomain (List.sortBy .domain_name domains))
+            List.sortBy .domain_name domains |> List.map viewDomain |> List.intersperse (text ", ")
 
 
-viewProjectGroup : ProjectGroup -> Html msg
-viewProjectGroup group =
-    a [ Route.href (Route.ProjectGroup group.project_group_id) ]
-        [ text group.group_name ]
+viewDomain : Domain -> Html msg
+viewDomain domain =
+    text domain.domain_name
 
 
 viewProjectGroups : List ProjectGroup -> List (Html msg)
@@ -822,7 +835,13 @@ viewProjectGroups groups =
             [ text "None" ]
 
         _ ->
-            List.intersperse (text ", ") (List.map viewProjectGroup (List.sortBy .group_name groups))
+            List.sortBy .group_name groups |> List.map viewProjectGroup |> List.intersperse (text ", ")
+
+
+viewProjectGroup : ProjectGroup -> Html msg
+viewProjectGroup group =
+    a [ Route.href (Route.ProjectGroup group.project_group_id) ]
+        [ text group.group_name ]
 
 
 viewPublications : List Publication -> Bool -> Html Msg
@@ -874,7 +893,9 @@ viewPublication isEditable pub =
     in
     tr []
         [ td []
-            [ a [ Route.href (Route.Publication pub.publication_id) ]
+            [ span [ class "glyphicon glyphicon-file glyphicon-inverse" ] []
+            , text " "
+            , a [ Route.href (Route.Publication pub.publication_id) ]
                 [ text pub.title ]
             ]
         , td []
@@ -964,6 +985,11 @@ viewSample cart isEditable sample =
         ]
 
 
+toTableAttrs : List (Html.Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table table-condensed" ]
+
+
 assemblyTableConfig : Table.Config Assembly Msg
 assemblyTableConfig =
     Table.customConfig
@@ -975,11 +1001,6 @@ assemblyTableConfig =
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
         }
-
-
-toTableAttrs : List (Html.Attribute Msg)
-toTableAttrs =
-    [ attribute "class" "table table-condensed" ]
 
 
 assemblyNameColumn : Table.Column Assembly Msg
@@ -1193,6 +1214,113 @@ viewCombinedAssemblies model =
         ]
 
 
+shareDialogConfig : Int -> List User -> Bool -> View.SearchableDropdown.State -> Dialog.Config Msg
+shareDialogConfig currentUserId users isEditable shareDropdownState =
+    let
+--        permission =
+--            List.filter (\u -> u.user_id == currentUserId) users |> List.head |> Maybe.map .permission |> Maybe.withDefault "read-only"
+
+        content =
+            div []
+                [ div []
+                    [ br [] []
+                    , div [] [ text "Who has access" ]
+                    , (viewUsers currentUserId isEditable users)
+                    ]
+                , if isEditable then
+                    addPanel
+                  else
+                    text ""
+                ]
+
+        addPanel =
+            div []
+                [ hr [] []
+                , div [ class "form-group" ]
+                    [ div [] [ text "Add someone:" ]
+                    , div []
+                        [ View.SearchableDropdown.view shareDropdownConfig shareDropdownState
+                        ]
+                    ]
+                , br [] []
+                ]
+
+        footer =
+            let
+                disable =
+                    disabled False --model.showNewSampleBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseShareDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", disable ] [ text "OK" ]
+                    ]
+    in
+    { closeMessage = Just CloseShareDialog
+    , containerClass = Just "narrow-modal-container"
+    , header = Just (h3 [] [ text "Share Project" ])
+    , body = Just content
+    , footer = Nothing --Just footer
+    }
+
+
+shareDropdownConfig : View.SearchableDropdown.Config Msg Msg
+shareDropdownConfig =
+    { placeholder = "Enter the name of the person to add "
+    , autofocus = False
+    , inputMsg = SetShareUserName
+    , selectMsg = (ShareWithUser "read-only")
+    }
+
+
+viewUsers : Int -> Bool -> List User -> Html Msg
+viewUsers currentUserId isEditable users =
+    if users == [] then
+        div [] [ text "Only you can see this project." ]
+    else
+        div [ class "scrollable" ]
+            [ table [ class "table" ] [ tbody [] (List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u) users) ]
+            , br [] [] -- kludge for dropdown not on top
+            , br [] []
+            , br [] []
+            , br [] []
+            ]
+
+
+viewUser : Bool -> Bool -> User -> Html Msg
+viewUser isMe isEditable user =
+    let
+        displayName =
+            user.first_name ++ " " ++ user.last_name
+    in
+    tr []
+        [ td []
+            [ span [ class "glyphicon glyphicon-user" ] []
+            , text " "
+            , text displayName
+            , if isMe then
+                text " (you)"
+              else
+                text ""
+            , if user.permission /= "owner" && isEditable then
+                viewPermissionDropdown user
+              else
+                span [ class "pull-right" ][ text (capitalize user.permission) ]
+            ]
+        ]
+
+
+viewPermissionDropdown : User -> Html Msg
+viewPermissionDropdown user =
+    div [ class "pull-right dropdown" ]
+        [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text (capitalize user.permission), text " ", span [ class "caret" ] [] ]
+        , ul [ class "dropdown-menu nowrap" ]
+            [ li [] [ a [ onClick (ShareWithUser "read-only" user.user_id user.user_name) ] [ text "Read-only: can view but not modify" ] ]
+            , li [] [ a [ onClick (ShareWithUser "read-write" user.user_id user.user_name) ] [ text "Read-write: can view/edit but not delete" ] ]
+            , li [] [ a [ onClick (UnshareWithUser user.user_id) ] [ text "Remove access" ] ]
+            ]
+        ]
+
+
 editInfoDialogConfig : Model -> Dialog.Config Msg
 editInfoDialogConfig model =
     let
@@ -1223,6 +1351,13 @@ editInfoDialogConfig model =
                     [ label [] [ text "Domains" ]
                     , View.TagsDropdown.view (domainDropdownConfig (List.map (\d -> (d.domain_id, d.domain_name)) model.project.available_domains)) model.domainDropdownState
                     ]
+                , div [ class "form-group" ]
+                    [ label [] [ text "Investigators" ]
+                    , div []
+                        [ View.Tags.view (View.Tags.Config RemoveInvestigator) model.newInvestigatorTagState
+                        , View.SearchableDropdown.view investigatorDropdownConfig model.investigatorDropdownState
+                        ]
+                    ]
 --                , div [ class "form-group" ]
 --                    [ label [] [ text "Groups" ]
 --                    , View.TagsDropdown.view (groupDropdownConfig (List.map (\g -> (g.project_group_id, g.group_name)) model.project.available_groups)) model.groupDropdownState
@@ -1252,6 +1387,15 @@ domainDropdownConfig domains =
     { options = domains
     , addMsg = AddNewProjectDomain
     , removeMsg = RemoveNewProjectDomain
+    }
+
+
+investigatorDropdownConfig : View.SearchableDropdown.Config Msg Msg
+investigatorDropdownConfig =
+    { placeholder = "Enter the name of the investigator to add "
+    , autofocus = False
+    , inputMsg = SetInvestigatorName
+    , selectMsg = SelectInvestigatorToAdd
     }
 
 
@@ -1287,37 +1431,6 @@ newSampleDialogConfig model =
     , header = Just (h3 [] [ text "New Sample" ])
     , body = Just content
     , footer = Just footer
-    }
-
-
-addInvestigatorDialogConfig : Model -> Dialog.Config Msg
-addInvestigatorDialogConfig model =
-    let
-        content =
-            if model.showAddInvestigatorBusy then
-                spinner
-            else
-                View.SearchableDropdown.view investigatorDropdownConfig model.searchInvestigatorDropdownState
-
-        footer =
-            div [ disabled model.showAddInvestigatorBusy ]
-                [ button [ class "btn btn-default pull-left", onClick CloseAddInvestigatorDialog ] [ text "Cancel" ]
-                , button [ class "btn btn-primary", onClick AddInvestigator ] [ text "Add" ]
-                ]
-    in
-    { closeMessage = Just CloseAddInvestigatorDialog
-    , containerClass = Nothing
-    , header = Just (h3 [] [ text "Add Investigator" ])
-    , body = Just content
-    , footer = Just footer
-    }
-
-
-investigatorDropdownConfig : View.SearchableDropdown.Config Msg Msg
-investigatorDropdownConfig =
-    { placeholder = "Enter the name of the investigator to add "
-    , inputMsg = SetInvestigatorName
-    , selectMsg = SelectInvestigatorToAdd
     }
 
 
