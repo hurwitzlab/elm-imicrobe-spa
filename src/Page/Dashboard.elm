@@ -43,6 +43,7 @@ type alias Model =
     , selectedProjectRowId : Int
     , selectedSampleRowId : Int
     , fileBrowser : FileBrowser.Model
+    , fileBrowserInitialized : Bool
     , showFileUploadDialog : Bool
     , fileUploadError : Maybe String
     , confirmationDialog : Maybe (Dialog.Config Msg)
@@ -65,7 +66,7 @@ init session =
 
                 Just user -> user.user_id
     in
-    loadUser user_id
+    loadUser session.token user_id
         |> Task.andThen
             (\user ->
                 Task.succeed
@@ -80,6 +81,7 @@ init session =
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
                     , fileBrowser = FileBrowser.init session Nothing
+                    , fileBrowserInitialized = False
                     , showFileUploadDialog = False
                     , fileUploadError = Nothing
                     , confirmationDialog = Nothing
@@ -88,9 +90,9 @@ init session =
             |> Task.mapError Error.handleLoadError
 
 
-loadUser : Int -> Task Http.Error User
-loadUser id =
-    Request.User.get id |> Http.toTask
+loadUser : String -> Int -> Task Http.Error User
+loadUser token id =
+    Request.User.get token id |> Http.toTask
 
 
 
@@ -151,11 +153,14 @@ update session msg model =
         SelectContent contentType ->
             case contentType of
                 Storage ->
-                    let
-                        (subModel, subCmd) =
-                            FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
-                    in
-                    { model | selectedContentType = contentType, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
+                    if not model.fileBrowserInitialized then
+                        let
+                            (subModel, subCmd) =
+                                FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+                        in
+                        { model | selectedContentType = contentType, fileBrowserInitialized = True, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
+                    else
+                        { model | selectedContentType = contentType } => Cmd.none
 
                 _ ->
                     { model | selectedContentType = contentType } => Cmd.none
@@ -170,7 +175,7 @@ update session msg model =
                     { model | fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
 
                 _ ->
-                    model => Task.attempt RefreshContentCompleted (loadUser model.user.user_id)
+                    model => Task.attempt RefreshContentCompleted (loadUser session.token model.user.user_id)
 
         RefreshContentCompleted (Ok user) ->
             { model | user = user } => Cmd.none
@@ -326,7 +331,7 @@ viewMenu model =
 viewContent : Model -> List (Html Msg)
 viewContent model =
     let
-        (title, viewTable, count) =
+        (title, viewTable, count, buttonPanel) =
             case model.selectedContentType of
                 Project ->
                     let
@@ -335,15 +340,18 @@ viewContent model =
                                 div [ class "well" ]
                                     [ p [] [ text "You don't have any projects yet." ]
                                     , p []
-                                        [ text "Click 'New' then 'Project' to create a new project or just click "
+                                        [ text "Click 'New Project' to create a new project or just click "
                                         , a [ onClick OpenNewProjectDialog ] [ text "here" ]
                                         , text "."
                                         ]
                                     ]
                             else
                                 Table.view (projectTableConfig model.selectedProjectRowId) model.projectTableState model.user.projects
+
+                        newButton =
+                            button [ class "btn btn-default pull-right", onClick OpenNewProjectDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " New Project" ]
                     in
-                    ( "Projects", view, List.length model.user.projects )
+                    ( "Projects", view, List.length model.user.projects, newButton )
 
                 Sample ->
                     let
@@ -363,13 +371,13 @@ viewContent model =
                             else
                                 Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples
                     in
-                    ( "Samples", view, List.length model.user.samples)
+                    ( "Samples", view, List.length model.user.samples, text "")
 
                 Storage ->
-                    ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser)
+                    ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser, text "")
 
                 Activity ->
-                    ( "Activity", text "Coming soon ...", 0)
+                    ( "Activity", text "Coming soon ...", 0, text "")
 
         numShowing =
             let
@@ -387,9 +395,12 @@ viewContent model =
                     span [ class "badge" ] [ text numStr ]
 
         viewHeader =
-            div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ] [ text title, text " ", numShowing ]
+            div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ] [ text title, text " ", numShowing, buttonPanel ]
     in
-    [ div [ class "col-sm-12", style [("margin-bottom","1em")] ] [ viewHeader ]
+    [ div []
+        [ div [ class "col-sm-8", style [("margin-bottom","1em")] ] [ viewHeader ]
+        , div [ class "col-sm-4" ] []
+        ]
     , div []
         [ div [ class "col-sm-8" ]
             [ div [ style [("height","80vh"), ("overflow-y","auto")] ] [ viewTable ]
