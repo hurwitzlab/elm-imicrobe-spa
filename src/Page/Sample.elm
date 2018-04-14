@@ -83,7 +83,7 @@ init : Session -> Int -> Task PageLoadError Model
 init session id =
     let
         loadSample =
-            Request.Sample.get id |> Http.toTask
+            Request.Sample.get session.token id |> Http.toTask
 
         isEditable sample =
             case session.user of
@@ -250,7 +250,7 @@ update session msg model =
         GetProteins ->
             let
                 loadProteins =
-                    Request.Sample.proteins model.sample_id |> Http.toTask
+                    Request.Sample.proteins session.token model.sample_id |> Http.toTask
 
                 handleProteins proteins =
                     case proteins of
@@ -271,7 +271,7 @@ update session msg model =
         GetCentrifugeResults ->
             let
                 loadCentrifugeResults =
-                    Request.Sample.centrifuge_results model.sample_id |> Http.toTask
+                    Request.Sample.centrifuge_results session.token model.sample_id |> Http.toTask
 
                 handleCentrifugeResults results =
                     case results of

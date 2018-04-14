@@ -300,8 +300,8 @@ update session msg model =
                 cmd =
                     Task.attempt LoadCartCompleted <|
                         Task.map2 (\samples files -> (samples, files))
-                            (Request.Sample.getSome id_list |> Http.toTask)
-                            (Request.Sample.files id_list |> Http.toTask)
+                            (Request.Sample.getSome session.token id_list |> Http.toTask)
+                            (Request.Sample.files session.token id_list |> Http.toTask)
             in
             { model | cartDialogInputId = Just inputId } => cmd
 

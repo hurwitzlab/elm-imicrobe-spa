@@ -41,7 +41,7 @@ type alias Model =
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
-    doSearch searchTerm
+    doSearch session.token searchTerm
         |> Task.andThen
             (\(pfamResults, keggResults) ->
                 Task.succeed
@@ -61,16 +61,16 @@ init session searchTerm =
         |> Task.mapError Error.handleLoadError
 
 
-doSearch : String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
-doSearch searchTerm =
+doSearch : String -> String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
+doSearch token searchTerm =
     case searchTerm of
         "" ->
             Task.succeed ([], [])
 
         _ ->
             Task.map2 (\pfamResults keggResults -> (pfamResults, keggResults))
-                (Request.Sample.protein_pfam_search searchTerm |> Http.toTask)
-                (Request.Sample.protein_kegg_search searchTerm |> Http.toTask)
+                (Request.Sample.protein_pfam_search token searchTerm |> Http.toTask)
+                (Request.Sample.protein_kegg_search token searchTerm |> Http.toTask)
 
 
 
