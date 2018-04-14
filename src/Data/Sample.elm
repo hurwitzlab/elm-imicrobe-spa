@@ -3,8 +3,22 @@ module Data.Sample exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
+import Dict exposing (Dict)
 import Util exposing ((=>))
 
+
+
+type JsonType
+    = StrType String
+    | IntType Int
+    | FloatType Float
+    | ValueType Decode.Value
+
+
+type alias SearchResult =
+    { attributes: Dict String JsonType
+    , users: List User
+    }
 
 
 type alias Investigator =
@@ -65,6 +79,16 @@ type alias Project =
     , peptide_file : String
     , read_pep_file : String
     , nt_file : String
+    , users : List User
+    }
+
+
+type alias User =
+    { user_id : Int
+    , user_name : String
+    , first_name : String
+    , last_name : String
+    , permission : String
     }
 
 
@@ -262,14 +286,29 @@ type alias CentrifugeSample =
     }
 
 
-type alias User =
-    { user_id : Int
-    , user_name : String
-    }
-
-
 
 -- SERIALIZATION --
+
+
+oneOfJsonType : Decoder JsonType
+oneOfJsonType =
+    [ Decode.string
+        |> Decode.map StrType
+    , Decode.int
+        |> Decode.map IntType
+    , Decode.float
+        |> Decode.map FloatType
+    , Decode.value
+        |> Decode.map ValueType
+    ]
+        |> Decode.oneOf
+
+
+decoderSearchResult : Decoder SearchResult
+decoderSearchResult =
+    decode SearchResult
+        |> required "attributes" (Decode.dict oneOfJsonType)
+        |> optional "users" (Decode.list decoderUser) []
 
 
 decoderInv : Decoder Investigator
@@ -337,6 +376,7 @@ decoderProject =
         |> optional "peptide_file" Decode.string "NA"
         |> optional "read_pep_file" Decode.string "NA"
         |> optional "nt_file" Decode.string "NA"
+        |> optional "users" (Decode.list decoderUser) []
 
 
 decoderAssembly : Decoder Assembly
@@ -558,6 +598,9 @@ decoderUser =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
+        |> optional "first_name" Decode.string ""
+        |> optional "last_name" Decode.string ""
+        |> optional "permission" Decode.string ""
 
 
 encode : Sample -> Value

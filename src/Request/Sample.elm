@@ -3,120 +3,252 @@ module Request.Sample exposing (..)
 import Data.Sample as Sample exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
+import RemoteData exposing (WebData, sendRequest)
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
+import Dict exposing (Dict)
+import Exts.Dict as EDict
 import Util exposing ((=>))
 import String exposing (join)
 import Config exposing (apiBaseUrl)
 
 
 
-list : Http.Request (List Sample)
-list =
+list : String -> Http.Request (List Sample)
+list token =
     let
         url =
             apiBaseUrl ++ "/samples"
 
-        decoder =
-            Decode.list Sample.decoder
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Sample.decoder))
         |> HttpBuilder.toRequest
 
 
-get : Int -> Http.Request Sample
-get id =
-    HttpBuilder.get (apiBaseUrl ++ "/samples/" ++ toString id)
+get : String -> Int -> Http.Request Sample
+get token id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ toString id
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
 
 
-getSome : List Int -> Http.Request (List Sample)
-getSome id_list =
+getSome : String -> List Int -> Http.Request (List Sample)
+getSome token id_list =
     let
         url =
             apiBaseUrl ++ "/samples/?id=" ++ (join "," (List.map toString id_list))
 
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Sample.decoder))
+        |> HttpBuilder.toRequest
+
+
+getParams : Http.Request (Dict.Dict String String)
+getParams =
+    let
+        url =
+            apiBaseUrl ++ "/samples/search_params"
+
         decoder =
-            Decode.list Sample.decoder
+            Decode.dict Decode.string
     in
     HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
 
-files : List Int -> Http.Request (List SampleFile)
-files id_list =
+getParamValues :
+    String
+    -> Dict String (List String)
+    -> Dict String (List Sample.JsonType)
+    -> Dict String String
+    -> Http.Request (Dict String (List Sample.JsonType))
+getParamValues optionName optionValues possibleOptionValues params =
+    let
+        url =
+            apiBaseUrl ++ "/samples/search_param_values"
+
+        decoder =
+            Decode.dict (Decode.list Sample.oneOfJsonType)
+
+        body =
+            Encode.object
+                [ ( "param", Encode.string optionName )
+                , ( "query", serializeForm optionValues possibleOptionValues params )
+                ]
+                |> Http.jsonBody
+    in
+    Http.post url body decoder
+
+
+search : Dict String (List String) -> Dict String (List Sample.JsonType) -> Dict String String -> Cmd (WebData (List SearchResult))--Cmd (WebData (List (Dict String JsonType)))
+search optionValues possibleOptionValues params =
+    let
+        url =
+            apiBaseUrl ++ "/samples/search"
+
+        body =
+            serializeForm optionValues possibleOptionValues params
+                |> Http.jsonBody
+
+        decoder =
+            Decode.list decoderSearchResult--(Decode.dict Sample.oneOfJsonType)
+    in
+    Http.post url body decoder
+        |> RemoteData.sendRequest
+
+
+serializeForm :
+    Dict String (List String)
+    -> Dict String (List JsonType)
+    -> Dict String String
+    -> Encode.Value
+serializeForm optionValues possibleOptionValues paramTypes =
+    let
+        mkFloats =
+            List.filterMap (String.toFloat >> Result.toMaybe)
+
+        encodeVals param vals =
+            let
+                paramName =
+                    case
+                        String.startsWith "min__" param
+                            || String.startsWith "max__" param
+                    of
+                        True ->
+                            String.dropLeft 5 param
+
+                        False ->
+                            param
+
+                dataType =
+                    EDict.getWithDefault "string" paramName paramTypes
+
+                enc f xs =
+                    case xs of
+                        [] ->
+                            Encode.null
+
+                        x :: [] ->
+                            f x
+
+                        _ ->
+                            Encode.list (List.map f xs)
+            in
+            case dataType of
+                "number" ->
+                    enc Encode.float (mkFloats vals)
+
+                _ ->
+                    enc Encode.string vals
+    in
+    Dict.toList optionValues
+        |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
+        |> Encode.object
+
+
+files : String -> List Int -> Http.Request (List SampleFile)
+files token id_list =
     let
         url =
             apiBaseUrl ++ "/samples/files/?id=" ++ (join "," (List.map toString id_list))
 
-        decoder =
-            Decode.list decoderSampleFile
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleFile))
         |> HttpBuilder.toRequest
 
 
-proteins : Int -> Http.Request Proteins
-proteins id =
+proteins : String -> Int -> Http.Request Proteins
+proteins token id =
     let
         url =
             apiBaseUrl ++ "/samples/" ++ (toString id) ++ "/proteins"
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson decoderProteins)
         |> HttpBuilder.toRequest
 
 
-centrifuge_results : Int -> Http.Request (List SampleToCentrifuge)
-centrifuge_results id =
+centrifuge_results : String -> Int -> Http.Request (List SampleToCentrifuge)
+centrifuge_results token id =
     let
         url =
             apiBaseUrl ++ "/samples/" ++ (toString id) ++ "/centrifuge_results"
 
-        decoder =
-            Decode.list decoderSampleToCentrifuge
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleToCentrifuge))
         |> HttpBuilder.toRequest
 
 
-taxonomy_search : String -> Http.Request (List Centrifuge2)
-taxonomy_search query =
+taxonomy_search : String -> String -> Http.Request (List Centrifuge2)
+taxonomy_search token query =
     let
         url =
             apiBaseUrl ++ "/samples/taxonomy_search/" ++ query
 
-        decoder =
-            Decode.list decoderCentrifuge2
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderCentrifuge2))
         |> HttpBuilder.toRequest
 
 
-protein_pfam_search : String -> Http.Request (List PFAMProtein)
-protein_pfam_search query =
+protein_pfam_search : String -> String -> Http.Request (List PFAMProtein)
+protein_pfam_search token query =
     let
         url =
             apiBaseUrl ++ "/samples/protein_search/pfam/" ++ query
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderPFAMProtein))
         |> HttpBuilder.toRequest
 
 
-protein_kegg_search : String -> Http.Request (List KEGGProtein)
-protein_kegg_search query =
+protein_kegg_search : String -> String -> Http.Request (List KEGGProtein)
+protein_kegg_search token query =
     let
         url =
             apiBaseUrl ++ "/samples/protein_search/kegg/" ++ query
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderKEGGProtein))
         |> HttpBuilder.toRequest
 

@@ -28,7 +28,7 @@ type Route
     | Login
     | Logout
     | Map String String
-    | MetaSearch
+--    | MetaSearch
     | Profile
     | Project Int
     | Projects
@@ -67,7 +67,7 @@ routeMather =
         , map Login (s "login")
         , map Logout (s "logout")
         , map Map (s "map" </> string </> string)
-        , map MetaSearch (s "metasearch")
+--        , map MetaSearch (s "metasearch")
         , map Pubchase (s "pubchase")
         , map Publication (s "publications" </> int)
         , map Publications (s "publications")
@@ -149,8 +149,8 @@ routeToString page =
                 Map lat lng ->
                     [ "map", lat, lng ]
 
-                MetaSearch ->
-                    [ "metasearch" ]
+--                MetaSearch ->
+--                    [ "metasearch" ]
 
                 Pubchase ->
                     [ "pubchase" ]
