@@ -174,8 +174,10 @@ button.menu-button.active {
     margin-left: 1em;
 }
 
+/*
 table.info-table {
     border-collapse: collapse;
+    width: 100%;
 }
 
 table.info-table > tr {
@@ -184,6 +186,19 @@ table.info-table > tr {
 
 table.info-table > th, table.info-table > td {
     padding: 5px;
+}
+*/
+
+.info-table > tbody > tr > td,
+.info-table > tbody > tr > th,
+.info-table > tfoot > tr > td,
+.info-table > tfoot > tr > th,
+.info-table > thead > tr > td,
+.info-table > thead > tr > th {
+    border: none;
+    padding: 2px;
+    padding-right: 8px;
+    width: 100%;
 }
 
 div.info-panel {

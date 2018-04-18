@@ -80,6 +80,7 @@ type alias Project =
     , read_pep_file : String
     , nt_file : String
     , users : List User
+    , private : Int
     }
 
 
@@ -126,8 +127,7 @@ type alias Sample =
     , sample_attrs : List Attribute
     , protein_count : Int
     , centrifuge_count : Int
-    , users : List User
-    , private : Int
+    , available_types : List String
     }
 
 
@@ -377,6 +377,7 @@ decoderProject =
         |> optional "read_pep_file" Decode.string "NA"
         |> optional "nt_file" Decode.string "NA"
         |> optional "users" (Decode.list decoderUser) []
+        |> optional "private" Decode.int 0
 
 
 decoderAssembly : Decoder Assembly
@@ -417,8 +418,7 @@ decoder =
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0
         |> optional "centrifuge_count" Decode.int 0
-        |> optional "users" (Decode.list decoderUser) []
-        |> optional "private" Decode.int 0
+        |> optional "available_types" (Decode.list Decode.string) []
 
 
 decoderSampleFile : Decoder SampleFile

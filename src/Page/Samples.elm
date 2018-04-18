@@ -430,11 +430,17 @@ showSearchResults model results =
                         Just id ->
                             List.map .user_id users |> List.member id
 
-        resultRows =
+        filteredSamples =
             results
                 |> List.filter (\result -> String.contains (String.toLower model.query) (String.toLower (getVal "specimen__sample_name" result.attributes)))
                 |> List.filter filterOnType
+
+        acceptableSamples =
+            filteredSamples
                 |> List.filter (\result -> checkPerms model.permFilterType model.user_id result.users)
+
+        resultRows =
+            acceptableSamples
                 |> List.map (.attributes >> mkResultRow model.selectedRowId model.cart model.selectedParams)
 
         filterOnType result =
@@ -454,20 +460,20 @@ showSearchResults model results =
                     (View.Sample.viewInfo sample, "col-md-8")
 
         body =
-            case resultRows of
-                [] ->
-                    noResults
-
-                _ ->
-                    div [ class "container" ]
-                        [ div [ class "row" ]
-                            [ div [ class sizeClass, style [("overflow-x", "auto")] ]
-                                [ table [ class "table table-hover" ]
-                                    [ tbody [] (headerRow ++ resultRows) ]
-                                ]
-                            , infoPanel
-                            ]
-                        ]
+            if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+                noResults
+            else if acceptableSamples == [] then
+                noResultsLoggedIn model.user_id
+            else
+               div [ class "container" ]
+                   [ div [ class "row" ]
+                       [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                           [ table [ class "table table-hover" ]
+                               [ tbody [] (headerRow ++ resultRows) ]
+                           ]
+                       , infoPanel
+                       ]
+                   ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -570,16 +576,18 @@ showAll model =
                     (View.Sample.viewInfo sample, "col-md-8")
 
         body =
-            if count == 0 then
+            if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                 noResults
+            else if acceptableSamples == [] then
+                noResultsLoggedIn model.user_id
             else
-                div [ class "container" ]
-                    [ div [ class "row" ]
-                        [ div [ class sizeClass, style [("overflow-x", "auto")] ]
-                            [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
-                        , infoPanel
-                        ]
+               div [ class "container" ]
+                [ div [ class "row" ]
+                    [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                        [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
+                    , infoPanel
                     ]
+                ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -608,6 +616,27 @@ showAll model =
 noResults : Html Msg
 noResults =
     div [ class "italic gray", style [("font-size", "2em")] ] [ text "No results" ]
+
+
+noResultsLoggedIn : Maybe Int -> Html Msg
+noResultsLoggedIn userId =
+    if userId /= Nothing then
+        div [ class "well" ]
+            [ p [] [ text "You don't have any projects yet." ]
+            , p []
+                [ text "To create a project, go to the "
+                , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                , text " and click 'New'."
+                ]
+            ]
+    else
+        div [ class "well" ]
+            [ p []
+                [ text "Please "
+                , a [ Route.href Route.Login ] [ text "login" ]
+                , text " to see samples you own."
+                ]
+            ]
 
 
 showTypes : List Sample -> Html Msg

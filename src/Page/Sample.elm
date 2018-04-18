@@ -54,6 +54,7 @@ type alias Model =
     , centrifugeQuery : String
     , proteinFilterType : String
     , isEditable : Bool
+    , currentUser : Maybe User
     , showNewAttributeDialog : Bool
     , showNewAttributeBusy : Bool
     , newAttributeType : String
@@ -85,13 +86,25 @@ init session id =
         loadSample =
             Request.Sample.get session.token id |> Http.toTask
 
+        userId =
+            Maybe.map .user_id session.user
+
         isEditable sample =
-            case session.user of
+            case userId of
                 Nothing ->
                     False
 
-                Just user ->
-                    List.map .user_name sample.users |> List.member user.user_name
+                Just userId ->
+                    --List.map .user_name sample.project.users |> List.member user.user_name
+                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) sample.project.users
+
+        currentUser sample =
+            case userId of
+                Nothing ->
+                    Nothing
+
+                Just userId ->
+                    List.filter (\u -> u.user_id == userId) sample.project.users |> List.head
     in
     loadSample
         |> Task.andThen
@@ -133,6 +146,7 @@ init session id =
                     , centrifugeQuery = ""
                     , proteinFilterType = "PFAM"
                     , isEditable = isEditable sample
+                    , currentUser = currentUser sample
                     , showNewAttributeDialog = False
                     , showNewAttributeBusy = False
                     , newAttributeType = ""
@@ -500,23 +514,15 @@ update session msg model =
 view : Model -> Html Msg
 view model =
     let
-        privateButton =
-            if model.sample.private == 1 then
-                let
-                    infoText =
-                        "This feature is currently under development.  Soon you will be able to 'publish' your sample (making it publicly accessible) or share with collaborators."
-                in
-                button [ class "btn btn-default", onClick (OpenInfoDialog infoText) ]
-                    [ span [ class "glyphicon glyphicon-lock" ] [], text " Sample is Private" ]
-            else
-                text ""
-
         showMapButton =
             let
                 attrExists name =
                     List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) model.sample.sample_attrs |> Maybe.Extra.isJust
             in
             attrExists "latitude" && attrExists "longitude"
+
+        user =
+            List.filter
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -526,7 +532,7 @@ view model =
                     , small []
                         [ text model.sample.sample_name ]
                     , div [ class "pull-right" ]
-                        [ privateButton
+                        [ viewShareButton model
                         , text " "
                         , Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg
                         ]
@@ -572,6 +578,37 @@ view model =
                         Just (editAttributeDialogConfig model attr.sample_attr_id model.showModifyAttributeBusy)
             )
         ]
+
+
+--FIXME messy, clean up
+viewShareButton : Model -> Html Msg
+viewShareButton model =
+    if model.sample.project.private == 1 then
+        let
+            (buttonLabel, permissionText, sharingText) =
+                if List.length model.sample.project.users <= 1 then
+                    ("Sample is Private", "You are the owner of this sample.", "  This sample is only visible to you.  To share, open the parent project and click the sharing button.")
+                else
+                    let
+                        permText =
+                            case model.currentUser of
+                                Nothing -> "You are the owner of this sample."
+
+                                Just user ->
+                                    case user.permission of
+                                        "read-only" -> "You have read-only access to this sample."
+
+                                        "read-write" -> "You have read-write access to this sample."
+
+                                        _ -> "You are the owner of this sample."
+                    in
+                    ("Sample is Shared", permText, "  This sample is shared with other users.  To view or modify the sharing settings, open the parent project and click the sharing button.")
+        in
+        button [ class "btn btn-default", onClick (OpenInfoDialog (permissionText ++ sharingText)) ]
+            [ span [ class "glyphicon glyphicon-lock" ] [], text " ", text buttonLabel ]
+
+    else
+        text ""
 
 
 viewSample : Sample -> Bool -> Html Msg
@@ -668,8 +705,17 @@ editInfoDialogConfig model isBusy =
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.newSampleCode, onInput SetNewSampleCode ] []
                         ]
                     , div [ class "form-group" ]
-                        [ label [] [ text "Sample Type" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the type (required)", value model.newSampleType, onInput SetNewSampleType ] []
+                        [ label [] [ text "Type" ]
+                        , div [ class "input-group" ]
+                            [ input [ class "form-control", type_ "text", value model.newSampleType ] []
+                            , div [ class "input-group-btn" ]
+                                [ div [ class "dropdown" ]
+                                    [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
+                                    , ul [ class "dropdown-menu dropdown-menu-right" ]
+                                        (List.map (\s -> li [ onClick (SetNewSampleType s) ] [ a [] [ text s ]]) model.sample.available_types)
+                                    ]
+                                ]
+                            ]
                         ]
                     ]
 
@@ -954,7 +1000,7 @@ attrEditColumn =
 attrEditView : Sample.Attribute -> Table.HtmlDetails Msg
 attrEditView attr =
     Table.HtmlDetails [ class "col-md-2", style [("text-align","right")] ]
-        [ button [ class "btn btn-default btn-xs", onClick (OpenModifyAttributeDialog attr) ] [ text "Modify" ]
+        [ button [ class "btn btn-default btn-xs margin-right", onClick (OpenModifyAttributeDialog attr) ] [ text "Modify" ]
         , button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Are you sure you to remove this attribute?" (RemoveAttribute attr.sample_attr_id)) ] [ text "Remove" ]
         ]
 
@@ -1021,7 +1067,7 @@ viewAttributes model isEditable =
                 [ text "Attributes "
                 , numShowing
                 , div [ class "pull-right" ]
-                    [ addButton, searchBar ]
+                    [ searchBar, text " ", addButton ]
                 ]
             , div [ class "scrollable" ] [ display ]
             ]

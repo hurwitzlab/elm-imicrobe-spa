@@ -303,7 +303,7 @@ update session msg model =
                         |> Task.attempt SearchUserCompleted
 
                 cmd =
-                    if String.length name > 2 then
+                    if String.length name > 0 then
                         searchByName
                     else
                         Cmd.none
@@ -525,7 +525,7 @@ update session msg model =
                         |> Task.attempt SearchInvestigatorCompleted
 
                 cmd =
-                    if String.length name > 2 then
+                    if String.length name > 0 then
                         searchByName
                     else
                         Cmd.none
@@ -722,7 +722,7 @@ viewShareButton model =
     if model.project.private == 1 then
         let
             buttonLabel =
-                if model.project.users == [] then
+                if List.length model.project.users <= 1 then
                     "Project is Private"
                 else
                     "Project is Shared"
@@ -886,7 +886,7 @@ viewPublication isEditable pub =
         editButtons =
             if isEditable then
                 [ button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this publication?" (RemovePublication pub.publication_id)) ] [ text "Remove" ]
-                , button [ class "btn btn-default btn-xs pull-right", onClick (OpenAddOrEditPublicationDialog (Just pub)) ] [ text "Edit" ]
+                , button [ class "btn btn-default btn-xs pull-right margin-right", onClick (OpenAddOrEditPublicationDialog (Just pub)) ] [ text "Edit" ]
                 ]
             else
                 [ text "" ]
@@ -920,12 +920,13 @@ viewSamples cart samples isEditable =
                     span [ class "badge" ]
                         [ text (toString numSamples)
                         ]
+
         cols =
             tr []
                 [ th [] [ text "Name" ]
                 , th [] [ text "Type" ]
-                , th [ class "col-md-1 nowrap" ] []
-                , th [ class "col-md-1 nowrap" ] [ Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg ]
+                , th [ class "nowrap" ] [ Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg ]
+                , th [ class "nowrap" ] []
                 ]
 
         rows =
@@ -969,7 +970,7 @@ viewSample cart isEditable sample =
         removeButton =
             case isEditable of
                 True ->
-                    button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Remove the sample (this cannot be undone)?" (RemoveSample sample.sample_id)) ] [ text " Remove from Project" ]
+                    button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Remove the sample (this cannot be undone)?" (RemoveSample sample.sample_id)) ] [ span [ class "glyphicon glyphicon-trash" ] [] ]
 
                 False ->
                     text ""
@@ -980,8 +981,8 @@ viewSample cart isEditable sample =
                 [ text sample.sample_name ]
             ]
         , td [] [ text sample.sample_type ]
-        , td [] [ removeButton ]
-        , td [] [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg ]
+        , td [ class "col-md-1" ] [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg ]
+        , td [ class "col-md-1" ] [ removeButton ]
         ]
 
 
@@ -1217,9 +1218,6 @@ viewCombinedAssemblies model =
 shareDialogConfig : Int -> List User -> Bool -> View.SearchableDropdown.State -> Dialog.Config Msg
 shareDialogConfig currentUserId users isEditable shareDropdownState =
     let
---        permission =
---            List.filter (\u -> u.user_id == currentUserId) users |> List.head |> Maybe.map .permission |> Maybe.withDefault "read-only"
-
         content =
             div []
                 [ div []

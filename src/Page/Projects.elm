@@ -39,7 +39,7 @@ init : Session -> Task PageLoadError Model
 init session =
     let
         loadProjects =
-            Request.Project.list |> Http.toTask
+            Request.Project.list session.token |> Http.toTask
 
         user_id =
             Maybe.map .user_id session.user
@@ -182,14 +182,16 @@ view model =
                         Just id ->
                             List.map .user_id project.users |> List.member id
 
-        filter project =
+        searchFilter project =
             ((String.contains lowerQuery (String.toLower project.project_name))
                 || (String.contains lowerQuery (String.toLower project.project_type))
                 || (List.map (String.contains lowerQuery << .domain_name) project.domains |> List.foldr (||) False))
-                && checkPerms project
+
+        matchingProjects =
+            List.filter searchFilter model.projects
 
         acceptableProjects =
-            List.filter filter model.projects
+            List.filter checkPerms matchingProjects
 
         numShowing =
             let
@@ -255,7 +257,9 @@ view model =
                 , div [ class "container" ]
                     [ div [ class "row" ]
                         [ div [ class sizeClass ]
-                            [ if acceptableProjects == [] then
+                            [ if query /= "" && (matchingProjects == [] || acceptableProjects == []) then
+                                text "None"
+                              else if acceptableProjects == [] then
                                 noProjects
                               else
                                 Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects

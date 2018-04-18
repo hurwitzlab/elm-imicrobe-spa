@@ -15,7 +15,6 @@ type alias User =
     , date : String
     , orcid : String
     , projects : List Project
-    , samples : List Sample
     }
 
 
@@ -27,7 +26,7 @@ type alias Project =
     , url : String
     , investigators : List Investigator
     , publications : List Publication
-    , sample_count : Int
+    , samples : List Sample
     }
 
 
@@ -55,6 +54,20 @@ type alias Sample =
     , sample_name : String
     , sample_acc : String
     , sample_type : String
+    , project : Project2
+    , sample_files : List SampleFile
+    }
+
+
+type alias Project2 =
+    { project_id : Int
+    , project_name : String
+    }
+
+
+type alias SampleFile =
+    { sample_file_id : Int
+    , sample_id : Int
     }
 
 
@@ -79,7 +92,6 @@ decoder =
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
-        |> optional "samples" (Decode.list decoderSample) []
 
 
 decoderProject : Decoder Project
@@ -92,8 +104,7 @@ decoderProject =
         |> optional "url" Decode.string ""
         |> optional "investigators" (Decode.list decoderInvestigator) []
         |> optional "publications" (Decode.list decoderPublication) []
-        |> optional "sample_count" Decode.int 0
-
+        |> optional "samples" (Decode.list decoderSample) []
 
 decoderInvestigator : Decoder Investigator
 decoderInvestigator =
@@ -123,6 +134,22 @@ decoderSample =
         |> required "sample_name" Decode.string
         |> optional "sample_acc" Decode.string ""
         |> optional "sample_type" Decode.string ""
+        |> required "project" decoderProject2
+        |> optional "sample_files" (Decode.list decoderSampleFile) []
+
+
+decoderProject2 : Decoder Project2
+decoderProject2 =
+    decode Project2
+        |> required "project_id" Decode.int
+        |> required "project_name" Decode.string
+
+
+decoderSampleFile : Decoder SampleFile
+decoderSampleFile =
+    decode SampleFile
+        |> required "sample_file_id" Decode.int
+        |> required "sample_id" Decode.int
 
 
 decoderLogin : Decoder Login

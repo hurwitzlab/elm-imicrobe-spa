@@ -2,7 +2,7 @@ module Page.Dashboard exposing (Model, Msg(..), init, update, view)
 
 import Data.Session exposing (Session)
 import Data.Project exposing (Project)
-import Data.User exposing (User)
+import Data.User exposing (User, Sample)
 import Data.Agave exposing (FileResult)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -331,6 +331,9 @@ viewMenu model =
 viewContent : Model -> List (Html Msg)
 viewContent model =
     let
+        samples =
+            samplesFromProjects model.user.projects
+
         (title, viewTable, count, buttonPanel) =
             case model.selectedContentType of
                 Project ->
@@ -356,7 +359,7 @@ viewContent model =
                 Sample ->
                     let
                         view =
-                            if model.user.samples == [] then
+                            if samples == [] then
                                 div [ class "well" ]
                                     [ p [] [ text "You don't have any samples yet." ]
                                     , p []
@@ -369,9 +372,9 @@ viewContent model =
                                         ]
                                     ]
                             else
-                                Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState model.user.samples
+                                Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState samples
                     in
-                    ( "Samples", view, List.length model.user.samples, text "")
+                    ( "Samples", view, List.length samples, text "")
 
                 Storage ->
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser, text "")
@@ -398,17 +401,22 @@ viewContent model =
             div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ] [ text title, text " ", numShowing, buttonPanel ]
     in
     [ div []
-        [ div [ class "col-sm-8", style [("margin-bottom","1em")] ] [ viewHeader ]
-        , div [ class "col-sm-4" ] []
+        [ div [ class "col-sm-9", style [("margin-bottom","1em")] ] [ viewHeader ]
+        , div [ class "col-sm-3" ] []
         ]
     , div []
-        [ div [ class "col-sm-8" ]
+        [ div [ class "col-sm-9" ]
             [ div [ style [("height","80vh"), ("overflow-y","auto")] ] [ viewTable ]
             ]
-        , div [ class "col-sm-4" ]
+        , div [ class "col-sm-3" ]
             [ viewInfo model ]
         ]
     ]
+
+
+samplesFromProjects : List Data.User.Project -> List Sample
+samplesFromProjects projects =
+    List.map .samples projects |> List.concat
 
 
 toTableAttrs : List (Attribute Msg)
@@ -502,6 +510,9 @@ sampleLink sample =
 viewInfo : Model -> Html Msg
 viewInfo model =
     let
+        samples =
+            samplesFromProjects model.user.projects
+
         info =
             case model.selectedContentType of
                 Project ->
@@ -511,7 +522,7 @@ viewInfo model =
                                 text ""
                             else
                                 div []
-                                    [ p [] [ text "Here are projects you've created." ]
+                                    [ p [] [ text "Here are projects you created or are shared with you." ]
                                     , p [] [ text "Click on a project row to see detailed info." ]
                                     , p [] [ text "To create a new project click the 'New' button." ]
                                     ]
@@ -519,18 +530,17 @@ viewInfo model =
                         project :: _ ->
                             div []
                                 [ View.Project.viewInfo project
-                                , br [] []
                                 , View.Project.viewActions (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
                                 ]
 
                 Sample ->
-                    case List.filter (\s -> s.sample_id == model.selectedSampleRowId) model.user.samples of
+                    case List.filter (\s -> s.sample_id == model.selectedSampleRowId) samples of
                         [] ->
-                            if (model.user.samples == []) then
+                            if (samples == []) then
                                 text ""
                             else
                                 div []
-                                    [ p [] [ text "Here are samples you've created." ]
+                                    [ p [] [ text "Here are samples you created or are shared with you." ]
                                     , p [] [ text "Click on a sample row to see detailed info." ]
                                     , p [] [ text "To create a new sample, create/open a project and click 'Add Sample'." ]
                                     ]
@@ -538,7 +548,7 @@ viewInfo model =
                         sample :: _ ->
                             div []
                                 [ View.Sample.viewInfo sample
---                                , View.Sample.viewActions (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
+                                , View.Sample.viewActions (RefreshContent) (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
                                 ]
 
                 Storage ->

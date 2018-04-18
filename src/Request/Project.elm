@@ -9,16 +9,20 @@ import Util exposing ((=>))
 import Config exposing (apiBaseUrl)
 
 
-list : Http.Request (List Project)
-list =
+list : String -> Http.Request (List Project)
+list token =
     let
         url =
             apiBaseUrl ++ "/projects"
+
+        headers =
+            [( "Authorization", token)]
 
         decoder =
             Decode.list Project.decoder
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
