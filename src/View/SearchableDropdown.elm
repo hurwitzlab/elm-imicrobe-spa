@@ -39,7 +39,7 @@ view config state =
     in
     div []
         [ input [ class "form-control", type_ "text", autofocus config.autofocus, value state.value, placeholder config.placeholder, onInput config.inputMsg ] []
-        , if state.results /= [] then
+        , if state.value /= "" && state.results /= [] then
             resultTable
           else
             text ""
