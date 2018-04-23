@@ -315,24 +315,28 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
                 , button [ style [("visibility","hidden")] ] -- FIXME make a better spacer than this
                     [ text " " ]
                 , if (config.showNewFolderButton) then
-                    button [ class "btn btn-default btn-sm", type_ "button", onClick OpenNewFolderDialog ]
+                    button [ class "btn btn-default btn-sm margin-right", type_ "button", onClick OpenNewFolderDialog ]
                         [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
                   else
                     text ""
                 , if (config.showUploadFileButton) then
-                    div [ class "btn-group" ]
-                        [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
+--                    div [ class "btn-group" ]
+--                        [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
+--                            [ span [ class "glyphicon glyphicon-cloud-upload" ] []
+--                            , text " Upload File "
+--                            , span [ class "caret" ] []
+--                            ]
+--                        , ul [ class "dropdown-menu" ]
+--                            [ li [] [ a [ onClick UploadFile ] [ text "From local" ] ]
+--                            , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
+--                            , li [] [ a [] [ text "From NCBI" ] ]
+--                            , li [] [ a [] [ text "From EBI" ] ]
+--                            ]
+--                        ]
+                        button [ class "btn btn-default btn-sm", type_ "button", onClick UploadFile ]
                             [ span [ class "glyphicon glyphicon-cloud-upload" ] []
-                            , text " Upload File "
-                            , span [ class "caret" ] []
+                            , text " Upload File"
                             ]
-                        , ul [ class "dropdown-menu" ]
-                            [ li [] [ a [ onClick UploadFile ] [ text "From local" ] ]
-                            , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
-                            , li [] [ a [] [ text "From NCBI" ] ]
-                            , li [] [ a [] [ text "From EBI" ] ]
-                            ]
-                        ]
                     else
                       text ""
                 ]
