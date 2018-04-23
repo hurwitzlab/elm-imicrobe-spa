@@ -360,7 +360,7 @@ searchView model =
 filterView : String -> Html Msg
 filterView permFilterType =
     div []
-        [ span [ class "bold" ] [ text "Ownership: " ]
+        [ span [ class "bold" ] [ text "Access: " ]
         , View.FilterButtonGroup.view permissionFilterConfig permFilterType
         ]
 
@@ -573,7 +573,7 @@ showAll model =
                     (text "", "")
 
                 sample :: _ ->
-                    (View.Sample.viewInfo sample, "col-md-8")
+                    (View.Sample.viewInfo sample, "col-md-9")
 
         body =
             if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
@@ -622,11 +622,11 @@ noResultsLoggedIn : Maybe Int -> Html Msg
 noResultsLoggedIn userId =
     if userId /= Nothing then
         div [ class "well" ]
-            [ p [] [ text "You don't have any projects yet." ]
+            [ p [] [ text "You don't have any samples yet." ]
             , p []
-                [ text "To create a project, go to the "
+                [ text "To add a sample, go to the "
                 , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
-                , text " and click 'New'."
+                , text ", select 'Projects', and click 'New'."
                 ]
             ]
     else
