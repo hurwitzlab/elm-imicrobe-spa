@@ -530,7 +530,7 @@ viewInfo model =
                         project :: _ ->
                             div []
                                 [ View.Project.viewInfo project
-                                , View.Project.viewActions (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
+                                , View.Project.viewActions project (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
                                 ]
 
                 Sample ->
@@ -548,7 +548,7 @@ viewInfo model =
                         sample :: _ ->
                             div []
                                 [ View.Sample.viewInfo sample
-                                , View.Sample.viewActions (RefreshContent) (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
+                                , View.Sample.viewActions sample (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
                                 ]
 
                 Storage ->

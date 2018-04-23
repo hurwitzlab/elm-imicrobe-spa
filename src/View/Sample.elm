@@ -49,15 +49,15 @@ viewInfo { sample_name, sample_acc, sample_type, project, sample_files } =
         ]
 
 
-viewActions : msg -> msg -> Html msg
-viewActions viewMsg deleteMsg =
+viewActions : { a | sample_id : Int } -> msg -> Html msg
+viewActions { sample_id } deleteMsg =
     div [ class "row" ]
         [ div [ class "table-responsive" ]
             [ table [ class "table info-table" ]
                 [ tbody []
                     [ tr []
                         [ td []
-                            [ button [ class "btn btn-link", onClick viewMsg ]
+                            [ a [ class "btn btn-link", Route.href (Route.Sample sample_id) ]
                                 [ span [ class "glyphicon glyphicon-share-alt" ] [], text " Open"
                                 ]
                             ]

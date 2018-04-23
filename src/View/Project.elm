@@ -49,10 +49,6 @@ viewInfo { project_name, project_code, project_type, url, investigators, publica
                         [ th [] [ text "URL " ]
                         , td [] [ text url ]
                         ]
---                  , tr []
---                      [ th [] [ text "PI " ]
---                      , td [] [ text project.pi ]
---                      ]
                     , tr []
                         [ th [] [ text "Investigators " ]
                         , td [] (viewInvestigators investigators)
@@ -71,14 +67,14 @@ viewInfo { project_name, project_code, project_type, url, investigators, publica
         ]
 
 
-viewActions : msg -> Html msg
-viewActions deleteMsg =
+viewActions : { a | project_id : Int } -> msg -> Html msg
+viewActions { project_id } deleteMsg =
         div [ class "row" ]
             [ div [ class "table-responsive" ]
                 [ table [ class "table info-table" ]
                     [ tr []
                         [ td []
-                            [ button [ class "btn btn-link" ]
+                            [ a [ class "btn btn-link", Route.href (Route.Project project_id) ]
                                 [ span [ class "glyphicon glyphicon-share-alt" ] [], text " Open"
                                 ]
                             ]
