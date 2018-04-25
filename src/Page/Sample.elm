@@ -304,7 +304,7 @@ update session msg model =
             { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
         OpenNewAttributeDialog ->
-            { model | showNewAttributeDialog = True, showNewAttributeBusy = False } => Cmd.none => NoOp
+            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, newAttributeType = "", newAttributeAliases = "", newAttributeValue = "" } => Cmd.none => NoOp
 
         CloseNewAttributeDialog ->
             { model | showNewAttributeDialog = False } => Cmd.none => NoOp
@@ -927,20 +927,17 @@ viewCombinedAssembly assembly =
 attrTableConfig : Bool -> Table.Config Sample.Attribute Msg
 attrTableConfig isEditable =
     let
-        columns =
-            case isEditable of
-                False ->
-                    [ attrTypeColumn
-                    , attrAliasColumn
-                    , attrValueColumn
-                    ]
+        defaultColumns =
+            [ attrTypeColumn
+            , attrAliasColumn
+            , attrValueColumn
+            ]
 
-                True ->
-                    [ attrTypeColumn
-                    , attrAliasColumn
-                    , attrValueColumn
-                    , attrEditColumn
-                    ]
+        columns =
+            if isEditable then
+                defaultColumns ++ [ attrEditColumn ]
+            else
+                defaultColumns
     in
     Table.customConfig
         { toId = toString << .sample_attr_id
