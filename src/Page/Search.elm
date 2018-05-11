@@ -228,6 +228,9 @@ nameLink result =
                 "project" ->
                     Route.Project result.id
 
+                "project_group" ->
+                    Route.ProjectGroup result.id
+
                 "publication" ->
                     Route.Publication result.id
 
