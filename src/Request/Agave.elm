@@ -87,6 +87,21 @@ getJob token id =
         |> HttpBuilder.toRequest
 
 
+getJobHistory : String -> String -> Http.Request (Response (List JobHistory))
+getJobHistory token id =
+    let
+        url =
+            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/history"
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderJobHistory)))
+        |> HttpBuilder.toRequest
+
+
 getJobOutputs : String -> String -> String -> Maybe String -> Http.Request (Response (List JobOutput))
 getJobOutputs username token id path =
     let

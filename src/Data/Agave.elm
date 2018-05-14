@@ -139,6 +139,14 @@ type alias JobOutput =
     }
 
 
+type alias JobHistory =
+    { status : String
+    , created : String
+    , createdBy : String
+    , description : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -259,6 +267,15 @@ decoderJobOutput =
         |> required "name" Decode.string
         |> required "path" Decode.string
         |> required "type" Decode.string
+
+
+decoderJobHistory : Decoder JobHistory
+decoderJobHistory =
+    decode JobHistory
+        |> required "status" Decode.string
+        |> required "created" Decode.string
+        |> required "createdBy" Decode.string
+        |> required "description" Decode.string
 
 
 encodeProfile : Profile -> Value
