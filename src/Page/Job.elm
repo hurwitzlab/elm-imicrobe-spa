@@ -147,7 +147,7 @@ update session msg model =
                     Request.Agave.getJobOutputs username session.token model.job_id (Just path)
                         |> Http.toTask
                         |> Task.map .result
-                        |> Task.map (List.filter (\r -> r.name /= ".") >> List.map .path) -- filter out current path "."
+                        |> Task.map (List.filter (\r -> r.name /= "." && String.endsWith ".tab" r.name) >> List.map .path) -- filter out current path "." #FIXME hardcoded for .tab files (for ohana-blast) 
 
                 -- Expects relative path
                 loadOutput path =
