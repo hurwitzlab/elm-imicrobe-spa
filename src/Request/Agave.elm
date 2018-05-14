@@ -105,9 +105,13 @@ getJobOutputs username token id path =
 
         headers =
             [( "Authorization", token)]
+
+        queryParams =
+            [("limit", "9999")]
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderJobOutput)))
         |> HttpBuilder.toRequest
 
