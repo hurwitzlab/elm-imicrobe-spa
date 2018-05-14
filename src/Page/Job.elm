@@ -32,7 +32,9 @@ type alias Model =
     , job : Agave.Job
     , loadingJob : Bool
     , loadingOutputs : Bool
+    , loadingHistory : Bool
     , outputs : List Agave.JobOutput
+    , history : List Agave.JobHistory
     , app : App.App
     , loadingResults : Bool
     , loadedResults : Bool
@@ -79,7 +81,9 @@ init session id =
                                 , job = job
                                 , loadingJob = False
                                 , loadingOutputs = False
+                                , loadingHistory = False
                                 , outputs = []
+                                , history = []
                                 , app = app
                                 , loadingResults = False
                                 , loadedResults = False
@@ -98,7 +102,9 @@ init session id =
 
 
 type Msg
-    = GetOutputs
+    = GetHistory
+    | SetHistory (List Agave.JobHistory)
+    | GetOutputs
     | SetOutputs (List Agave.JobOutput)
     | GetResults
     | SetResults (Result Http.Error (List (String, String)))
@@ -116,6 +122,31 @@ update session msg model =
                 Just profile -> profile.username
     in
     case msg of
+        GetHistory ->
+            let
+                loadHistory =
+                    Request.Agave.getJobHistory session.token model.job_id |> Http.toTask |> Task.map .result
+
+                handleHistory history =
+                    case history of
+                        Ok history ->
+                            SetHistory history
+
+                        Err _ ->
+                            let
+                                _ = Debug.log "Error" "could not retrieve job history"
+                            in
+                            SetHistory []
+            in
+            { model | loadingHistory = True } => Task.attempt handleHistory loadHistory
+
+        SetHistory history ->
+--            let
+--                filtered =
+--                    List.filter (\output -> output.name /= ".") outputs
+--            in
+            { model | history = history } => Cmd.none
+
         GetOutputs ->
             let
                 loadOutputs =
@@ -285,6 +316,7 @@ view model =
             , viewJob model
             , viewInputs model.job.inputs
             , viewParameters model.job.parameters
+            , viewHistory model
             , viewOutputs model
             , viewResults model
             ]
@@ -420,6 +452,36 @@ viewParameter (id, value) =
     tr []
         [ th [] [ text id ]
         , td [] [ text value ]
+        ]
+
+
+viewHistory : Model -> Html Msg
+viewHistory model =
+    let
+        body =
+            case model.history of
+                [] ->
+                    case model.loadingHistory of
+                        False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetHistory ] [ text "Show History" ] ] ] ]
+
+                        True -> [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ]
+
+                _ -> (List.map viewEvent model.history)
+    in
+    div []
+        [ h2 [] [ text "History" ]
+        , table [ class "table" ]
+            [ tbody [] body
+            ]
+        ]
+
+
+viewEvent : Agave.JobHistory -> Html msg
+viewEvent event =
+    tr []
+        [ td [ class "nowrap" ] [ text event.created ]
+        , td [ class "nowrap" ] [ text event.status ]
+        , td [] [ text event.description ]
         ]
 
 
