@@ -25,6 +25,14 @@ capitalize string =
             String.cons (Char.toUpper head) tail
 
 
+pluralize : String -> Int -> String
+pluralize str count =
+    if count == 1 then
+        str
+    else
+        str ++ "s"
+
+
 removeTrailingSlash : String -> String
 removeTrailingSlash path =
     case String.startsWith "/" path of

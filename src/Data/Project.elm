@@ -6,18 +6,6 @@ import Json.Encode as Encode exposing (Value)
 import Util exposing ((=>))
 
 
-type alias Domain =
-    { domain_id : Int
-    , domain_name : String
-    }
-
-
-type alias Investigator =
-    { investigator_id : Int
-    , investigator_name : String
-    , institution : String
-    }
-
 
 type alias Project =
     { project_id : Int
@@ -50,6 +38,20 @@ type alias Project =
 type alias ProjectGroup =
     { project_group_id : Int
     , group_name : String
+    , user_count : Int
+    }
+
+
+type alias Domain =
+    { domain_id : Int
+    , domain_name : String
+    }
+
+
+type alias Investigator =
+    { investigator_id : Int
+    , investigator_name : String
+    , institution : String
     }
 
 
@@ -76,6 +78,15 @@ type alias Sample =
     , url : String
     , latitude : String
     , longitude : String
+    , sample_files : List SampleFile
+    }
+
+
+type alias SampleFile =
+    { sample_file_id : Int
+    , sample_id : Int
+    , sample_file_type_id : Int
+    , file : String
     }
 
 
@@ -138,6 +149,7 @@ decoderProjectGroup =
     decode ProjectGroup
         |> required "project_group_id" Decode.int
         |> required "group_name" Decode.string
+        |> optional "user_count" Decode.int 0
 
 
 decoderInv : Decoder Investigator
@@ -181,6 +193,16 @@ decoderSample =
         |> optional "url" Decode.string "NA"
         |> optional "latitude" Decode.string ""
         |> optional "longitude" Decode.string ""
+        |> optional "sample_files" (Decode.list decoderSampleFile) []
+
+
+decoderSampleFile : Decoder SampleFile
+decoderSampleFile =
+    decode SampleFile
+        |> required "sample_file_id" Decode.int
+        |> required "sample_id" Decode.int
+        |> optional "sample_file_type_id" Decode.int 0
+        |> required "file" Decode.string
 
 
 decoderAssembly : Decoder Assembly

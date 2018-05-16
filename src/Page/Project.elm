@@ -1,6 +1,7 @@
 module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup, User)
+import Data.ProjectGroup
 import Data.Sample
 import Data.Investigator
 import Data.User
@@ -15,6 +16,7 @@ import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
+import Request.ProjectGroup
 import Request.Sample
 import Request.Investigator
 import Request.Publication
@@ -54,6 +56,7 @@ type alias Model =
     , currentUserId : Maybe Int
     , confirmationDialog : Maybe (Dialog.Config Msg)
     , showShareDialog : Bool
+    , showShareDialogBusy : Bool
     , shareDropdownState : View.SearchableDropdown.State
     , showEditInfoDialog : Bool
     , newProjectName : String
@@ -117,6 +120,7 @@ init session id =
                     , currentUserId = userId
                     , confirmationDialog = Nothing
                     , showShareDialog = False
+                    , showShareDialogBusy = False
                     , shareDropdownState = View.SearchableDropdown.init
                     , showEditInfoDialog = False
                     , newProjectName = ""
@@ -162,9 +166,10 @@ type Msg
     | OpenShareDialog
     | CloseShareDialog
     | SetShareUserName String
-    | SearchUserCompleted (Result Http.Error (List Data.User.User))
+    | SearchUsersAndGroupsCompleted (Result Http.Error (List Data.User.User, List Data.ProjectGroup.ProjectGroup))
     | ShareWithUser String Int String --FIXME create new type for permission instead of using string
     | ShareWithUserCompleted (Result Http.Error Project)
+    | AddToProjectGroupCompleted (Result Http.Error String)
     | UnshareWithUser Int
     | UnshareWithUserCompleted (Result Http.Error String)
     | OpenEditInfoDialog
@@ -175,8 +180,8 @@ type Msg
     | SetNewProjectURL String
     | AddNewProjectDomain Int String
     | RemoveNewProjectDomain Int
-    | AddNewProjectGroup Int String
-    | RemoveNewProjectGroup Int
+--    | AddToProjectGroup Int
+--    | RemoveFromProjectGroup Int
     | UpdateProjectInfo
     | UpdateProjectInfoCompleted (Result Http.Error Project)
     | OpenNewSampleDialog
@@ -298,64 +303,97 @@ update session msg model =
 
         SetShareUserName name ->
             let
-                searchByName =
-                    Request.User.searchByName session.token name |> Http.toTask
-                        |> Task.attempt SearchUserCompleted
-
-                cmd =
-                    if String.length name > 0 then
-                        searchByName
-                    else
-                        Cmd.none
-
                 dropdownState =
                     model.shareDropdownState
             in
-            { model | shareDropdownState = { dropdownState | value = name } } => cmd => NoOp
+            if String.length name >= 3 then
+                let
+                    searchByName =
+                        Task.map2 (\users groups -> (users, groups))
+                            (Request.User.searchByName session.token name |> Http.toTask)
+                            (Request.ProjectGroup.searchByName name |> Http.toTask)
+                in
+                { model | shareDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersAndGroupsCompleted searchByName => NoOp
+            else
+            { model | shareDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none => NoOp
 
-        SearchUserCompleted (Ok users) ->
+        SearchUsersAndGroupsCompleted (Ok (users, groups)) ->
             let
-                displayName user =
+                userDisplayName user =
                     user.first_name ++ " " ++ user.last_name ++ " (" ++ user.user_name ++ ")"
 
+                groupDisplayName group =
+                    let
+                        numUsers =
+                            List.length group.users
+                    in
+                    "Group: " ++ group.group_name ++ " (" ++ (numUsers |> toString) ++ " " ++ (Util.pluralize "user" numUsers) ++ ")"
+
                 results =
-                    List.map (\u -> (u.user_id, displayName u)) users
+                    List.append
+                        (List.map (\u -> (u.user_id, userDisplayName u)) users)
+                        (List.map (\g -> (g.project_group_id, groupDisplayName g)) groups)
 
                 dropdownState =
                     model.shareDropdownState
             in
             { model | shareDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
 
-        SearchUserCompleted (Err error) -> -- TODO finish this
+        SearchUsersAndGroupsCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "SearchUsersAndGroupsCompleted" (toString error)
+            in
             model => Cmd.none => NoOp
 
-        ShareWithUser permission id _ ->
+        ShareWithUser permission id name ->
             let
-                noChange =
-                    List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
+                dropdownState =
+                    model.shareDropdownState
+
+                newModel =
+                    { model | showShareDialogBusy = True, shareDropdownState = { dropdownState | value = "", results = [] } }
             in
-            if noChange then
-                model => Cmd.none => NoOp
+            if String.startsWith "Group: " name then --FIXME total kludge
+                let
+                    addProjectToProjectGroup =
+                            Request.ProjectGroup.addProject session.token id model.project_id |> Http.toTask
+                in
+                newModel => Task.attempt AddToProjectGroupCompleted addProjectToProjectGroup => NoOp
             else
                 let
-                    addUser =
-                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
-
-                    dropdownState =
-                        model.shareDropdownState
+                    noChange =
+                        List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
                 in
-                { model | shareDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt ShareWithUserCompleted addUser => NoOp
+                if noChange then
+                    model => Cmd.none => NoOp
+                else
+                    let
+                        addUserToProject =
+                            Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
+                    in
+                    newModel => Task.attempt ShareWithUserCompleted addUserToProject => NoOp
 
         ShareWithUserCompleted (Ok project) ->
             let
                 newProject =
                     model.project
-
-                _ = Debug.log "users" (toString project.users)
             in
-            { model | project = { newProject | users = project.users } } => Cmd.none => NoOp
+            { model | showShareDialogBusy = False, project = { newProject | users = project.users } } => Cmd.none => NoOp
 
         ShareWithUserCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none => NoOp
+
+        AddToProjectGroupCompleted (Ok _) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | showShareDialogBusy = False } => Cmd.none => NoOp
+
+        AddToProjectGroupCompleted (Err error) -> -- TODO finish this
             let
                 _ = Debug.log "Error:" (toString error)
             in
@@ -421,19 +459,19 @@ update session msg model =
             in
             { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
 
-        AddNewProjectGroup id name ->
-            let
-                newDropdownState =
-                    View.TagsDropdown.add id name model.groupDropdownState
-            in
-            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
+--        AddToProjectGroup group_id ->
+--            let
+--                newDropdownState =
+--                    View.TagsDropdown.add id name model.groupDropdownState
+--            in
+--            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
 
-        RemoveNewProjectGroup id ->
-            let
-                newDropdownState =
-                    View.TagsDropdown.remove id model.groupDropdownState
-            in
-            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
+--        RemoveFromProjectGroup id ->
+--            let
+--                newDropdownState =
+--                    View.TagsDropdown.remove id model.groupDropdownState
+--            in
+--            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
 
         UpdateProjectInfo ->
             let
@@ -443,11 +481,8 @@ update session msg model =
                 investigators =
                     View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
 
-                groups =
-                    View.TagsDropdown.selected model.groupDropdownState |> List.map (\t -> ProjectGroup (Tuple.first t) (Tuple.second t))
-
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains investigators groups |> Http.toTask
+                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains investigators |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
 
@@ -704,7 +739,7 @@ view model =
                         Nothing
 
                     Just id ->
-                        Just (shareDialogConfig id model.project.users model.isEditable model.shareDropdownState)
+                        Just (shareDialogConfig id model)
              else if (model.confirmationDialog /= Nothing) then
                 model.confirmationDialog
              else if model.showEditInfoDialog then
@@ -1215,17 +1250,26 @@ viewCombinedAssemblies model =
         ]
 
 
-shareDialogConfig : Int -> List User -> Bool -> View.SearchableDropdown.State -> Dialog.Config Msg
-shareDialogConfig currentUserId users isEditable shareDropdownState =
+shareDialogConfig : Int -> Model -> Dialog.Config Msg
+shareDialogConfig currentUserId model =
     let
         content =
             div []
                 [ div []
                     [ br [] []
-                    , div [] [ text "Who has access" ]
-                    , (viewUsers currentUserId isEditable users)
+                    , if model.showShareDialogBusy then
+                        spinner
+                      else
+                        div [ class "scrollable" ]
+                            [ div [] [ text "Who has access" ]
+                            , (viewUsersAndGroups currentUserId model.isEditable model.project.users model.project.project_groups)
+                            , br [] [] -- kludge for dropdown not on top
+                            , br [] []
+                            , br [] []
+                            , br [] []
+                            ]
                     ]
-                , if isEditable then
+                , if model.isEditable then
                     addPanel
                   else
                     text ""
@@ -1235,52 +1279,40 @@ shareDialogConfig currentUserId users isEditable shareDropdownState =
             div []
                 [ hr [] []
                 , div [ class "form-group" ]
-                    [ div [] [ text "Add someone:" ]
+                    [ div [] [ text "Add a person or group:" ]
                     , div []
-                        [ View.SearchableDropdown.view shareDropdownConfig shareDropdownState
+                        [ View.SearchableDropdown.view shareDropdownConfig model.shareDropdownState
                         ]
                     ]
                 , br [] []
                 ]
-
-        footer =
-            let
-                disable =
-                    disabled False --model.showNewSampleBusy
-            in
-                div []
-                    [ button [ class "btn btn-default pull-left", onClick CloseShareDialog, disable ] [ text "Cancel" ]
-                    , button [ class "btn btn-primary", disable ] [ text "OK" ]
-                    ]
     in
     { closeMessage = Just CloseShareDialog
     , containerClass = Just "narrow-modal-container"
     , header = Just (h3 [] [ text "Share Project" ])
     , body = Just content
-    , footer = Nothing --Just footer
+    , footer = Nothing
     }
 
 
 shareDropdownConfig : View.SearchableDropdown.Config Msg Msg
 shareDropdownConfig =
-    { placeholder = "Enter the name of the person to add "
+    { placeholder = "Enter the name of the person or group to add "
     , autofocus = False
     , inputMsg = SetShareUserName
     , selectMsg = (ShareWithUser "read-only")
     }
 
 
-viewUsers : Int -> Bool -> List User -> Html Msg
-viewUsers currentUserId isEditable users =
-    if users == [] then
+viewUsersAndGroups : Int -> Bool -> List User -> List ProjectGroup -> Html Msg
+viewUsersAndGroups currentUserId isEditable users groups =
+    if users == [] && groups == [] then
         div [] [ text "Only you can see this project." ]
     else
-        div [ class "scrollable" ]
-            [ table [ class "table" ] [ tbody [] (List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u) users) ]
-            , br [] [] -- kludge for dropdown not on top
-            , br [] []
-            , br [] []
-            , br [] []
+        table [ class "table" ]
+            [ tbody []
+                ((List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u) users) ++
+                    (List.map (\g -> viewGroup isEditable g) groups))
             ]
 
 
@@ -1292,7 +1324,7 @@ viewUser isMe isEditable user =
     in
     tr []
         [ td []
-            [ span [ class "glyphicon glyphicon-user" ] []
+            [ i [ class "fas fa-user" ] []
             , text " "
             , text displayName
             , if isMe then
@@ -1302,7 +1334,27 @@ viewUser isMe isEditable user =
             , if user.permission /= "owner" && isEditable then
                 viewPermissionDropdown user
               else
-                span [ class "pull-right" ][ text (capitalize user.permission) ]
+                span [ class "pull-right" ] [ text (capitalize user.permission) ]
+            ]
+        ]
+
+
+viewGroup : Bool -> ProjectGroup -> Html Msg
+viewGroup isEditable group =
+    tr []
+        [ td []
+            [ i [ class "fas fa-user-friends" ] []
+            , text " "
+            , text group.group_name
+            , text " ("
+            , text (toString group.user_count)
+            , text " "
+            , text (Util.pluralize "user" group.user_count)
+            , text ")"
+            , if isEditable then
+                button [ class "btn btn-default btn-xs pull-right" ] [ text "Remove" ]
+              else
+                text ""
             ]
         ]
 
@@ -1397,12 +1449,12 @@ investigatorDropdownConfig =
     }
 
 
-groupDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
-groupDropdownConfig groups =
-    { options = groups
-    , addMsg = AddNewProjectGroup
-    , removeMsg = RemoveNewProjectGroup
-    }
+--groupDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
+--groupDropdownConfig groups =
+--    { options = groups
+--    , addMsg = AddNewProjectGroup
+--    , removeMsg = RemoveNewProjectGroup
+--    }
 
 
 newSampleDialogConfig : Model -> Dialog.Config Msg

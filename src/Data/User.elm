@@ -87,8 +87,8 @@ decoder =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
-        |> required "first_name" Decode.string
-        |> required "last_name" Decode.string
+        |> optional "first_name" Decode.string ""
+        |> optional "last_name" Decode.string ""
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []

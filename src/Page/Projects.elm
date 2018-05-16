@@ -221,7 +221,7 @@ view model =
                     (text "", "")
 
                 project :: _ ->
-                    (View.Project.viewInfo project, "col-md-8")
+                    (View.Project.viewInfo project, "col-md-9")
 
         noProjects =
             if model.user_id /= Nothing then

@@ -223,3 +223,26 @@ delete token path =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
         |> HttpBuilder.toRequest
+
+
+setFilePermission : String -> String -> String -> String -> Http.Request EmptyResponse
+setFilePermission token username permission path =
+        let
+        url =
+            agaveBaseUrl ++ "/files/v2/pems/system/data.iplantcollaborative.org/" ++ (removeTrailingSlash path)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "username" => Encode.string username
+                , "permission" => Encode.string permission
+                , "recursive" => Encode.string "false"
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
+        |> HttpBuilder.toRequest
