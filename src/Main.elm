@@ -36,7 +36,6 @@ import Page.Investigators as Investigators
 import Page.Job as Job
 import Page.Jobs as Jobs
 import Page.Map as Map
---import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
 import Page.Profile as Profile
 import Page.Project as Project
@@ -102,7 +101,6 @@ type Page
     | Job String Job.Model
     | Jobs Jobs.Model
     | Map String String Map.Model
---    | MetaSearch MetaSearch.Model
     | NotFound
     | Profile Profile.Model
     | Project Int Project.Model
@@ -168,8 +166,6 @@ type Msg
     | JobsMsg Jobs.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
     | MapMsg Map.Msg
---    | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
---    | MetaSearchMsg MetaSearch.Msg
     | LoadProfile Agave.Profile
     | LoginRecorded User.Login
     | ProfileLoaded (Result PageLoadError Profile.Model)
@@ -307,9 +303,6 @@ setRoute maybeRoute model =
 
         Just (Route.Map lat lng) ->
             transition (MapLoaded lat lng) (Map.init lat lng)
-
---        Just Route.MetaSearch ->
---            transition MetaSearchLoaded (MetaSearch.init model.session)
 
         Just Route.Pubchase ->
             transition PubchaseLoaded Pubchase.init
@@ -663,38 +656,6 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
---        MetaSearchLoaded (Ok subModel) ->
---            { model | pageState = Loaded (MetaSearch subModel) } => scrollToTop
---
---        MetaSearchLoaded (Err error) ->
---            { model | pageState = Loaded (Error error) } => Cmd.none
---
---        MetaSearchMsg subMsg ->
---            case page of
---                MetaSearch subModel ->
---                    let
---                        ( ( pageModel, cmd ), msgFromPage ) =
---                            MetaSearch.update model.session subMsg subModel
---
---                        newModel =
---                            case msgFromPage of
---                                MetaSearch.NoOp ->
---                                    model
---
---                                MetaSearch.SetCart newCart ->
---                                    let
---                                        newSession =
---                                            { session | cart = newCart }
---                                    in
---                                    { model | session = newSession }
---
---                    in
---                    { newModel | pageState = Loaded (MetaSearch pageModel) }
---                        => Cmd.map MetaSearchMsg cmd
---
---                _ ->
---                    model => Cmd.none
-
         PubchaseLoaded (Ok subModel) ->
             { model | pageState = Loaded (Pubchase subModel) } => scrollToTop
 
@@ -815,7 +776,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Project id subModel) } => scrollToTop
 
         ProjectLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         ProjectMsg subMsg ->
             case page of
@@ -867,7 +828,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Sample id subModel) } => scrollToTop
 
         SampleLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         SampleMsg subMsg ->
             case page of
@@ -1255,11 +1216,6 @@ viewPage session isLoading page =
             Map.view subModel
                 |> Html.map MapMsg
                 |> layout Page.Map
-
---        MetaSearch subModel ->
---            MetaSearch.view subModel
---                |> Html.map MetaSearchMsg
---                |> layout Page.MetaSearch
 
         Publication id subModel ->
             Publication.view subModel
