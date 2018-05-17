@@ -169,7 +169,9 @@ type Msg
     | SearchUsersAndGroupsCompleted (Result Http.Error (List Data.User.User, List Data.ProjectGroup.ProjectGroup))
     | ShareWithUser String Int String --FIXME create new type for permission instead of using string
     | ShareWithUserCompleted (Result Http.Error Project)
-    | AddToProjectGroupCompleted (Result Http.Error String)
+    | AddToProjectGroupCompleted (Result Http.Error (List Data.ProjectGroup.ProjectGroup))
+    | RemoveFromProjectGroup Int
+    | RemoveFromProjectGroupCompleted (Result Http.Error String)
     | UnshareWithUser Int
     | UnshareWithUserCompleted (Result Http.Error String)
     | OpenEditInfoDialog
@@ -180,8 +182,6 @@ type Msg
     | SetNewProjectURL String
     | AddNewProjectDomain Int String
     | RemoveNewProjectDomain Int
---    | AddToProjectGroup Int
---    | RemoveFromProjectGroup Int
     | UpdateProjectInfo
     | UpdateProjectInfoCompleted (Result Http.Error Project)
     | OpenNewSampleDialog
@@ -355,22 +355,27 @@ update session msg model =
             in
             if String.startsWith "Group: " name then --FIXME total kludge
                 let
-                    addProjectToProjectGroup =
-                            Request.ProjectGroup.addProject session.token id model.project_id |> Http.toTask
-                in
-                newModel => Task.attempt AddToProjectGroupCompleted addProjectToProjectGroup => NoOp
-            else
-                let
                     noChange =
-                        List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
+                        List.any (\g -> g.project_group_id == id) model.project.project_groups
+
+                    addProjectToProjectGroup =
+                        Request.ProjectGroup.addProject session.token id model.project_id |> Http.toTask
                 in
                 if noChange then
                     model => Cmd.none => NoOp
                 else
-                    let
-                        addUserToProject =
+                    newModel => Task.attempt AddToProjectGroupCompleted addProjectToProjectGroup => NoOp
+            else
+                let
+                    noChange =
+                        List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
+
+                    addUserToProject =
                             Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
-                    in
+                in
+                if noChange then
+                    model => Cmd.none => NoOp
+                else
                     newModel => Task.attempt ShareWithUserCompleted addUserToProject => NoOp
 
         ShareWithUserCompleted (Ok project) ->
@@ -386,14 +391,39 @@ update session msg model =
             in
             model => Cmd.none => NoOp
 
-        AddToProjectGroupCompleted (Ok _) ->
+        AddToProjectGroupCompleted (Ok groups) ->
             let
                 newProject =
                     model.project
+
+                newGroups =
+                    List.map (\g -> ProjectGroup g.project_group_id g.group_name g.user_count []) groups -- FIXME kludge due to multiple type defs
             in
-            { model | showShareDialogBusy = False } => Cmd.none => NoOp
+            { model | showShareDialogBusy = False, project = { newProject | project_groups = newGroups } } => Cmd.none => NoOp
 
         AddToProjectGroupCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none => NoOp
+
+        RemoveFromProjectGroup groupId ->
+            let
+                removeFromProjectGroup =
+                    Request.ProjectGroup.removeProject session.token groupId model.project_id |> Http.toTask
+
+                newProject =
+                    model.project
+
+                newGroups =
+                    List.filter (\g -> g.project_group_id /= groupId) model.project.project_groups
+            in
+            { model | project = { newProject | project_groups = newGroups } } => Task.attempt RemoveFromProjectGroupCompleted removeFromProjectGroup => NoOp
+
+        RemoveFromProjectGroupCompleted (Ok _) ->
+            model => Cmd.none => NoOp
+
+        RemoveFromProjectGroupCompleted (Err error) -> -- TODO finish this
             let
                 _ = Debug.log "Error:" (toString error)
             in
@@ -458,20 +488,6 @@ update session msg model =
                     View.TagsDropdown.remove id model.domainDropdownState
             in
             { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
-
---        AddToProjectGroup group_id ->
---            let
---                newDropdownState =
---                    View.TagsDropdown.add id name model.groupDropdownState
---            in
---            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
-
---        RemoveFromProjectGroup id ->
---            let
---                newDropdownState =
---                    View.TagsDropdown.remove id model.groupDropdownState
---            in
---            { model | groupDropdownState = newDropdownState } => Cmd.none => NoOp
 
         UpdateProjectInfo ->
             let
@@ -1352,7 +1368,7 @@ viewGroup isEditable group =
             , text (Util.pluralize "user" group.user_count)
             , text ")"
             , if isEditable then
-                button [ class "btn btn-default btn-xs pull-right" ] [ text "Remove" ]
+                button [ class "btn btn-default btn-xs pull-right", onClick (RemoveFromProjectGroup group.project_group_id) ] [ text "Remove" ]
               else
                 text ""
             ]

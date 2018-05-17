@@ -12,6 +12,7 @@ type alias ProjectGroup =
     , url : String
     , projects : List Project
     , users : List User
+    , user_count : Int
     }
 
 
@@ -40,6 +41,7 @@ decoder =
         |> optional "url" Decode.string "NA"
         |> optional "projects" (Decode.list decoderProject) []
         |> optional "users" (Decode.list decoderUser) []
+        |> optional "user_count" Decode.int 0
 
 
 decoderProject : Decoder Project

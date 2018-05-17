@@ -80,7 +80,15 @@ type alias Project =
     , read_pep_file : String
     , nt_file : String
     , users : List User
+    , project_groups : List ProjectGroup
     , private : Int
+    }
+
+
+type alias ProjectGroup =
+    { project_group_id : Int
+    , group_name : String
+    , users : List User
     }
 
 
@@ -377,7 +385,16 @@ decoderProject =
         |> optional "read_pep_file" Decode.string "NA"
         |> optional "nt_file" Decode.string "NA"
         |> optional "users" (Decode.list decoderUser) []
+        |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "private" Decode.int 0
+
+
+decoderProjectGroup : Decoder ProjectGroup
+decoderProjectGroup =
+    decode ProjectGroup
+        |> required "project_group_id" Decode.int
+        |> required "group_name" Decode.string
+        |> optional "users" (Decode.list decoderUser) []
 
 
 decoderAssembly : Decoder Assembly

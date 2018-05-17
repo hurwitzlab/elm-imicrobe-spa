@@ -50,8 +50,26 @@ searchByName term =
         |> HttpBuilder.toRequest
 
 
-addProject : String -> Int -> Int -> Http.Request String
+addProject : String -> Int -> Int -> Http.Request (List ProjectGroup)
 addProject token project_group_id project_id =
+    let
+        url =
+            apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/projects/" ++ (toString project_id)
+
+        decoder =
+            Decode.list ProjectGroup.decoder
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+removeProject : String -> Int -> Int -> Http.Request String
+removeProject token project_group_id project_id =
     let
         url =
             apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/projects/" ++ (toString project_id)
@@ -59,7 +77,7 @@ addProject token project_group_id project_id =
         headers =
             [( "Authorization", token)]
     in
-    HttpBuilder.put url
+    HttpBuilder.delete url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Decode.string)
         |> HttpBuilder.toRequest

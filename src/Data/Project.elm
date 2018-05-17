@@ -39,6 +39,7 @@ type alias ProjectGroup =
     { project_group_id : Int
     , group_name : String
     , user_count : Int
+    , users : List User
     }
 
 
@@ -150,6 +151,7 @@ decoderProjectGroup =
         |> required "project_group_id" Decode.int
         |> required "group_name" Decode.string
         |> optional "user_count" Decode.int 0
+        |> optional "users" (Decode.list decoderUser) []
 
 
 decoderInv : Decoder Investigator

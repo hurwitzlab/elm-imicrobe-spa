@@ -174,13 +174,15 @@ view model =
                 "All" ->
                     True
 
-                _ ->
+                _ -> -- "Mine"
                     case model.user_id of
                         Nothing ->
                             False
 
                         Just id ->
-                            List.map .user_id project.users |> List.member id
+                            (List.map .user_id project.users |> List.member id) ||
+                            (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
+
 
         searchFilter project =
             ((String.contains lowerQuery (String.toLower project.project_name))

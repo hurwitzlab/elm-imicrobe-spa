@@ -526,7 +526,8 @@ showAll model =
                             False
 
                         Just id ->
-                            List.map .user_id project.users |> List.member id
+                            (List.map .user_id project.users |> List.member id) ||
+                            (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
 
         filter sample =
             (String.contains lowerQuery (catter sample))

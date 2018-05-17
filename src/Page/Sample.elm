@@ -89,14 +89,16 @@ init session id =
         userId =
             Maybe.map .user_id session.user
 
+        allUsers sample =
+            sample.project.users ++ (List.map .users sample.project.project_groups |> List.concat)
+
         isEditable sample =
             case userId of
                 Nothing ->
                     False
 
                 Just userId ->
-                    --List.map .user_name sample.project.users |> List.member user.user_name
-                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) sample.project.users
+                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) (allUsers sample)
 
         currentUser sample =
             case userId of
@@ -104,7 +106,7 @@ init session id =
                     Nothing
 
                 Just userId ->
-                    List.filter (\u -> u.user_id == userId) sample.project.users |> List.head
+                    List.filter (\u -> u.user_id == userId) (allUsers sample) |> List.head
     in
     loadSample
         |> Task.andThen
@@ -586,13 +588,13 @@ viewShareButton model =
     if model.sample.project.private == 1 then
         let
             (buttonLabel, permissionText, sharingText) =
-                if List.length model.sample.project.users <= 1 then
+                if model.sample.project.users == [] && model.sample.project.project_groups == [] then -- FIXME impossible case? users will always have an entry for private projects
                     ("Sample is Private", "You are the owner of this sample.", "  This sample is only visible to you.  To share, open the parent project and click the sharing button.")
                 else
                     let
                         permText =
                             case model.currentUser of
-                                Nothing -> "You are the owner of this sample."
+                                Nothing -> ""
 
                                 Just user ->
                                     case user.permission of
@@ -602,7 +604,7 @@ viewShareButton model =
 
                                         _ -> "You are the owner of this sample."
                     in
-                    ("Sample is Shared", permText, "  This sample is shared with other users.  To view or modify the sharing settings, open the parent project and click the sharing button.")
+                    ("Sample is Shared", permText, "  This sample is shared with other users and/or groups.  To view or modify the sharing settings, open the parent project and click the sharing button.")
         in
         button [ class "btn btn-default", onClick (OpenInfoDialog (permissionText ++ sharingText)) ]
             [ span [ class "glyphicon glyphicon-lock" ] [], text " ", text buttonLabel ]
