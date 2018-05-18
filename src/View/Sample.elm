@@ -6,17 +6,14 @@ import Html.Events exposing (onClick)
 import Route
 
 
-viewInfo : { a | sample_name : String, sample_acc : String, sample_type : String, project : { b | project_id : Int, project_name : String }, sample_files : List { c | sample_file_id : Int } } -> Html msg
-viewInfo { sample_name, sample_acc, sample_type, project, sample_files } =
+viewInfo : { a | sample_name : String, sample_acc : String, sample_type : String, sample_file_count : Int, project : { b | project_id : Int, project_name : String } } -> Html msg
+viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
     let
-        numFiles =
-            List.length sample_files
-
         numFilesText =
-            if numFiles == 0 then
+            if sample_file_count == 0 then
                 "None"
             else
-                toString numFiles
+                toString sample_file_count
     in
     div [ class "row" ]
         [ div [ class "table-responsive" ]

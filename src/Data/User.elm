@@ -56,6 +56,7 @@ type alias Sample =
     , sample_type : String
     , project : Project2
     , sample_files : List SampleFile
+    , sample_file_count : Int
     }
 
 
@@ -136,6 +137,7 @@ decoderSample =
         |> optional "sample_type" Decode.string ""
         |> required "project" decoderProject2
         |> optional "sample_files" (Decode.list decoderSampleFile) []
+        |> optional "sample_file_count" Decode.int 0
 
 
 decoderProject2 : Decoder Project2

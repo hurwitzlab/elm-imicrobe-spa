@@ -129,6 +129,7 @@ type alias Sample =
     , project : Project
     , investigators : List Investigator
     , sample_files : List SampleFile2
+    , sample_file_count : Int
     , assemblies : List Assembly
     , combined_assemblies : List CombinedAssembly
     , ontologies : List Ontology
@@ -429,6 +430,7 @@ decoder =
         |> required "project" decoderProject
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "sample_files" (Decode.list decoderSampleFile2) []
+        |> optional "sample_file_count" Decode.int 0
         |> optional "assemblies" (Decode.list decoderAssembly) []
         |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
         |> optional "ontologies" (Decode.list decoderOnt) []
