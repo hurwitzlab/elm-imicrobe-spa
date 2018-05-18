@@ -408,3 +408,24 @@ removeFile token sample_id sample_file_id =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Sample.decoder)
         |> HttpBuilder.toRequest
+
+
+updateFile : String -> Int -> Int -> Int -> Http.Request String
+updateFile token sample_id sample_file_id sample_file_type_id =
+    let
+        url =
+            apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/files/" ++ (toString sample_file_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "type_id" => Encode.int sample_file_type_id
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson Decode.string)
+        |> HttpBuilder.toRequest

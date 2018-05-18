@@ -221,6 +221,8 @@ type Msg
     | AddFilesCompleted (Result Http.Error Sample)
     | RemoveFile Int
     | RemoveFileCompleted (Result Http.Error Sample)
+    | SetFileType Int String
+    | SetFileTypeCompleted (Result Http.Error String)
     | CartMsg Cart.Msg
     | FileBrowserMsg FileBrowser.Msg
 
@@ -432,7 +434,7 @@ update session msg model =
 
         AddFilesCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "Error" (toString error) -- TODO show to user
             in
             model => Cmd.none => NoOp
 
@@ -451,6 +453,30 @@ update session msg model =
             { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
 
         RemoveFileCompleted (Err error) ->
+            let
+                _ = Debug.log "Error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
+        SetFileType sampleFileId fileType ->
+            let
+                fileTypeId =
+                    case String.toInt fileType of
+                        Ok id -> id
+                        Err error -> 0 -- FIXME
+
+                updateFile =
+                    Request.Sample.updateFile session.token model.sample_id sampleFileId fileTypeId |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt SetFileTypeCompleted updateFile => NoOp
+
+        SetFileTypeCompleted (Ok _) ->
+            model => Cmd.none => NoOp
+
+        SetFileTypeCompleted (Err error) ->
+            let
+                _ = Debug.log "Error" (toString error) -- TODO show to user
+            in
             model => Cmd.none => NoOp
 
         OpenEditInfoDialog ->
@@ -785,12 +811,28 @@ viewFiles files isEditable =
 
 viewFile : Bool -> SampleFile2 -> Html Msg
 viewFile isEditable file =
+    let
+        availableTypes =
+            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
+
+        makeOption (id, name) =
+            option [ value (toString id), selected (name == file.sample_file_type.file_type) ] [ text name ]
+    in
     tr []
         [ td []
             [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
             ]
         , td []
-            [ text file.sample_file_type.file_type
+            [ if isEditable then
+--                div [ class "btn-group" ]
+--                    [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
+--                    , ul [ class "dropdown-menu dropdown-menu-right" ]
+--                        (List.map (\s -> li [ onClick (SetFileType file.sample_file_id s) ] [ a [] [ text s ]]) availableTypes)
+--                    ]
+                select [ onInput (SetFileType file.sample_file_id) ]
+                    (List.map makeOption availableTypes)
+              else
+                text file.sample_file_type.file_type
             ]
         , td [ class "col-md-2" ]
             [ if isEditable then
