@@ -150,6 +150,7 @@ update session msg model =
             { model | cart = newCart } => Cmd.none => NoOp
 
 
+autoFilterType : List PFAMProtein -> List KEGGProtein -> String
 autoFilterType pfamResults keggResults =
     if pfamResults /= [] || keggResults == [] then
         "PFAM"
