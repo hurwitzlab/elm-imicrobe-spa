@@ -36,6 +36,7 @@ type alias InternalModel =
     { path : String
     , rootPath : String
     , homePath : String
+    , sharedPath : String
     , selectedPath : Maybe String
     , pathFilter : String
     , contents : List FileResult
@@ -81,6 +82,7 @@ init session maybeConfig =
         { path = startingPath
         , rootPath = startingPath
         , homePath = startingPath
+        , sharedPath = "/shared"
         , selectedPath = Nothing
         , pathFilter = "Home"
         , contents = []
@@ -138,7 +140,7 @@ updateInternal session msg model =
                 newPath =
                     case value of
                         "Shared" ->
-                            "/shared"
+                            model.sharedPath
 
                         _ -> -- Home
                             model.homePath
@@ -188,7 +190,7 @@ updateInternal session msg model =
 
                 newFiles =
                     -- Only show previous path if not at top-level
-                    if model.rootPath /= model.path then
+                    if model.path /= model.rootPath && model.path /= model.sharedPath then
                         previous :: filtered
                     else
                         filtered
