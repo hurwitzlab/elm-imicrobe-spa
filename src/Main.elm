@@ -1345,7 +1345,7 @@ viewHeader page isLoading session =
                     "(" ++ (toString numItemsInCart) ++ ")"
 
         dashboardButton =
-            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], "Dashboard" ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
                 [ a [ Route.href Route.Dashboard ]
                     [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
                 ]
