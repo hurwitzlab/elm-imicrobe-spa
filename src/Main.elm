@@ -1331,7 +1331,7 @@ viewHeader page isLoading session =
                         _ ->
                             [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
             in
-            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Cart" ]
                 [ a [ Route.href Route.Cart ]
                     (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
                 ]
@@ -1344,8 +1344,14 @@ viewHeader page isLoading session =
                 _ ->
                     "(" ++ (toString numItemsInCart) ++ ")"
 
+        dashboardButton =
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], "Dashboard" ]
+                [ a [ Route.href Route.Dashboard ]
+                    [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
+                ]
+
         helpButton =
-            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Contact Us" ]
                 [ a [ Route.href Route.Contact ]
                     [ span [ class "icon-button glyphicon glyphicon-question-sign" ] [] ]
                 ]
@@ -1413,6 +1419,7 @@ viewHeader page isLoading session =
                         , loginMenuItem
                         ]
                     , helpButton
+                    , dashboardButton
                     , cartButton
                     , searchBar
                     ]
