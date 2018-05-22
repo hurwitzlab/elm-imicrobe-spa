@@ -2,7 +2,7 @@ module Page.Dashboard exposing (Model, Msg(..), init, update, view)
 
 import Data.Session exposing (Session)
 import Data.Project exposing (Project)
-import Data.User exposing (User, Sample)
+import Data.User exposing (User, Sample, LogEntry)
 import Data.Agave exposing (FileResult)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -579,7 +579,7 @@ viewInfo model =
                 Project ->
                     case List.filter (\p -> p.project_id == model.selectedProjectRowId) model.user.projects of
                         [] ->
-                            if (model.user.projects == []) then
+                            if model.user.projects == [] then
                                 text ""
                             else
                                 div []
@@ -621,7 +621,18 @@ viewInfo model =
                             viewFileInfo file
 
                 Activity ->
-                    text ""
+                    case List.filter (\entry -> entry.id == model.selectedActivityRowId) model.user.log of
+                        [] ->
+                            if model.user.log == [] then
+                                p [] [ text "Here is your activity on the site." ]
+                            else
+                                div []
+                                [ p [] [ text "Here is your activity on the site." ]
+                                , p [] [ text "Click on a row to see detailed info." ]
+                                ]
+
+                        entry :: _ ->
+                            viewActivity entry
     in
     div [ class "info-panel" ] [ info ]
 
@@ -647,47 +658,73 @@ viewFileInfo file =
         deUrl =
             "https://de.cyverse.org/de/?type=data&folder=/iplant/home" ++ file.path --TODO move base url to config file
     in
-    div []
-        [ table [ class "info-table" ]
-            [ colgroup []
-                [ col [ class "col-md-1" ] [] ]
-            , tr []
-                [ th [] [ text "Name " ]
-                , td [] [ text file.name ]
-                ]
-            , tr []
-                [ th [] [ text "Type " ]
-                , td [] [ text file.type_ ]
-                ]
-            , tr []
-                [ th [] [ text "Size " ]
-                , td [] [ text ((file.length |> toFloat |> format myLocale) ++ " bytes") ]
-                ]
-            , tr []
-                [ th [] [ text "Last modified " ]
-                , td [] [ text file.lastModified ]
-                ]
---            , tr []
---                [ td [] [ button [ class "btn btn-link btn-xs" ]
---                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
---                ]
-            , tr []
-                [ td []
-                    [ button [ class "btn btn-link btn-xs" ]
-                        [ a [ href deUrl, target "_blank" ]
-                            [ span [ class "glyphicon glyphicon-share-alt" ] [], text " View in CyVerse DE" ]
+    div [ class "table-responsive" ]
+        [ table [ class "table info-table" ]
+            [ tbody []
+                [ colgroup []
+                    [ col [ class "col-md-1" ] [] ]
+                , tr []
+                    [ th [] [ text "Name " ]
+                    , td [] [ text file.name ]
+                    ]
+                , tr []
+                    [ th [] [ text "Type " ]
+                    , td [] [ text file.type_ ]
+                    ]
+                , tr []
+                    [ th [] [ text "Size " ]
+                    , td [] [ text ((file.length |> toFloat |> format myLocale) ++ " bytes") ]
+                    ]
+                , tr []
+                    [ th [] [ text "Last modified " ]
+                    , td [] [ text file.lastModified ]
+                    ]
+--                , tr []
+--                    [ td [] [ button [ class "btn btn-link btn-xs" ]
+--                        [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
+--                    ]
+                , tr []
+                    [ td []
+                        [ button [ class "btn btn-link btn-xs" ]
+                            [ a [ href deUrl, target "_blank" ]
+                                [ span [ class "glyphicon glyphicon-share-alt" ] [], text " View in CyVerse DE" ]
+                            ]
+                        ]
+                    ]
+--                , tr []
+--                    [ td [] [ button [ class "btn btn-link btn-xs" ]
+--                        [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ] ]
+--                    ]
+                , tr []
+                    [ td []
+                        [ button [ class "btn btn-link btn-xs", onClick deleteMsg ]
+                            [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
+                            ]
                         ]
                     ]
                 ]
---            , tr []
---                [ td [] [ button [ class "btn btn-link btn-xs" ]
---                    [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ] ]
---                ]
-            , tr []
-                [ td []
-                    [ button [ class "btn btn-link btn-xs", onClick deleteMsg ]
-                        [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
-                        ]
+            ]
+        ]
+
+
+viewActivity : LogEntry -> Html Msg
+viewActivity entry =
+    div [ class "table-responsive" ]
+        [ table [ class "table info-table" ]
+            [ tbody []
+                [ colgroup []
+                    [ col [ class "col-md-1" ] [] ]
+                , tr []
+                    [ th [] [ text "Description " ]
+                    , td [] [ text entry.title ]
+                    ]
+                , tr []
+                    [ th [] [ text "Date " ]
+                    , td [] [ text entry.date ]
+                    ]
+                , tr []
+                    [ th [] [ text "ID " ]
+                    , td [] [ text entry.id ]
                     ]
                 ]
             ]

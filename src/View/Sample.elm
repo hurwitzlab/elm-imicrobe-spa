@@ -1,6 +1,6 @@
 module View.Sample exposing (viewInfo, viewActions)
 
-import Html exposing (Html, div, table, tbody, th, tr, td, text, button, span, a)
+import Html exposing (Html, div, table, tbody, th, tr, td, text, button, span, a, col, colgroup)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Route
@@ -19,9 +19,11 @@ viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
         [ div [ class "table-responsive" ]
             [ table [ class "table info-table" ]
                 [ tbody []
-                    [ tr []
+                    [ colgroup []
+                        [ col [ class "col-md-1" ] [] ]
+                    , tr []
                         [ th [] [ text "Name " ]
-                        , td [] [ text sample_name ]
+                        , td [ class "nowrap" ] [ text sample_name ]
                         ]
                     , tr []
                         [ th [] [ text "Code " ]
@@ -33,7 +35,7 @@ viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
                         ]
                   , tr []
                       [ th [] [ text "Project " ]
-                      , td []
+                      , td [ class "nowrap" ]
                         [ a [ Route.href (Route.Project project.project_id) ] [ text project.project_name ] ]
                       ]
                   , tr []
