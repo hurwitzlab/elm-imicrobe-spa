@@ -614,7 +614,7 @@ viewShareButton model =
     if model.sample.project.private == 1 then
         let
             (buttonLabel, permissionText, sharingText) =
-                if model.sample.project.users == [] && model.sample.project.project_groups == [] then -- FIXME impossible case? users will always have an entry for private projects
+                if List.length model.sample.project.users <= 1 && model.sample.project.project_groups == [] then -- users will always have the owner
                     ("Sample is Private", "You are the owner of this sample.", "  This sample is only visible to you.  To share, open the parent project and click the sharing button.")
                 else
                     let
@@ -623,12 +623,12 @@ viewShareButton model =
                                 Nothing -> ""
 
                                 Just user ->
-                                    case user.permission of
-                                        "read-only" -> "You have read-only access to this sample."
-
-                                        "read-write" -> "You have read-write access to this sample."
-
-                                        _ -> "You are the owner of this sample."
+                                    if (user.permission == "owner") then
+                                        "You are the owner of this sample."
+                                    else if (model.isEditable) then
+                                        "You have read-write access to this sample."
+                                    else
+                                        "You have read-only access to this sample."
                     in
                     ("Sample is Shared", permText, "  This sample is shared with other users and/or groups.  To view or modify the sharing settings, open the parent project and click the sharing button.")
         in
