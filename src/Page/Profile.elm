@@ -35,7 +35,7 @@ init session =
             Request.Agave.getProfile session.token |> Http.toTask |> Task.map .result
 
         loadUser username =
-            Request.User.getByUsername username |> Http.toTask
+            Request.User.getByUsername session.token username |> Http.toTask
     in
     loadProfile
         |> Task.andThen

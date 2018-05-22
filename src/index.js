@@ -5,7 +5,12 @@ import * as agave from '../node_modules/agave-file-browser/AgaveFileBrowser.js';
 import * as simplots from '../node_modules/sim-plots/src/sim-plots.js';
 import 'jstree';
 
-// Require these files so they get copied to dist
+import "blueimp-file-upload/js/vendor/jquery.ui.widget.js";
+import "blueimp-file-upload/js/jquery.iframe-transport.js";
+import "blueimp-file-upload/js/jquery.fileupload.js";
+import "blueimp-file-upload/js/jquery.fileupload-image.js";
+
+// Require these files so they get copied to dist // FIXME move to webpack config
 require('../index.html');
 require("../img/nav-header.png");
 require('../css/imicrobe.css');
@@ -237,4 +242,58 @@ app.ports.createSimPlot.subscribe(function(args) {
 
 app.ports.scrollToTop.subscribe(function() {
     window.scrollTo(0, 0);
+});
+
+
+/*
+ * Define port for file-upload integration
+ */
+
+app.ports.fileUploadOpenBrowser.subscribe(function(args) {
+    console.log("fileUploadOpenBrowser: ", args);
+    var token = args[0],
+        destPath = args[1];
+
+    var input = $('input[type=file]')[0];
+    $(input).fileupload({
+        dataType: 'json',
+        type: "GET",
+        url: "https://agave.iplantc.org/files/v2/media/" + destPath,
+        headers: {
+            Authorization: "Bearer " + token
+        },
+        cache: false,
+        add: function(e, data) {
+            console.log("fileUploadOpenBrowser add:", data);
+            var file = data.files[0];
+            var obj = {
+                name: file.name,
+                type: file.type,
+                size: file.size
+            };
+            app.ports.fileUploadFileSelected.send(JSON.stringify(obj));
+            data.submit();
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.log("fileUploadOpenBrowser error:", txtStatus);
+            app.ports.fileUploadDone.send(""); //FIXME send proper error indicator
+        },
+        done: function(e, data) {
+            console.log("fileUploadOpenBrowser done:", data.result.status);
+            if (data && data.result && data.result.status == "success") {
+                // Quick fix to account for Agave upload delay.  The fileUploadDone signal triggers a refresh of the
+                // file listing.  Someday need to use a proper Agave websocket notification instead.
+                setTimeout(
+                    function() {
+                        app.ports.fileUploadDone.send(JSON.stringify(data.result))
+                    },
+                    5000
+                );
+            }
+            else {
+                app.ports.fileUploadDone.send(""); //FIXME send proper error indicator
+            }
+        }
+    })
+    .click(); // open file browser
 });

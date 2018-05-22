@@ -19,6 +19,7 @@ import Ports
 import Json.Decode as Decode
 import Task exposing (Task)
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import DictList exposing (DictList)
 import List.Extra
 import String.Extra
@@ -200,7 +201,7 @@ update session msg model =
                 launchPlanB = Request.PlanB.launchJob session.token jobRequest
                     |> Http.send RunJobCompleted
 
-                sendAppRun = Request.App.run session.token model.app_id (Maybe.map .user_id session.user) (Agave.encodeJobRequest jobRequest |> toString)
+                sendAppRun = Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString)
                     |> Http.send AppRunCompleted
 
                 launchApp =
@@ -299,8 +300,8 @@ update session msg model =
                 cmd =
                     Task.attempt LoadCartCompleted <|
                         Task.map2 (\samples files -> (samples, files))
-                            (Request.Sample.getSome id_list |> Http.toTask)
-                            (Request.Sample.files id_list |> Http.toTask)
+                            (Request.Sample.getSome session.token id_list |> Http.toTask)
+                            (Request.Sample.files session.token id_list |> Http.toTask)
             in
             { model | cartDialogInputId = Just inputId } => cmd
 
@@ -531,7 +532,7 @@ runDialogConfig model =
         content =
             case model.dialogError of
                 Nothing ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
                 Just error ->
                     div [ class "alert alert-danger" ]

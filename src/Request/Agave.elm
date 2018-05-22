@@ -5,13 +5,22 @@ import Http
 import HttpBuilder
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
+import Json.Encode as Encode exposing (Value)
+import Util exposing (removeTrailingSlash, (=>))
 import Config exposing (agaveBaseUrl)
 
 
 
+-- TODO move to Data.Agave
 type alias Response a =
     { status : String
     , result : a
+    }
+
+
+-- TODO move to Data.Agave
+type alias EmptyResponse =
+    { status : String
     }
 
 
@@ -20,6 +29,12 @@ responseDecoder decoder =
     decode Response
         |> required "status" string --TODO make sure status is "success"
         |> required "result" decoder
+
+
+emptyResponseDecoder : Decoder EmptyResponse
+emptyResponseDecoder =
+    decode EmptyResponse
+        |> required "status" string --TODO make sure status is "success"
 
 
 getProfile : String -> Http.Request (Response Profile)
@@ -131,20 +146,32 @@ getJobOutputs username token id path =
         |> HttpBuilder.toRequest
 
 
+getFileList : String -> String -> Http.Request (Response (List FileResult))
+getFileList token path =
+    let
+        url =
+            agaveBaseUrl ++ "/files/v2/listings/" ++ path
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [("limit", "9999")]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list Agave.decoderFileResult)))
+        |> HttpBuilder.toRequest
+
+
 getFile : String -> String -> Http.Request String
 getFile token path =
     let
-        path2 =
-            case String.startsWith "/" path of
-                True ->
-                    String.dropLeft 1 path
-
-                False ->
-                    path
         url =
             -- Changed Agave endpoint after adding archive=True
             --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
-            agaveBaseUrl ++ "/files/v2/media/" ++ path2
+            agaveBaseUrl ++ "/files/v2/media/" ++ (removeTrailingSlash path)
 
         headers =
             [( "Authorization", token)]
@@ -177,4 +204,64 @@ launchJob token request =
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody (encodeJobRequest request)
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobStatus))
+        |> HttpBuilder.toRequest
+
+
+mkdir : String -> String -> String -> Http.Request EmptyResponse
+mkdir token path dirname =
+    let
+        url =
+            agaveBaseUrl ++ "/files/v2/media/" ++ (removeTrailingSlash path)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "action" => Encode.string "mkdir"
+                , "path" => Encode.string dirname
+                ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
+        |> HttpBuilder.toRequest
+
+
+delete : String -> String -> Http.Request EmptyResponse
+delete token path =
+    let
+        url =
+            agaveBaseUrl ++ "/files/v2/media/" ++ (removeTrailingSlash path)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
+        |> HttpBuilder.toRequest
+
+
+setFilePermission : String -> String -> String -> String -> Http.Request EmptyResponse
+setFilePermission token username permission path =
+        let
+        url =
+            agaveBaseUrl ++ "/files/v2/pems/system/data.iplantcollaborative.org/" ++ (removeTrailingSlash path)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "username" => Encode.string username
+                , "permission" => Encode.string permission
+                , "recursive" => Encode.string "false"
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson emptyResponseDecoder)
         |> HttpBuilder.toRequest

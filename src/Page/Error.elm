@@ -57,6 +57,8 @@ errorMessage error =
             case response.status.code of
                 401 -> "Unauthorized"
 
+                403 -> "You do not have access to this resource.  Please log-in and try again"
+
                 _ ->
                     case String.length response.body of
                         0 ->

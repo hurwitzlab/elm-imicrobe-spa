@@ -147,6 +147,23 @@ type alias JobHistory =
     }
 
 
+type alias FileResult =
+    { name : String
+    , path : String
+    , type_ : String
+    , format : String
+    , mimeType : String
+    , lastModified : String
+    , length : Int
+    }
+
+
+type alias UploadResult =
+    { name : String
+    , path : String
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -276,6 +293,25 @@ decoderJobHistory =
         |> required "created" Decode.string
         |> required "createdBy" Decode.string
         |> required "description" Decode.string
+
+
+decoderFileResult : Decoder FileResult
+decoderFileResult =
+    decode FileResult
+        |> required "name" Decode.string
+        |> required "path" Decode.string
+        |> required "type" Decode.string
+        |> required "format" Decode.string
+        |> required "mimeType" Decode.string
+        |> required "lastModified" Decode.string
+        |> required "length" Decode.int
+
+
+decoderUploadResult : Decoder UploadResult
+decoderUploadResult =
+    decode UploadResult
+        |> required "name" Decode.string
+        |> required "path" Decode.string
 
 
 encodeProfile : Profile -> Value

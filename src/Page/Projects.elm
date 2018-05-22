@@ -1,19 +1,23 @@
 module Page.Projects exposing (Model, Msg, init, update, view)
 
-import Data.Project
+import Data.Project exposing (Project, Domain, Investigator)
+import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onClick)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import List exposing (map)
+import List
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Project
+import View.FilterButtonGroup
+import Util exposing ((=>))
 
 
 
@@ -22,29 +26,37 @@ import Task exposing (Task)
 
 type alias Model =
     { pageTitle : String
-    , projects : List Data.Project.Project
+    , user_id : Maybe Int
+    , projects : List Project
     , tableState : Table.State
     , query : String
+    , selectedRowId : Int
+    , permFilterType : String
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Projects"
-
         loadProjects =
-            Request.Project.list |> Http.toTask
+            Request.Project.list session.token |> Http.toTask
 
-        tblState =
-            Task.succeed (Table.initialSort "Name")
-
-        qry =
-            Task.succeed ""
+        user_id =
+            Maybe.map .user_id session.user
     in
-    Task.map4 Model title loadProjects tblState qry
+    loadProjects
+        |> Task.andThen
+            (\projects ->
+                Task.succeed
+                    { pageTitle = "Projects"
+                    , user_id = user_id
+                    , projects = projects
+                    , tableState = Table.initialSort "Name"
+                    , query = ""
+                    , selectedRowId = 0
+                    , permFilterType = "All"
+                    }
+            )
         |> Task.mapError Error.handleLoadError
 
 
@@ -55,24 +67,35 @@ init =
 type Msg
     = SetQuery String
     | SetTableState Table.State
+    | SelectRow Int
+    | FilterPermType String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetQuery newQuery ->
-            ( { model | query = newQuery }
-            , Cmd.none
-            )
+            { model | query = newQuery } => Cmd.none
 
         SetTableState newState ->
-            ( { model | tableState = newState }
-            , Cmd.none
-            )
+            { model | tableState = newState } => Cmd.none
+
+        SelectRow id ->
+            let
+                selectedRowId =
+                    if model.selectedRowId == id then
+                        0 -- unselect
+                    else
+                         id
+            in
+            { model | selectedRowId = selectedRowId } => Cmd.none
+
+        FilterPermType filterType ->
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none
 
 
-config : Table.Config Data.Project.Project Msg
-config =
+tableConfig : Int -> Table.Config Project Msg
+tableConfig selectedRowId =
     Table.customConfig
         { toId = .project_name
         , toMsg = SetTableState
@@ -82,17 +105,27 @@ config =
             , domainColumn
             ]
         , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs }
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
         }
 
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table"
+    [ attribute "class" "table table-hover"
     ]
 
 
-domainColumn : Table.Column Data.Project.Project Msg
+toRowAttrs : Int -> Project -> List (Attribute Msg)
+toRowAttrs selectedRowId data =
+    onClick (SelectRow data.project_id)
+    :: (if (data.project_id == selectedRowId) then
+            [ attribute "class" "active" ]
+         else
+            []
+        )
+
+
+domainColumn : Table.Column Project Msg
 domainColumn =
     Table.customColumn
         { name = "Domains"
@@ -101,12 +134,12 @@ domainColumn =
         }
 
 
-domainsToString : List Data.Project.Domain -> String
+domainsToString : List Domain -> String
 domainsToString domains =
     join ", " (List.map .domain_name domains)
 
 
-nameColumn : Table.Column Data.Project.Project Msg
+nameColumn : Table.Column Project Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
@@ -115,7 +148,7 @@ nameColumn =
         }
 
 
-nameLink : Data.Project.Project -> Table.HtmlDetails Msg
+nameLink : Project -> Table.HtmlDetails Msg
 nameLink project =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Project project.project_id) ]
@@ -136,13 +169,31 @@ view model =
         lowerQuery =
             String.toLower query
 
-        filter project =
-            (String.contains lowerQuery (String.toLower project.project_name)) ||
-            (String.contains lowerQuery (String.toLower project.project_type)) ||
-            (List.map (String.contains lowerQuery << .domain_name) project.domains |> List.foldr (||) False)
+        checkPerms project =
+            case model.permFilterType of
+                "All" ->
+                    True
+
+                _ -> -- "Mine"
+                    case model.user_id of
+                        Nothing ->
+                            False
+
+                        Just id ->
+                            (List.map .user_id project.users |> List.member id) ||
+                            (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
+
+
+        searchFilter project =
+            ((String.contains lowerQuery (String.toLower project.project_name))
+                || (String.contains lowerQuery (String.toLower project.project_type))
+                || (List.map (String.contains lowerQuery << .domain_name) project.domains |> List.foldr (||) False))
+
+        matchingProjects =
+            List.filter searchFilter model.projects
 
         acceptableProjects =
-            List.filter filter model.projects
+            List.filter checkPerms matchingProjects
 
         numShowing =
             let
@@ -157,20 +208,67 @@ view model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
+
+        permissionFilterConfig =
+            View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
+
+        (infoPanel, sizeClass) =
+            case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
+                [] ->
+                    (text "", "")
+
+                project :: _ ->
+                    (View.Project.viewInfo project, "col-md-9")
+
+        noProjects =
+            if model.user_id /= Nothing then
+                div [ class "well" ]
+                    [ p [] [ text "You don't have any projects yet." ]
+                    , p []
+                        [ text "To create a project, go to the "
+                        , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                        , text " and click 'New'."
+                        ]
+                    ]
+            else
+                div [ class "well" ]
+                    [ p []
+                        [ text "Please "
+                        , a [ Route.href Route.Login ] [ text "login" ]
+                        , text " to see projects you own."
+                        ]
+                    ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
-            [ h1 []
-                [ text (model.pageTitle ++ " ")
-                , numShowing
-                , small [ class "right" ]
-                    [ input [ placeholder "Search", onInput SetQuery ] [] ]
+            [ div []
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , numShowing
+                    , small [ class "pull-right" ]
+                        [ input [ placeholder "Search", onInput SetQuery ] [] ]
+                    ]
+                , View.FilterButtonGroup.view permissionFilterConfig model.permFilterType
+                , br [] []
+                , br [] []
+                , div [ class "container" ]
+                    [ div [ class "row" ]
+                        [ div [ class sizeClass ]
+                            [ if query /= "" && (matchingProjects == [] || acceptableProjects == []) then
+                                text "None"
+                              else if acceptableProjects == [] then
+                                noProjects
+                              else
+                                Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects
+                            ]
+                        , infoPanel
+                        ]
+                    ]
                 ]
-            , Table.view config model.tableState acceptableProjects
-            ]
+           ]
         ]

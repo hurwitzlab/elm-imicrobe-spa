@@ -43,7 +43,7 @@ init session =
             session.cart.contents |> Set.toList
 
         loadSamples =
-            Request.Sample.getSome id_list |> Http.toTask
+            Request.Sample.getSome session.token id_list |> Http.toTask
     in
     Task.map3 Model title cart loadSamples
         |> Task.mapError Error.handleLoadError
@@ -108,7 +108,7 @@ update session msg model =
                     newSession.cart.contents |> Set.toList
 
                 loadSamples =
-                    Request.Sample.getSome id_list |> Http.toTask
+                    Request.Sample.getSome session.token id_list |> Http.toTask
 
                 handleSamples samples =
                     case samples of

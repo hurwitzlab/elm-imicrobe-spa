@@ -16,6 +16,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import Events exposing (onKeyDown)
 
 
@@ -40,7 +41,7 @@ type alias Model =
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
-    doSearch searchTerm
+    doSearch session.token searchTerm
         |> Task.andThen
             (\(pfamResults, keggResults) ->
                 Task.succeed
@@ -60,16 +61,16 @@ init session searchTerm =
         |> Task.mapError Error.handleLoadError
 
 
-doSearch : String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
-doSearch searchTerm =
+doSearch : String -> String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
+doSearch token searchTerm =
     case searchTerm of
         "" ->
             Task.succeed ([], [])
 
         _ ->
             Task.map2 (\pfamResults keggResults -> (pfamResults, keggResults))
-                (Request.Sample.protein_pfam_search searchTerm |> Http.toTask)
-                (Request.Sample.protein_kegg_search searchTerm |> Http.toTask)
+                (Request.Sample.protein_pfam_search token searchTerm |> Http.toTask)
+                (Request.Sample.protein_kegg_search token searchTerm |> Http.toTask)
 
 
 
@@ -149,6 +150,7 @@ update session msg model =
             { model | cart = newCart } => Cmd.none => NoOp
 
 
+autoFilterType : List PFAMProtein -> List KEGGProtein -> String
 autoFilterType pfamResults keggResults =
     if pfamResults /= [] || keggResults == [] then
         "PFAM"
@@ -260,7 +262,7 @@ view model =
         body =
             case model.isSearching of
                 True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
                 False ->
                     case resultCount of

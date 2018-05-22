@@ -1,4 +1,4 @@
-module Util exposing ((=>), truncate, capitalize)
+module Util exposing (..)
 
 import Char
 import String
@@ -23,6 +23,24 @@ capitalize string =
         Nothing -> ""
         Just (head, tail) ->
             String.cons (Char.toUpper head) tail
+
+
+pluralize : String -> Int -> String
+pluralize str count =
+    if count == 1 then
+        str
+    else
+        str ++ "s"
+
+
+removeTrailingSlash : String -> String
+removeTrailingSlash path =
+    case String.startsWith "/" path of
+        True ->
+            String.dropLeft 1 path
+
+        False ->
+            path
 
 
 -- toTuple

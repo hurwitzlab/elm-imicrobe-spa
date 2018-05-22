@@ -108,7 +108,7 @@ viewPublication pub =
             , td [] [ text pub.title ]
             ]
         , tr []
-            [ th [] [ text "Author" ]
+            [ th [] [ text "Authors" ]
             , td [] [ text pub.author ]
             ]
         , tr []

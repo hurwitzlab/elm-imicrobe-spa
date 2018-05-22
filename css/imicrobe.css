@@ -118,6 +118,96 @@ tr.padded > td {
 }
 
 
+/* Dialog styles
+ *
+ */
+
+.wide-modal-container > .modal-dialog {
+    min-width: 80vw;
+    min-height: 60vh;
+    max-height: 60vh;
+    margin: auto;
+}
+
+.narrow-modal-container > .modal-dialog {
+    width: 30em;
+    margin: auto;
+}
+
+
+/*
+ * Dashboard styles
+ */
+
+div.menu-panel {
+    padding-bottom: 1em;
+    padding-left: 2em;
+}
+
+button.menu-button {
+    border: none;
+    margin: 0.5em;
+    padding: 0.5em;
+    padding-left: 1em;
+    padding-right: 0;
+    width: 100%;
+    text-align: left;
+    font-weight: bold;
+    font-size: 1.15em;
+    color: #008d97;
+}
+
+button.menu-button:hover {
+    background: #f4f4f4;
+}
+
+button.menu-button:focus {
+    outline: 0;
+}
+
+button.menu-button.active {
+    background:	#ffc266;
+}
+
+.menu-button-new {
+    margin-bottom: 1em;
+    margin-left: 1em;
+}
+
+/*
+table.info-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+table.info-table > tr {
+    vertical-align: top;
+}
+
+table.info-table > th, table.info-table > td {
+    padding: 5px;
+}
+*/
+
+.info-table > tbody > tr > td,
+.info-table > tbody > tr > th,
+.info-table > tfoot > tr > td,
+.info-table > tfoot > tr > th,
+.info-table > thead > tr > td,
+.info-table > thead > tr > th {
+    border: none;
+    padding: 2px;
+    padding-right: 8px;
+    width: 100%;
+}
+
+div.info-panel {
+    padding: 1em;
+    border-top: 1px solid lightgray;
+    color: gray;
+}
+
+
 /*
  * Modify bootstrap styles
  */
@@ -144,4 +234,12 @@ tr.padded > td {
 
 .progress-bar {
     background-color: #2ab4bd;
+}
+
+.table tbody tr.active td {
+    background: #ffc266;
+}
+
+.table tbody tr.active:hover td {
+    background: #ffc266;
 }

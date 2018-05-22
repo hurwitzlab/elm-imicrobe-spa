@@ -9,39 +9,78 @@ import Config exposing (apiBaseUrl)
 
 
 
-list : Http.Request (List User)
-list =
+list : String -> Http.Request (List User)
+list token =
     let
         url =
             apiBaseUrl ++ "/users"
 
-        decoder =
-            Decode.list User.decoder
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list User.decoder))
         |> HttpBuilder.toRequest
 
 
-get : Int -> Http.Request User
-get id =
-    HttpBuilder.get (apiBaseUrl ++ "/users/" ++ toString id)
-        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
-        |> HttpBuilder.toRequest
-
-
-getByUsername : String -> Http.Request User
-getByUsername name =
-    HttpBuilder.get (apiBaseUrl ++ "/users/" ++ name)
-        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
-        |> HttpBuilder.toRequest
-
-
-recordLogin : String -> Http.Request Login
-recordLogin username =
+get : String -> Int -> Http.Request User
+get token id =
     let
         url =
-            apiBaseUrl ++ "/login"
+            apiBaseUrl ++ "/users/" ++ toString id
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
+        |> HttpBuilder.toRequest
+
+
+getByUsername : String -> String -> Http.Request User
+getByUsername token name =
+    let
+        url =
+            apiBaseUrl ++ "/users/" ++ name
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
+        |> HttpBuilder.toRequest
+
+
+searchByName : String -> String -> Http.Request (List User)
+searchByName token term =
+    let
+        url =
+            apiBaseUrl ++ "/users/"
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [("term", term)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list User.decoder))
+        |> HttpBuilder.toRequest
+
+
+recordLogin : String -> String -> Http.Request Login
+recordLogin token username =
+    let
+        url =
+            apiBaseUrl ++ "/users/login"
+
+        headers =
+            [( "Authorization", token)]
 
         body =
             Encode.object
@@ -49,6 +88,7 @@ recordLogin username =
                 ]
     in
     HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson User.decoderLogin)
         |> HttpBuilder.toRequest

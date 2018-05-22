@@ -1,4 +1,4 @@
-module Request.Investigator exposing (get, list)
+module Request.Investigator exposing (..)
 
 import Data.Investigator as Investigator exposing (Investigator)
 import Http
@@ -12,12 +12,9 @@ list =
     let
         url =
             apiBaseUrl ++ "/investigators"
-
-        decoder =
-            Decode.list Investigator.decoder
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Investigator.decoder))
         |> HttpBuilder.toRequest
 
 
@@ -26,10 +23,18 @@ get id =
     let
         url =
             apiBaseUrl ++ "/investigators/" ++ toString id
-
-        decoder =
-            Investigator.decoder
     in
     HttpBuilder.get url
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson (Investigator.decoder))
+        |> HttpBuilder.toRequest
+
+
+searchByName : String -> Http.Request (List Investigator)
+searchByName term =
+    let
+        url =
+            apiBaseUrl ++ "/investigators/" ++ term
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Investigator.decoder))
         |> HttpBuilder.toRequest

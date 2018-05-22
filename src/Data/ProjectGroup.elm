@@ -1,15 +1,8 @@
-module Data.ProjectGroup exposing (Project, ProjectGroup, decoder)
+module Data.ProjectGroup exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Util exposing ((=>))
 
-
-
-type alias Project =
-    { project_id : Int
-    , project_name : String
-    }
 
 
 type alias ProjectGroup =
@@ -18,18 +11,25 @@ type alias ProjectGroup =
     , description : String
     , url : String
     , projects : List Project
+    , users : List User
+    , user_count : Int
+    }
+
+
+type alias Project =
+    { project_id : Int
+    , project_name : String
+    }
+
+
+type alias User =
+    { user_id : Int
+    , user_name : String
     }
 
 
 
 -- SERIALIZATION --
-
-
-decoderProject : Decoder Project
-decoderProject =
-    decode Project
-        |> required "project_id" Decode.int
-        |> required "project_name" Decode.string
 
 
 decoder : Decoder ProjectGroup
@@ -40,3 +40,19 @@ decoder =
         |> optional "description" Decode.string "NA"
         |> optional "url" Decode.string "NA"
         |> optional "projects" (Decode.list decoderProject) []
+        |> optional "users" (Decode.list decoderUser) []
+        |> optional "user_count" Decode.int 0
+
+
+decoderProject : Decoder Project
+decoderProject =
+    decode Project
+        |> required "project_id" Decode.int
+        |> required "project_name" Decode.string
+
+
+decoderUser : Decoder User
+decoderUser =
+    decode User
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
