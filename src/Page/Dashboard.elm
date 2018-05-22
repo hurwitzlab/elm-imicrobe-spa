@@ -551,11 +551,20 @@ activityTableConfig selectedRowId =
         { toId = .id
         , toMsg = SetActivityTableState
         , columns =
-            [ Table.stringColumn "Date" .date
+            [ dateColumn
             , Table.stringColumn "Description" .title
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toActivityRowAttrs selectedRowId }
+        }
+
+
+dateColumn : Table.Column Data.User.LogEntry Msg
+dateColumn =
+    Table.customColumn
+        { name = "Date"
+        , viewData = .date
+        , sorter = Table.decreasingOrIncreasingBy .date
         }
 
 
