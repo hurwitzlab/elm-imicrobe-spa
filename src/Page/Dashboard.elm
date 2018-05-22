@@ -624,7 +624,7 @@ viewInfo model =
                     case List.filter (\entry -> entry.id == model.selectedActivityRowId) model.user.log of
                         [] ->
                             if model.user.log == [] then
-                                p [] [ text "Here is your activity on the site." ]
+                                text ""
                             else
                                 div []
                                 [ p [] [ text "Here is your activity on the site." ]
