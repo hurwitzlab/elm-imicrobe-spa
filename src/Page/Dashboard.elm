@@ -40,8 +40,10 @@ type alias Model =
     , projectTableState : Table.State
     , sampleTableState : Table.State
     , dsTableState : Table.State
+    , activityTableState : Table.State
     , selectedProjectRowId : Int
     , selectedSampleRowId : Int
+    , selectedActivityRowId : String
     , fileBrowser : FileBrowser.Model
     , fileBrowserInitialized : Bool
     , showFileUploadDialog : Bool
@@ -78,8 +80,10 @@ init session =
                     , projectTableState = Table.initialSort "Name"
                     , sampleTableState = Table.initialSort "Name"
                     , dsTableState = Table.initialSort "Name"
+                    , activityTableState = Table.initialSort "Date"
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
+                    , selectedActivityRowId = ""
                     , fileBrowser = FileBrowser.init session Nothing
                     , fileBrowserInitialized = False
                     , showFileUploadDialog = False
@@ -107,11 +111,13 @@ type Msg
     | CreateNewProjectCompleted (Result Http.Error Project)
     | SetProjectTableState Table.State
     | SetSampleTableState Table.State
+    | SetActivityTableState Table.State
     | SelectContent ContentType
     | RefreshContent
     | RefreshContentCompleted (Result Http.Error User)
     | SelectProjectRow Int
     | SelectSampleRow Int
+    | SelectActivityRow String
     | RemoveProject Int
     | RemoveProjectCompleted (Result Http.Error String)
     | RemoveSample Int
@@ -189,6 +195,9 @@ update session msg model =
         SetSampleTableState newState ->
             { model | sampleTableState = newState } => Cmd.none
 
+        SetActivityTableState newState ->
+            { model | activityTableState = newState } => Cmd.none
+
         SelectProjectRow id ->
             let
                 selectedRowId =
@@ -208,6 +217,16 @@ update session msg model =
                         id
             in
             { model | selectedSampleRowId = selectedRowId } => Cmd.none
+
+        SelectActivityRow id ->
+            let
+                selectedRowId =
+                    if model.selectedActivityRowId == id then
+                        "" -- unselect
+                    else
+                        id
+            in
+            { model | selectedActivityRowId = selectedRowId } => Cmd.none
 
         RemoveProject id ->
             let
@@ -380,7 +399,16 @@ viewContent model =
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser, text "")
 
                 Activity ->
-                    ( "Activity", text "Coming soon ...", 0, text "")
+                    let
+                        view =
+                            if model.user.log == [] then
+                                div [ class "well" ]
+                                    [ p [] [ text "You don't have any activity yet." ]
+                                    ]
+                            else
+                                Table.view (activityTableConfig model.selectedActivityRowId) model.activityTableState model.user.log
+                    in
+                    ( "Activity", view, List.length model.user.log, text "")
 
         numShowing =
             let
@@ -439,6 +467,16 @@ toSampleRowAttrs : Int -> Data.User.Sample -> List (Attribute Msg)
 toSampleRowAttrs selectedRowId data =
     onClick (SelectSampleRow data.sample_id)
     :: (if (data.sample_id == selectedRowId) then
+            [ attribute "class" "active" ]
+        else
+            []
+        )
+
+
+toActivityRowAttrs : String -> Data.User.LogEntry -> List (Attribute Msg)
+toActivityRowAttrs selectedRowId data =
+    onClick (SelectActivityRow data.id)
+    :: (if (data.id == selectedRowId) then
             [ attribute "class" "active" ]
         else
             []
@@ -505,6 +543,20 @@ sampleLink sample =
         [ a [ Route.href (Route.Sample sample.sample_id) ]
             [ text sample.sample_name ]
         ]
+
+
+activityTableConfig : String -> Table.Config Data.User.LogEntry Msg
+activityTableConfig selectedRowId =
+    Table.customConfig
+        { toId = .id
+        , toMsg = SetActivityTableState
+        , columns =
+            [ Table.stringColumn "Date" .date
+            , Table.stringColumn "Description" .title
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toActivityRowAttrs selectedRowId }
+        }
 
 
 viewInfo : Model -> Html Msg

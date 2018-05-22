@@ -15,6 +15,18 @@ type alias User =
     , date : String
     , orcid : String
     , projects : List Project
+    , log : List LogEntry
+    }
+
+
+type alias LogEntry =
+    { id : String
+    , type_ : String
+    , title : String
+    , date : String
+    , user_id : Int
+    , user_name : String
+    , url : String
     }
 
 
@@ -93,6 +105,19 @@ decoder =
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
+        |> optional "log" (Decode.list decoderLogEntry) []
+
+
+decoderLogEntry : Decoder LogEntry
+decoderLogEntry =
+    decode LogEntry
+        |> required "_id" Decode.string
+        |> required "type" Decode.string
+        |> required "title" Decode.string
+        |> required "date" Decode.string
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
+        |> required "url" Decode.string
 
 
 decoderProject : Decoder Project
@@ -106,6 +131,7 @@ decoderProject =
         |> optional "investigators" (Decode.list decoderInvestigator) []
         |> optional "publications" (Decode.list decoderPublication) []
         |> optional "samples" (Decode.list decoderSample) []
+
 
 decoderInvestigator : Decoder Investigator
 decoderInvestigator =
