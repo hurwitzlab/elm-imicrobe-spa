@@ -602,13 +602,13 @@ mkParamsSelect model =
             List.map Tuple.first model.selectedParams |> Set.fromList
 
         -- mdb added 2/14/18 - list of curated metadata terms from Alise
-        curated = 
-            Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
+--        curated = 
+--            Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
 
         showKeys =
             Dict.keys paramList
                 |> List.filter (\v -> not (Set.member v alreadySelected))
-                |> List.filter (\v -> (Set.member v curated)) -- mdb added 2/14/18 - only show curated terms
+--                |> List.filter (\v -> (Set.member v curated)) -- mdb added 2/14/18 - only show curated terms
 
         rest =
             List.map mkParamOption showKeys
