@@ -33,6 +33,10 @@ h1, h2, h3 {
     height: 480px;
 }
 
+.small-text {
+    font-size: 0.75em;
+}
+
 .bold {
     font-weight: bold;
 }
