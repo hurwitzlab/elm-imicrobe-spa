@@ -370,10 +370,13 @@ update session msg model =
                     noChange =
                         List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
 
+                    isOwner =
+                        List.any (\u -> u.user_id == id && u.permission == "owner") model.project.users
+
                     addUserToProject =
-                            Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
+                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
                 in
-                if noChange then
+                if noChange || isOwner then
                     model => Cmd.none => NoOp
                 else
                     newModel => Task.attempt ShareWithUserCompleted addUserToProject => NoOp
