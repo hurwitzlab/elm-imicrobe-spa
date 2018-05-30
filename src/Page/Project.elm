@@ -1382,24 +1382,29 @@ viewUsersAndGroups currentUserId isEditable users groups =
     if users == [] && groups == [] then
         div [] [ text "Only you can see this project." ]
     else
+        let
+            sortByNameAndPerm a b =
+                if a.permission == "owner" then
+                    LT
+                else if b.permission == "owner" then
+                    GT
+                else
+                    compare (userDisplayName a) (userDisplayName b)
+        in
         table [ class "table" ]
             [ tbody []
-                ((List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u) users) ++
+                ((List.sortWith sortByNameAndPerm users |> List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u)) ++
                     (List.map (\g -> viewGroup isEditable g) groups))
             ]
 
 
 viewUser : Bool -> Bool -> User -> Html Msg
 viewUser isMe isEditable user =
-    let
-        displayName =
-            user.first_name ++ " " ++ user.last_name
-    in
     tr []
         [ td []
             [ i [ class "fas fa-user" ] []
             , text " "
-            , text displayName
+            , text (userDisplayName user)
             , if isMe then
                 text " (you)"
               else
@@ -1410,6 +1415,11 @@ viewUser isMe isEditable user =
                 span [ class "pull-right" ] [ text (capitalize user.permission) ]
             ]
         ]
+
+
+userDisplayName : User -> String
+userDisplayName user =
+    user.first_name ++ " " ++ user.last_name
 
 
 viewGroup : Bool -> ProjectGroup -> Html Msg
