@@ -30,7 +30,7 @@ import View.Dialog exposing (confirmationDialogConfig, errorDialogConfig)
 import View.SearchableDropdown
 import View.TagsDropdown
 import View.Tags
-import Util exposing ((=>), capitalize)
+import Util exposing ((=>), capitalize, pluralize)
 
 
 
@@ -777,9 +777,50 @@ viewShareButton model =
                     "Project is Private"
                 else
                     "Project is Shared"
+
+            numGroups =
+                List.length model.project.project_groups
+
+            numUsers =
+                List.length model.project.users - 1
+
+            groupsStr =
+                List.map .group_name model.project.project_groups |> String.join ", "
+
+            usersStr =
+                (toString numUsers) ++ " " ++ (pluralize "user" numUsers)
+
+            shareStr =
+                (if numGroups > 0 || numUsers > 0 then
+                    "with " ++
+                    (if numGroups > 0 then
+                        groupsStr
+                    else
+                        ""
+                    ) ++
+                    (if numGroups > 0 && numUsers > 0 then
+                        " and "
+                    else
+                        ""
+                    ) ++
+                    (if numUsers > 0 then
+                        usersStr
+                    else
+                        ""
+                    )
+                else
+                    ""
+                )
         in
         button [ class "btn btn-default pull-right", onClick OpenShareDialog ]
-            [ span [ class "glyphicon glyphicon-lock" ] [], text " ", text buttonLabel ]
+            [ div []
+                [ span [ class "glyphicon glyphicon-lock" ] []
+                , text " "
+                , text buttonLabel
+                ]
+            , div [ class "small-text pull-right" ]
+                [ text shareStr ]
+            ]
 
     else
         text ""
@@ -830,10 +871,10 @@ viewProject project isEditable =
             [ th [] [ text "Investigators" ]
             , td [] (viewInvestigators project.investigators)
             ]
-        , tr []
-            [ th [] [ text "Groups" ]
-            , td [] (viewProjectGroups project.project_groups)
-            ]
+--        , tr []
+--            [ th [] [ text "Groups" ]
+--            , td [] (viewProjectGroups project.project_groups)
+--            ]
         , tr []
             [ th [] [ text "URL" ]
             , td [] [ a [ href project.url, target "_blank" ] [ text project.url ] ]
@@ -972,11 +1013,24 @@ viewSamples cart samples isEditable =
                         [ text (toString numSamples)
                         ]
 
+        cartTh =
+            th [ class "nowrap" ]
+                (text "Cart"
+                    ::
+                    (if numSamples > 1 then
+                        [ br [] []
+                        , Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg
+                        ]
+                    else
+                        []
+                    )
+                )
+
         cols =
             tr []
                 [ th [] [ text "Name" ]
                 , th [] [ text "Type" ]
-                , th [ class "nowrap" ] [ Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg ]
+                , cartTh
                 , th [ class "nowrap" ] []
                 ]
 
@@ -1361,7 +1415,7 @@ viewGroup isEditable group =
         [ td []
             [ i [ class "fas fa-user-friends" ] []
             , text " "
-            , text group.group_name
+            , a [ Route.href (Route.ProjectGroup group.project_group_id), target "_blank" ] [ text group.group_name ]
             , text " ("
             , text (toString group.user_count)
             , text " "

@@ -25,6 +25,9 @@ type alias Project =
 type alias User =
     { user_id : Int
     , user_name : String
+    , first_name : String
+    , last_name : String
+    , permission : String
     }
 
 
@@ -56,3 +59,6 @@ decoderUser =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
+        |> required "first_name" Decode.string
+        |> required "last_name" Decode.string
+        |> required "permission" Decode.string
