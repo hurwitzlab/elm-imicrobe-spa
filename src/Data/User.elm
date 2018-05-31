@@ -21,11 +21,11 @@ type alias User =
 
 type alias LogEntry =
     { id : String
-    , type_ : String
+--    , type_ : String
     , title : String
     , date : String
-    , user_id : Int
-    , user_name : String
+--    , user_id : Int
+--    , user_name : String
     , url : String
     }
 
@@ -112,11 +112,11 @@ decoderLogEntry : Decoder LogEntry
 decoderLogEntry =
     decode LogEntry
         |> required "_id" Decode.string
-        |> required "type" Decode.string
+--        |> required "type" Decode.string
         |> required "title" Decode.string
         |> required "date" Decode.string
-        |> required "user_id" Decode.int
-        |> required "user_name" Decode.string
+--        |> required "user_id" Decode.int
+--        |> required "user_name" Decode.string
         |> required "url" Decode.string
 
 
