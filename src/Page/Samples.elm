@@ -422,7 +422,7 @@ showSearchResults model results =
                 "All" ->
                     True
 
-                _ ->
+                _ -> -- Mine
                     case userId of
                         Nothing ->
                             False
@@ -460,10 +460,12 @@ showSearchResults model results =
                     (View.Sample.viewInfo sample, "col-md-8")
 
         body =
-            if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+            if results == [] then
+                noResults
+            else if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                 noResults
             else if acceptableSamples == [] then
-                noResultsLoggedIn model.user_id
+                noResults --noResultsLoggedIn model.user_id
             else
                div [ class "container" ]
                    [ div [ class "row" ]
