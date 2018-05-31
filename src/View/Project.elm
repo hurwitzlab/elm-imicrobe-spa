@@ -67,26 +67,31 @@ viewInfo { project_name, project_code, project_type, url, investigators, publica
         ]
 
 
-viewActions : { a | project_id : Int } -> msg -> Html msg
-viewActions { project_id } deleteMsg =
+viewActions : { a | project_id : Int } -> Bool -> msg -> Html msg
+viewActions { project_id } isDeleteable deleteMsg =
         div [ class "row" ]
             [ div [ class "table-responsive" ]
                 [ table [ class "table info-table" ]
-                    [ tr []
+                    (tr []
                         [ td []
                             [ a [ class "btn btn-link", Route.href (Route.Project project_id) ]
                                 [ span [ class "glyphicon glyphicon-share-alt" ] [], text " Open"
                                 ]
                             ]
-                        ]
-                    , tr []
-                        [ td []
-                            [ button [ class "btn btn-link", onClick deleteMsg ]
-                                [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
+                        ] ::
+                    (if isDeleteable then
+                        [ tr []
+                            [ td []
+                                [ button [ class "btn btn-link", onClick deleteMsg ]
+                                    [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
+                                    ]
                                 ]
                             ]
                         ]
-                    ]
+                    else
+                        []
+                    )
+                    )
                 ]
             ]
 
