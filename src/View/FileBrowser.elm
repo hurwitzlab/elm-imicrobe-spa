@@ -349,7 +349,7 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
           else if isBusy then
             spinner
           else
-            div [ style [("overflow-y","auto"),("height","60vh")] ]
+            div [ style [("overflow-y","auto"),("height","100%")] ] --("height","60vh")] ]
                 [ Table.view (tableConfig config selectedPath) tableState contents ]
         , Dialog.view
             (if (confirmationDialog /= Nothing) then
