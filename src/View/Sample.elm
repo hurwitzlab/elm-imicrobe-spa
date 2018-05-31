@@ -48,27 +48,32 @@ viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
         ]
 
 
-viewActions : { a | sample_id : Int } -> msg -> Html msg
-viewActions { sample_id } deleteMsg =
+viewActions : { a | sample_id : Int } -> Bool -> msg -> Html msg
+viewActions { sample_id } isDeleteable deleteMsg =
     div [ class "row" ]
         [ div [ class "table-responsive" ]
             [ table [ class "table info-table" ]
                 [ tbody []
-                    [ tr []
+                    ( tr []
                         [ td []
                             [ a [ class "btn btn-link", Route.href (Route.Sample sample_id) ]
                                 [ span [ class "glyphicon glyphicon-share-alt" ] [], text " Open"
                                 ]
                             ]
-                        ]
-                    , tr []
-                        [ td []
-                            [ button [ class "btn btn-link", onClick deleteMsg ]
-                                [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
+                        ] ::
+                    (if isDeleteable then
+                        [ tr []
+                            [ td []
+                                [ button [ class "btn btn-link", onClick deleteMsg ]
+                                    [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
+                                    ]
                                 ]
                             ]
                         ]
-                    ]
+                    else
+                        []
+                    )
+                    )
                 ]
             ]
         ]

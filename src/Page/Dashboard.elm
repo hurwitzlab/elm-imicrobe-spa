@@ -642,7 +642,10 @@ viewInfo model =
                         project :: _ ->
                             let
                                 isDeleteable =
-                                    project.users |> List.filter (\u -> u.permission == "owner") |> List.map .user_id |> List.member model.user.user_id
+                                    project.users
+                                        |> List.filter (\u -> u.permission == "owner")
+                                        |> List.map .user_id
+                                        |> List.member model.user.user_id
                             in
                             div []
                                 [ View.Project.viewInfo project
@@ -662,9 +665,19 @@ viewInfo model =
                                     ]
 
                         sample :: _ ->
+                            let
+                                isDeleteable =
+                                    model.user.projects
+                                        |> List.filter (\p -> p.project_id == sample.project.project_id)
+                                        |> List.map .users
+                                        |> List.concat
+                                        |> List.filter (\u -> u.permission == "owner")
+                                        |> List.map .user_id
+                                        |> List.member model.user.user_id
+                            in
                             div []
                                 [ View.Sample.viewInfo sample
-                                , View.Sample.viewActions sample (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
+                                , View.Sample.viewActions sample isDeleteable (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
                                 ]
 
                 Storage ->
