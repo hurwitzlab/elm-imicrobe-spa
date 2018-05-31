@@ -39,6 +39,16 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
+    , users : List User2
+    }
+
+
+type alias User2 =
+    { user_id : Int
+    , user_name : String
+    , first_name : String
+    , last_name : String
+    , permission : String
     }
 
 
@@ -100,12 +110,22 @@ decoder =
     decode User
         |> required "user_id" Decode.int
         |> required "user_name" Decode.string
-        |> optional "first_name" Decode.string ""
-        |> optional "last_name" Decode.string ""
+        |> required "first_name" Decode.string
+        |> required "last_name" Decode.string
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
         |> optional "log" (Decode.list decoderLogEntry) []
+
+
+decoderUser2 : Decoder User2
+decoderUser2 =
+    decode User2
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
+        |> required "first_name" Decode.string
+        |> required "last_name" Decode.string
+        |> required "permission" Decode.string
 
 
 decoderLogEntry : Decoder LogEntry
@@ -131,6 +151,7 @@ decoderProject =
         |> optional "investigators" (Decode.list decoderInvestigator) []
         |> optional "publications" (Decode.list decoderPublication) []
         |> optional "samples" (Decode.list decoderSample) []
+        |> optional "users" (Decode.list decoderUser2) []
 
 
 decoderInvestigator : Decoder Investigator

@@ -368,7 +368,7 @@ viewContent model =
                                         ]
                                     ]
                             else
-                                Table.view (projectTableConfig model.selectedProjectRowId) model.projectTableState model.user.projects
+                                Table.view (projectTableConfig model.selectedProjectRowId model.user.user_id) model.projectTableState model.user.projects
 
                         newButton =
                             button [ class "btn btn-default pull-right", onClick OpenNewProjectDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " New Project" ]
@@ -391,7 +391,7 @@ viewContent model =
                                         ]
                                     ]
                             else
-                                Table.view (sampleTableConfig model.selectedSampleRowId) model.sampleTableState samples
+                                Table.view (sampleTableConfig model.user.user_id model.user.projects model.selectedSampleRowId) model.sampleTableState samples
                     in
                     ( "Samples", view, List.length samples, text "")
 
@@ -483,14 +483,15 @@ toActivityRowAttrs selectedRowId data =
         )
 
 
-projectTableConfig : Int -> Table.Config Data.User.Project Msg
-projectTableConfig selectedRowId =
+projectTableConfig : Int -> Int -> Table.Config Data.User.Project Msg
+projectTableConfig selectedRowId currentUserId =
     Table.customConfig
         { toId = toString << .project_id
         , toMsg = SetProjectTableState
         , columns =
             [ projectNameColumn
             , Table.stringColumn "Type" .project_type
+            , projectOwnerColumn currentUserId
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toProjectRowAttrs selectedRowId }
@@ -514,14 +515,37 @@ projectLink project =
         ]
 
 
-sampleTableConfig : Int -> Table.Config Data.User.Sample Msg
-sampleTableConfig selectedRowId =
+projectOwnerColumn : Int -> Table.Column Data.User.Project Msg
+projectOwnerColumn currentUserId =
+    Table.customColumn
+        { name = "Owner"
+        , viewData = viewProjectOwner currentUserId
+        , sorter = Table.unsortable
+        }
+
+
+viewProjectOwner : Int -> Data.User.Project -> String
+viewProjectOwner currentUserId project =
+    case List.filter (\u -> u.permission == "owner") project.users of
+        user :: [] ->
+            if user.user_id == currentUserId then
+                "You"
+            else
+                user.first_name ++ " " ++ user.last_name
+
+        _ ->
+            ""
+
+
+sampleTableConfig : Int -> List Data.User.Project -> Int -> Table.Config Data.User.Sample Msg
+sampleTableConfig currentUserId projects selectedRowId =
     Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetSampleTableState
         , columns =
             [ sampleNameColumn
             , Table.stringColumn "Type" .sample_type
+            , sampleOwnerColumn currentUserId projects
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toSampleRowAttrs selectedRowId }
@@ -543,6 +567,33 @@ sampleLink sample =
         [ a [ Route.href (Route.Sample sample.sample_id) ]
             [ text sample.sample_name ]
         ]
+
+
+sampleOwnerColumn : Int -> List Data.User.Project -> Table.Column Data.User.Sample Msg
+sampleOwnerColumn currentUserId projects =
+    Table.customColumn
+        { name = "Owner"
+        , viewData = viewSampleOwner currentUserId projects
+        , sorter = Table.unsortable
+        }
+
+
+viewSampleOwner : Int -> List Data.User.Project -> Data.User.Sample -> String
+viewSampleOwner currentUserId projects sample =
+    case List.filter (\p -> p.project_id == sample.project.project_id) projects of
+        project :: [] ->
+            case List.filter (\u -> u.permission == "owner") project.users of
+                user :: [] ->
+                    if user.user_id == currentUserId then
+                        "You"
+                    else
+                        user.first_name ++ " " ++ user.last_name
+
+                _ ->
+                    ""
+
+        _ ->
+            ""
 
 
 activityTableConfig : String -> Table.Config Data.User.LogEntry Msg
@@ -589,9 +640,13 @@ viewInfo model =
                                     ]
 
                         project :: _ ->
+                            let
+                                isDeleteable =
+                                    project.users |> List.filter (\u -> u.permission == "owner") |> List.map .user_id |> List.member model.user.user_id
+                            in
                             div []
                                 [ View.Project.viewInfo project
-                                , View.Project.viewActions project (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
+                                , View.Project.viewActions project isDeleteable (OpenConfirmationDialog "Are you sure you want to remove this project and its associated samples?" (RemoveProject project.project_id))
                                 ]
 
                 Sample ->
