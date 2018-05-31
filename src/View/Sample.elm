@@ -6,8 +6,8 @@ import Html.Events exposing (onClick)
 import Route
 
 
-viewInfo : { a | sample_name : String, sample_acc : String, sample_type : String, sample_file_count : Int, project : { b | project_id : Int, project_name : String } } -> Html msg
-viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
+viewInfo : { a | sample_id : Int, sample_name : String, sample_acc : String, sample_type : String, sample_file_count : Int, project : { b | project_id : Int, project_name : String } } -> Html msg
+viewInfo { sample_id, sample_name, sample_acc, sample_type, sample_file_count, project } =
     let
         numFilesText =
             if sample_file_count == 0 then
@@ -23,7 +23,8 @@ viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
                         [ col [ class "col-md-1" ] [] ]
                     , tr []
                         [ th [] [ text "Name " ]
-                        , td [ class "nowrap" ] [ text sample_name ]
+                        , td [ class "nowrap" ]
+                            [ a [ Route.href (Route.Sample sample_id) ] [ text sample_name ] ]
                         ]
                     , tr []
                         [ th [] [ text "Code " ]
@@ -36,7 +37,7 @@ viewInfo { sample_name, sample_acc, sample_type, sample_file_count, project } =
                   , tr []
                       [ th [] [ text "Project " ]
                       , td [ class "nowrap" ]
-                        [ a [ Route.href (Route.Project project.project_id) ] [ text project.project_name ] ]
+                          [ a [ Route.href (Route.Project project.project_id) ] [ text project.project_name ] ]
                       ]
                   , tr []
                       [ th [] [ text "Files " ]

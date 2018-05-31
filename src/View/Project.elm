@@ -9,7 +9,8 @@ import Route
 
 viewInfo
   : { a
-    | project_name : String
+    | project_id : Int
+    , project_name : String
     , project_code : String
     , project_type : String
     , url : String
@@ -18,7 +19,7 @@ viewInfo
     , samples : List { b | sample_id : Int }
     }
   -> Html msg
-viewInfo { project_name, project_code, project_type, url, investigators, publications, samples } =
+viewInfo { project_id, project_name, project_code, project_type, url, investigators, publications, samples } =
     let
         numSamples =
             List.length samples
@@ -35,7 +36,8 @@ viewInfo { project_name, project_code, project_type, url, investigators, publica
                 [ tbody []
                     [ tr []
                         [ th [] [ text "Name " ]
-                        , td [ class "nowrap" ] [ text project_name ]
+                        , td [ class "nowrap" ]
+                            [ a [ Route.href (Route.Project project_id) ] [ text project_name ] ]
                         ]
                     , tr []
                         [ th [] [ text "Code " ]
