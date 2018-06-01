@@ -1336,7 +1336,7 @@ shareDialogConfig currentUserId model =
     let
         content =
             div []
-                [ div []
+                [ div [ style [ ("min-height","30vh"),("max-height","30vh") ] ]
                     [ br [] []
                     , if model.shareDialogError /= "" then
                         div [ class "alert alert-danger alert-dismissible" ]
@@ -1347,13 +1347,14 @@ shareDialogConfig currentUserId model =
                       else if model.showShareDialogBusy then
                         spinner
                       else
-                        div [ class "scrollable" ]
+                        div []
                             [ div [] [ text "Who has access" ]
-                            , (viewUsersAndGroups currentUserId model.isEditable model.project.users model.project.project_groups)
-                            , br [] [] -- kludge for dropdown not on top
-                            , br [] []
-                            , br [] []
-                            , br [] []
+                            , div [ class "scrollable", style [ ("max-height","30vh") ] ]
+                                [ (viewUsersAndGroups currentUserId model.isEditable model.project.users model.project.project_groups)
+                                , br [] [] -- kludge for dropdown not on top
+                                , br [] []
+                                , br [] []
+                                ]
                             ]
                     ]
                 , if model.isEditable then
@@ -1364,7 +1365,9 @@ shareDialogConfig currentUserId model =
 
         addPanel =
             div []
-                [ hr [] []
+                [ br [] []
+                , hr [] []
+                , br [] []
                 , div [ class "form-group" ]
                     [ div [] [ text "Add a person or group:" ]
                     , div []
