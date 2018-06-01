@@ -10,6 +10,7 @@ import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
+import Json.Encode
 import Dialog
 import Http
 import FormatNumber exposing (format)
@@ -57,6 +58,7 @@ type alias Model =
     , confirmationDialog : Maybe (Dialog.Config Msg)
     , showShareDialog : Bool
     , showShareDialogBusy : Bool
+    , shareDialogError : String
     , shareDropdownState : View.SearchableDropdown.State
     , showEditInfoDialog : Bool
     , newProjectName : String
@@ -121,6 +123,7 @@ init session id =
                     , confirmationDialog = Nothing
                     , showShareDialog = False
                     , showShareDialogBusy = False
+                    , shareDialogError = ""
                     , shareDropdownState = View.SearchableDropdown.init
                     , showEditInfoDialog = False
                     , newProjectName = ""
@@ -165,6 +168,7 @@ type Msg
     | CloseConfirmationDialog
     | OpenShareDialog
     | CloseShareDialog
+    | CloseShareDialogError
     | SetShareUserName String
     | SearchUsersAndGroupsCompleted (Result Http.Error (List Data.User.User, List Data.ProjectGroup.ProjectGroup))
     | ShareWithUser String Int String --FIXME create new type for permission instead of using string
@@ -301,6 +305,9 @@ update session msg model =
         CloseShareDialog ->
             { model | showShareDialog = False } => Cmd.none => NoOp
 
+        CloseShareDialogError ->
+            { model | shareDialogError = "" } => Cmd.none => NoOp
+
         SetShareUserName name ->
             let
                 dropdownState =
@@ -404,11 +411,12 @@ update session msg model =
             in
             { model | showShareDialogBusy = False, project = { newProject | project_groups = newGroups } } => Cmd.none => NoOp
 
-        AddToProjectGroupCompleted (Err error) -> -- TODO finish this
+        AddToProjectGroupCompleted (Err error) ->
             let
-                _ = Debug.log "Error:" (toString error)
+                error =
+                    "You don't have permission to share with that group."
             in
-            model => Cmd.none => NoOp
+            { model | showShareDialogBusy = False, shareDialogError = error } => Cmd.none => NoOp
 
         RemoveFromProjectGroup groupId ->
             let
@@ -1330,7 +1338,13 @@ shareDialogConfig currentUserId model =
             div []
                 [ div []
                     [ br [] []
-                    , if model.showShareDialogBusy then
+                    , if model.shareDialogError /= "" then
+                        div [ class "alert alert-danger alert-dismissible" ]
+                            [ button [ type_ "button", class "close" ]
+                                [ span [ property "innerHTML" (Json.Encode.string "&times;"), onClick CloseShareDialogError ] [] ]
+                            , text model.shareDialogError
+                            ]
+                      else if model.showShareDialogBusy then
                         spinner
                       else
                         div [ class "scrollable" ]
