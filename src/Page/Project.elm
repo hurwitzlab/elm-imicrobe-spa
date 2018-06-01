@@ -784,7 +784,7 @@ viewShareButton model =
     if model.project.private == 1 then
         let
             buttonLabel =
-                if List.length model.project.users <= 1 then
+                if List.length model.project.users <= 1 && List.length model.project.project_groups == 0 then
                     "Project is Private"
                 else
                     "Project is Shared"
