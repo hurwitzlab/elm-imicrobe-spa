@@ -7,36 +7,47 @@ import Json.Decode as Decode
 import Config exposing (apiBaseUrl)
 
 
-list : Http.Request (List ProjectGroup)
-list =
+list : String -> Http.Request (List ProjectGroup)
+list token =
     let
         url =
             apiBaseUrl ++ "/project_groups"
+
+        headers =
+            [( "Authorization", token)]
 
         decoder =
             Decode.list ProjectGroup.decoder
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
 
-get : Int -> Http.Request ProjectGroup
-get id =
+get : String -> Int -> Http.Request ProjectGroup
+get token id =
     let
         url =
             apiBaseUrl ++ "/project_groups/" ++ toString id
+
+        headers =
+            [( "Authorization", token)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson ProjectGroup.decoder)
         |> HttpBuilder.toRequest
 
 
-searchByName : String -> Http.Request (List ProjectGroup)
-searchByName term =
+searchByName : String -> String -> Http.Request (List ProjectGroup)
+searchByName token term =
     let
         url =
             apiBaseUrl ++ "/project_groups"
+
+        headers =
+            [( "Authorization", token)]
 
         decoder =
             Decode.list ProjectGroup.decoder
@@ -45,6 +56,7 @@ searchByName term =
             [("term", term)]
     in
     HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withQueryParams queryParams
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest

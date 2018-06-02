@@ -323,10 +323,10 @@ setRoute maybeRoute model =
             transition ProjectsLoaded (Projects.init model.session)
 
         Just (Route.ProjectGroup id) ->
-            transition (ProjectGroupLoaded id) (ProjectGroup.init id)
+            transition (ProjectGroupLoaded id) (ProjectGroup.init model.session id)
 
         Just Route.ProjectGroups ->
-            transition ProjectGroupsLoaded ProjectGroups.init
+            transition ProjectGroupsLoaded (ProjectGroups.init model.session)
 
         Just (Route.Sample id) ->
             transition (SampleLoaded id) (Sample.init model.session id)

@@ -1,6 +1,7 @@
 module Page.ProjectGroup exposing (Model, Msg, init, update, view)
 
 import Data.ProjectGroup exposing (ProjectGroup, Project, User)
+import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -21,15 +22,15 @@ type alias Model =
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : Session -> Int -> Task PageLoadError Model
+init session id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Project Group"
 
         loadProjectGroup =
-            Request.ProjectGroup.get id |> Http.toTask
+            Request.ProjectGroup.get session.token id |> Http.toTask
     in
     Task.map3 Model title (Task.succeed id) loadProjectGroup
         |> Task.mapError Error.handleLoadError
