@@ -5,7 +5,7 @@ import Data.ProjectGroup
 import Data.Sample
 import Data.Investigator
 import Data.User
-import Data.Session as Session exposing (Session)
+import Data.Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -92,13 +92,17 @@ init session id =
         userId =
             Maybe.map .user_id session.user
 
+        allUsers project =
+            project.users ++ (List.map .users project.project_groups |> List.concat)
+
         isEditable project =
             case userId of
                 Nothing ->
                     False
 
                 Just userId ->
-                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) project.users
+                    allUsers project
+                        |> List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write"))
     in
     loadProject
         |> Task.andThen
@@ -318,7 +322,7 @@ update session msg model =
                     searchByName =
                         Task.map2 (\users groups -> (users, groups))
                             (Request.User.searchByName session.token name |> Http.toTask)
-                            (Request.ProjectGroup.searchByName name |> Http.toTask)
+                            (Request.ProjectGroup.searchByName session.token name |> Http.toTask)
                 in
                 { model | shareDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersAndGroupsCompleted searchByName => NoOp
             else
