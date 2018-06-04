@@ -37,6 +37,10 @@ h1, h2, h3 {
     font-size: 0.75em;
 }
 
+.tiny-text {
+    font-size: 0.5em;
+}
+
 .bold {
     font-weight: bold;
 }
@@ -231,4 +235,9 @@ div.info-panel {
 
 .table tbody tr.active:hover td {
     background: #ffc266;
+}
+
+.label-primary {
+    background-color: #2ab4bd;
+    border-color: #2ab4bd;
 }
