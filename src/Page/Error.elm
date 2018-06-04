@@ -4,7 +4,7 @@ module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, redir
 for example a Page Not Found error.
 -}
 
-import Html exposing (Html, div, h1, img, main_, p, text)
+import Html exposing (Html, div, h1, img, main_, a, p, text)
 import Html.Attributes exposing (alt, class, id, tabindex)
 import View.Page as Page exposing (ActivePage)
 import Route
@@ -47,26 +47,34 @@ redirectLoadError (PageLoadError model) =
         _ -> Cmd.none
 
 
-errorMessage : Http.Error -> String
+errorMessage : Http.Error -> Html msg
 errorMessage error =
     case error of
         Http.NetworkError ->
-            "Cannot connect to remote host"
+            text "Cannot connect to remote host"
 
         Http.BadStatus response ->
             case response.status.code of
-                401 -> "Unauthorized"
+                401 ->
+                    text "Unauthorized"
+
+                403 ->
+                    div []
+                        [ text "You do not have access to this resource.  Please "
+                        , a [ Route.href Route.Login ] [ text "log-in"]
+                        , text " and try again"
+                        ]
 
                 _ ->
                     case String.length response.body of
                         0 ->
-                            "Bad status"
+                            text "Bad status"
 
                         _ ->
-                            response.body
+                            text response.body
 
         _ ->
-            toString error
+            toString error |> text
 
 
 
@@ -79,5 +87,5 @@ view (PageLoadError model) =
         [ div [ class "page-header" ]
             [ h1 [] [ text "Error" ] ]
         , div [ class "row" ]
-            [ div [ class "alert alert-danger" ] [ text (errorMessage model.error) ] ]
+            [ div [ class "alert alert-danger" ] [ (errorMessage model.error) ] ]
         ]

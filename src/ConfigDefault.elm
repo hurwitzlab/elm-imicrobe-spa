@@ -1,7 +1,5 @@
 module Config exposing (..)
 
-import Dict exposing (Dict)
-
 
 
 -- Backend REST API

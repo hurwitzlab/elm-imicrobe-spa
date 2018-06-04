@@ -2,8 +2,7 @@ module Data.Domain exposing (Domain, Project, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
-import Json.Encode as Encode exposing (Value)
-import Json.Encode.Extra as EncodeExtra
+
 
 
 type alias Domain =

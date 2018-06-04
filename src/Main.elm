@@ -25,17 +25,17 @@ import Page.Cart as Cart
 import Page.CombinedAssembly as CombinedAssembly
 import Page.CombinedAssemblies as CombinedAssemblies
 import Page.Contact as Contact
+import Page.Dashboard as Dashboard
 import Page.Domain as Domain
 import Page.Domains as Domains
-import Page.Files as Files
 import Page.Error as Error exposing (PageLoadError, redirectLoadError)
+import Page.Files as Files
 import Page.Home as Home
 import Page.Investigator as Investigator
 import Page.Investigators as Investigators
 import Page.Job as Job
 import Page.Jobs as Jobs
 import Page.Map as Map
-import Page.MetaSearch as MetaSearch
 import Page.NotFound as NotFound
 import Page.Profile as Profile
 import Page.Project as Project
@@ -90,6 +90,7 @@ type Page
     | CombinedAssemblies CombinedAssemblies.Model
     | CombinedAssembly Int CombinedAssembly.Model
     | Contact Contact.Model
+    | Dashboard Dashboard.Model
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
@@ -100,7 +101,6 @@ type Page
     | Job String Job.Model
     | Jobs Jobs.Model
     | Map String String Map.Model
-    | MetaSearch MetaSearch.Model
     | NotFound
     | Profile Profile.Model
     | Project Int Project.Model
@@ -146,6 +146,8 @@ type Msg
     | CombinedAssembliesMsg CombinedAssemblies.Msg
     | ContactLoaded (Result PageLoadError Contact.Model)
     | ContactMsg Contact.Msg
+    | DashboardLoaded (Result PageLoadError Dashboard.Model)
+    | DashboardMsg Dashboard.Msg
     | DomainLoaded Int (Result PageLoadError Domain.Model)
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
@@ -164,8 +166,6 @@ type Msg
     | JobsMsg Jobs.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
     | MapMsg Map.Msg
-    | MetaSearchLoaded (Result PageLoadError MetaSearch.Model)
-    | MetaSearchMsg MetaSearch.Msg
     | LoadProfile Agave.Profile
     | LoginRecorded User.Login
     | ProfileLoaded (Result PageLoadError Profile.Model)
@@ -197,6 +197,8 @@ type Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
     | SelectFile Data.App.FileBrowser
+    | FileUploadFileSelected (Maybe Ports.FileToUpload)
+    | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
     | PollTimerTick Time
     | InputTimerTick Time
     | SearchBarInput String
@@ -264,8 +266,8 @@ setRoute maybeRoute model =
         Just Route.Contact ->
             transition ContactLoaded (Contact.init model.session)
 
-        Just Route.Home ->
-            transition HomeLoaded (Home.init model.session)
+        Just Route.Dashboard ->
+            transition DashboardLoaded (Dashboard.init model.session)
 
         Just Route.Domains ->
             transition DomainsLoaded Domains.init
@@ -275,6 +277,9 @@ setRoute maybeRoute model =
 
         Just Route.Files ->
             transition FilesLoaded (Files.init model.session)
+
+        Just Route.Home ->
+            transition HomeLoaded (Home.init model.session)
 
         Just (Route.Investigator id) ->
             transition (InvestigatorLoaded id) (Investigator.init id)
@@ -299,9 +304,6 @@ setRoute maybeRoute model =
         Just (Route.Map lat lng) ->
             transition (MapLoaded lat lng) (Map.init lat lng)
 
-        Just Route.MetaSearch ->
-            transition MetaSearchLoaded (MetaSearch.init model.session)
-
         Just Route.Pubchase ->
             transition PubchaseLoaded Pubchase.init
 
@@ -318,13 +320,13 @@ setRoute maybeRoute model =
             transition (ProjectLoaded id) (Project.init model.session id)
 
         Just Route.Projects ->
-            transition ProjectsLoaded Projects.init
+            transition ProjectsLoaded (Projects.init model.session)
 
         Just (Route.ProjectGroup id) ->
-            transition (ProjectGroupLoaded id) (ProjectGroup.init id)
+            transition (ProjectGroupLoaded id) (ProjectGroup.init model.session id)
 
         Just Route.ProjectGroups ->
-            transition ProjectGroupsLoaded ProjectGroups.init
+            transition ProjectGroupsLoaded (ProjectGroups.init model.session)
 
         Just (Route.Sample id) ->
             transition (SampleLoaded id) (Sample.init model.session id)
@@ -413,7 +415,7 @@ updatePage page msg model =
         Deauthorize ->
             let
                 newSession =
-                    { session | token = "", profile = Nothing }
+                    { session | token = "", user = Nothing, profile = Nothing }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
@@ -544,6 +546,20 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        DashboardLoaded (Ok subModel) ->
+            { model | pageState = Loaded (Dashboard subModel) } => scrollToTop
+
+        DashboardLoaded (Err error) ->
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
+
+        DashboardMsg subMsg ->
+            case page of
+                Dashboard subModel ->
+                    toPage Dashboard DashboardMsg (Dashboard.update session) subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         DomainsLoaded (Ok subModel) ->
             { model | pageState = Loaded (Domains subModel) } => scrollToTop
 
@@ -640,38 +656,6 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        MetaSearchLoaded (Ok subModel) ->
-            { model | pageState = Loaded (MetaSearch subModel) } => scrollToTop
-
-        MetaSearchLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
-
-        MetaSearchMsg subMsg ->
-            case page of
-                MetaSearch subModel ->
-                    let
-                        ( ( pageModel, cmd ), msgFromPage ) =
-                            MetaSearch.update model.session subMsg subModel
-
-                        newModel =
-                            case msgFromPage of
-                                MetaSearch.NoOp ->
-                                    model
-
-                                MetaSearch.SetCart newCart ->
-                                    let
-                                        newSession =
-                                            { session | cart = newCart }
-                                    in
-                                    { model | session = newSession }
-
-                    in
-                    { newModel | pageState = Loaded (MetaSearch pageModel) }
-                        => Cmd.map MetaSearchMsg cmd
-
-                _ ->
-                    model => Cmd.none
-
         PubchaseLoaded (Ok subModel) ->
             { model | pageState = Loaded (Pubchase subModel) } => scrollToTop
 
@@ -722,7 +706,7 @@ updatePage page msg model =
                     { session | profile = Just profile }
 
                 recordLogin username =
-                    Request.User.recordLogin username |> Http.toTask |> Task.attempt handleRecordLogin
+                    Request.User.recordLogin session.token username |> Http.toTask |> Task.attempt handleRecordLogin
 
                 handleRecordLogin login =
                     case login of
@@ -739,14 +723,12 @@ updatePage page msg model =
 
         LoginRecorded login ->
             let
-                _ = Debug.log "login" login
-
                 session = model.session
 
                 newSession =
                     { session | user = Just login.user }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession ] --, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession ]
 
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
@@ -794,7 +776,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Project id subModel) } => scrollToTop
 
         ProjectLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         ProjectMsg subMsg ->
             case page of
@@ -846,7 +828,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Sample id subModel) } => scrollToTop
 
         SampleLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => Cmd.none
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         SampleMsg subMsg ->
             case page of
@@ -992,22 +974,18 @@ updatePage page msg model =
                 Just newSession ->
                     case page of
                         Cart subModel ->
---                            toPage Cart CartMsg (Cart.update newSession) (Cart.SetSession newSession) subModel
                             let
                                 ( ( pageModel, cmd ), msgFromPage ) =
                                     Cart.update model.session (Cart.SetSession newSession) subModel
                             in
-                            { model | pageState = Loaded (Cart pageModel) }
-                                => Cmd.map CartMsg cmd
+                            { model | pageState = Loaded (Cart pageModel) } => Cmd.map CartMsg cmd
 
                         Samples subModel ->
---                            toPage Samples SamplesMsg (Samples.update newSession) (Samples.SetSession newSession) subModel
                             let
                                 ( ( pageModel, cmd ), msgFromPage ) =
                                     Samples.update model.session (Samples.SetSession newSession) subModel
                             in
-                            { model | pageState = Loaded (Samples pageModel) }
-                                => Cmd.map SamplesMsg cmd
+                            { model | pageState = Loaded (Samples pageModel) } => Cmd.map SamplesMsg cmd
 
                         _ ->
                             { model | session = newSession } => Cmd.none
@@ -1026,6 +1004,38 @@ updatePage page msg model =
                             App.update session (App.SetInput selection.source selection.id selection.path) subModel
                     in
                     { model | pageState = Loaded (App id pageModel) } => Cmd.map AppMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
+        FileUploadFileSelected file ->
+            case page of
+                Dashboard subModel ->
+                    let
+                        (pageModel, cmd) =
+                            Dashboard.update session (Dashboard.UploadFileBegin file) subModel
+                    in
+                    { model | pageState = Loaded (Dashboard pageModel) } => Cmd.map DashboardMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
+        FileUploadDone result ->
+            case page of
+                Dashboard subModel ->
+                    let
+                        (pageModel, cmd) =
+                            let
+                                _ = Debug.log (toString result)
+                            in
+                            case result of
+                                Nothing ->
+                                    Dashboard.update session Dashboard.UploadFileError subModel
+
+                                _ ->
+                                    Dashboard.update session Dashboard.UploadFileEnd subModel
+                    in
+                    { model | pageState = Loaded (Dashboard pageModel) } => Cmd.map DashboardMsg cmd
 
                 _ ->
                     model => Cmd.none
@@ -1153,6 +1163,11 @@ viewPage session isLoading page =
                 |> Html.map ContactMsg
                 |> layout Page.Contact
 
+        Dashboard subModel ->
+            Dashboard.view subModel
+                |> Html.map DashboardMsg
+                |> layout Page.Dashboard
+
         Domains subModel ->
             Domains.view subModel
                 |> Html.map DomainsMsg
@@ -1201,11 +1216,6 @@ viewPage session isLoading page =
             Map.view subModel
                 |> Html.map MapMsg
                 |> layout Page.Map
-
-        MetaSearch subModel ->
-            MetaSearch.view subModel
-                |> Html.map MetaSearchMsg
-                |> layout Page.MetaSearch
 
         Publication id subModel ->
             Publication.view subModel
@@ -1303,7 +1313,8 @@ viewHeader page isLoading session =
                             , span [ class "caret" ] []
                             ]
                         , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                            [ li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
+                            [ li [] [ a [ Route.href Route.Dashboard ] [ text "Dashboard" ] ]
+                            , li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
                             , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                             ]
                         ]
@@ -1320,7 +1331,7 @@ viewHeader page isLoading session =
                         _ ->
                             [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
             in
-            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Cart" ]
                 [ a [ Route.href Route.Cart ]
                     (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
                 ]
@@ -1333,8 +1344,19 @@ viewHeader page isLoading session =
                 _ ->
                     "(" ++ (toString numItemsInCart) ++ ")"
 
+        dashboardButton =
+            case profile of
+                Nothing ->
+                    text ""
+
+                _ ->
+                    div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
+                        [ a [ Route.href Route.Dashboard ]
+                            [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
+                        ]
+
         helpButton =
-            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")] ]
+            div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Contact Us" ]
                 [ a [ Route.href Route.Contact ]
                     [ span [ class "icon-button glyphicon glyphicon-question-sign" ] [] ]
                 ]
@@ -1402,6 +1424,7 @@ viewHeader page isLoading session =
                         , loginMenuItem
                         ]
                     , helpButton
+                    , dashboardButton
                     , cartButton
                     , searchBar
                     ]
@@ -1423,16 +1446,13 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [--pageSubscriptions (getPage model.pageState)
-          Sub.map SetSession sessionChange
+          Sub.map SetSession (Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe))
         , Ports.onFileSelect SelectFile
+        , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
+        , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) PollTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
         ]
-
-
-sessionChange : Sub (Maybe Session)
-sessionChange =
-    Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe)
 
 
 pageSubscriptions : Page -> Sub Msg
@@ -1463,6 +1483,8 @@ init : Flags -> Location -> ( Model, Cmd Msg )
 init flags location =
     let
         _ = Debug.log "flags" flags
+
+        _ = Debug.log "location" (toString location)
 
         session = --TODO use Maybe Session instead
             case flags.session of

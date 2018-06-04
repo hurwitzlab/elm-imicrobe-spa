@@ -1,6 +1,7 @@
 module Page.ProjectGroup exposing (Model, Msg, init, update, view)
 
-import Data.ProjectGroup
+import Data.ProjectGroup exposing (ProjectGroup, Project, User)
+import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -17,19 +18,19 @@ import Task exposing (Task)
 type alias Model =
     { pageTitle : String
     , projectGroupId : Int
-    , projectGroup : Data.ProjectGroup.ProjectGroup
+    , projectGroup : ProjectGroup
     }
 
 
-init : Int -> Task PageLoadError Model
-init id =
+init : Session -> Int -> Task PageLoadError Model
+init session id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Project Group"
 
         loadProjectGroup =
-            Request.ProjectGroup.get id |> Http.toTask
+            Request.ProjectGroup.get session.token id |> Http.toTask
     in
     Task.map3 Model title (Task.succeed id) loadProjectGroup
         |> Task.mapError Error.handleLoadError
@@ -67,17 +68,18 @@ view model =
                 ]
             , viewProjectGroup model.projectGroup
             , viewProjects model.projectGroup.projects
+            , viewUsers model.projectGroup.users
             ]
         ]
 
 
-viewProjectGroup : Data.ProjectGroup.ProjectGroup -> Html msg
+viewProjectGroup : ProjectGroup -> Html Msg
 viewProjectGroup group =
     table [ class "table" ]
         [ colgroup []
             [ col [ class "col-md-1" ] [] ]
         , tr []
-            [ th [] [ text "Group Name" ]
+            [ th [] [ text "Name" ]
             , td [] [ text group.group_name ]
             ]
         , tr []
@@ -101,7 +103,7 @@ viewUrl url =
             text url
 
 
-viewProjects : List Data.ProjectGroup.Project -> Html msg
+viewProjects : List Project -> Html msg
 viewProjects projects =
     let
         numProjects =
@@ -135,7 +137,7 @@ viewProjects projects =
         ]
 
 
-viewProject : Data.ProjectGroup.Project -> Html msg
+viewProject : Project -> Html msg
 viewProject project =
     tr []
         [ td []
@@ -144,3 +146,52 @@ viewProject project =
             ]
         ]
 
+
+viewUsers : List User -> Html Msg
+viewUsers users =
+    let
+        numUsers =
+            List.length users
+
+        label =
+            case numUsers of
+                0 ->
+                    span [] []
+
+                _ ->
+                    span [ class "badge" ]
+                        [ text (toString numUsers)
+                        ]
+
+        body =
+            case numUsers of
+                0 ->
+                    text "None"
+
+                _ ->
+                    table [ class "table" ]
+                        [ tbody []
+                            (tr []
+                                [ th [] [ text "Name" ]
+                                , th [] [ text "Username" ]
+                                , th [] [ text "Permission" ]
+                                ] ::
+                            (List.map viewUser users))
+                        ]
+    in
+    div []
+        [ h2 []
+            [ text "Users "
+            , label
+            ]
+        , body
+        ]
+
+
+viewUser : User -> Html Msg
+viewUser user =
+    tr []
+        [ td [] [ user.first_name ++ " " ++ user.last_name |> text ]
+        , td [] [ text user.user_name ]
+        , td [] [ text user.permission ]
+        ]

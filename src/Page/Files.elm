@@ -48,7 +48,7 @@ init session =
             session.cart.contents |> Set.toList
 
         loadSampleFiles =
-            Request.Sample.files id_list |> Http.toTask
+            Request.Sample.files session.token id_list |> Http.toTask
     in
     Task.map4 Model title tableState filterType loadSampleFiles
         |> Task.mapError Error.handleLoadError

@@ -16,6 +16,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
+import View.Spinner exposing (spinner)
 import Events exposing (onKeyDown)
 
 
@@ -38,7 +39,7 @@ type alias Model =
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
-    doSearch searchTerm
+    doSearch session.token searchTerm
         |> Task.andThen
             (\results ->
                 Task.succeed
@@ -56,14 +57,14 @@ init session searchTerm =
         |> Task.mapError Error.handleLoadError
 
 
-doSearch : String -> Task Http.Error (List Centrifuge2)
-doSearch searchTerm =
+doSearch : String -> String -> Task Http.Error (List Centrifuge2)
+doSearch token searchTerm =
     case searchTerm of
         "" ->
             Task.succeed []
 
         _ ->
-            Request.Sample.taxonomy_search searchTerm |> Http.toTask
+            Request.Sample.taxonomy_search token searchTerm |> Http.toTask
 
 
 
@@ -203,7 +204,7 @@ view model =
         display =
             case model.isSearching of
                 True ->
-                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                    spinner
 
                 False ->
                     case model.searchTerm of

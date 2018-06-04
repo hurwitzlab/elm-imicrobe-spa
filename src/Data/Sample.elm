@@ -3,8 +3,22 @@ module Data.Sample exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
+import Dict exposing (Dict)
 import Util exposing ((=>))
 
+
+
+type JsonType
+    = StrType String
+    | IntType Int
+    | FloatType Float
+    | ValueType Decode.Value
+
+
+type alias SearchResult =
+    { attributes: Dict String JsonType
+    , users: List User
+    }
 
 
 type alias Investigator =
@@ -65,6 +79,25 @@ type alias Project =
     , peptide_file : String
     , read_pep_file : String
     , nt_file : String
+    , users : List User
+    , project_groups : List ProjectGroup
+    , private : Int
+    }
+
+
+type alias ProjectGroup =
+    { project_group_id : Int
+    , group_name : String
+    , users : List User
+    }
+
+
+type alias User =
+    { user_id : Int
+    , user_name : String
+    , first_name : String
+    , last_name : String
+    , permission : String
     }
 
 
@@ -96,12 +129,14 @@ type alias Sample =
     , project : Project
     , investigators : List Investigator
     , sample_files : List SampleFile2
+    , sample_file_count : Int
     , assemblies : List Assembly
     , combined_assemblies : List CombinedAssembly
     , ontologies : List Ontology
     , sample_attrs : List Attribute
     , protein_count : Int
     , centrifuge_count : Int
+    , available_types : List String
     }
 
 
@@ -264,6 +299,27 @@ type alias CentrifugeSample =
 -- SERIALIZATION --
 
 
+oneOfJsonType : Decoder JsonType
+oneOfJsonType =
+    [ Decode.string
+        |> Decode.map StrType
+    , Decode.int
+        |> Decode.map IntType
+    , Decode.float
+        |> Decode.map FloatType
+    , Decode.value
+        |> Decode.map ValueType
+    ]
+        |> Decode.oneOf
+
+
+decoderSearchResult : Decoder SearchResult
+decoderSearchResult =
+    decode SearchResult
+        |> required "attributes" (Decode.dict oneOfJsonType)
+        |> optional "users" (Decode.list decoderUser) []
+
+
 decoderInv : Decoder Investigator
 decoderInv =
     decode Investigator
@@ -329,6 +385,17 @@ decoderProject =
         |> optional "peptide_file" Decode.string "NA"
         |> optional "read_pep_file" Decode.string "NA"
         |> optional "nt_file" Decode.string "NA"
+        |> optional "users" (Decode.list decoderUser) []
+        |> optional "project_groups" (Decode.list decoderProjectGroup) []
+        |> optional "private" Decode.int 0
+
+
+decoderProjectGroup : Decoder ProjectGroup
+decoderProjectGroup =
+    decode ProjectGroup
+        |> required "project_group_id" Decode.int
+        |> required "group_name" Decode.string
+        |> optional "users" (Decode.list decoderUser) []
 
 
 decoderAssembly : Decoder Assembly
@@ -363,12 +430,14 @@ decoder =
         |> required "project" decoderProject
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "sample_files" (Decode.list decoderSampleFile2) []
+        |> optional "sample_file_count" Decode.int 0
         |> optional "assemblies" (Decode.list decoderAssembly) []
         |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
         |> optional "ontologies" (Decode.list decoderOnt) []
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0
         |> optional "centrifuge_count" Decode.int 0
+        |> optional "available_types" (Decode.list Decode.string) []
 
 
 decoderSampleFile : Decoder SampleFile
@@ -541,6 +610,16 @@ decoderCentrifugeSample =
         |> required "project_id" Decode.int
         |> required "project" decoderProject
         |> required "sample_to_centrifuge" decoderSampleToCentrifuge2
+
+
+decoderUser : Decoder User
+decoderUser =
+    decode User
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
+        |> optional "first_name" Decode.string ""
+        |> optional "last_name" Decode.string ""
+        |> optional "permission" Decode.string ""
 
 
 encode : Sample -> Value

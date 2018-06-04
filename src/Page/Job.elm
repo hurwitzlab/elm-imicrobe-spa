@@ -19,6 +19,7 @@ import Util exposing ((=>))
 import Time exposing (Time)
 import String.Extra
 import List.Extra
+import View.Spinner exposing (spinner)
 
 
 
@@ -445,10 +446,6 @@ viewParameters params =
 
 viewParameter : (String, String) -> Html msg
 viewParameter (id, value) =
-    let
-        display =
-            "foo"
-    in
     tr []
         [ th [] [ text id ]
         , td [] [ text value ]
@@ -496,7 +493,7 @@ viewOutputs model =
                             case model.loadingOutputs of
                                 False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
 
-                                True -> [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ]
+                                True -> [ tr [] [ td [] [ spinner ] ] ]
 
                         _ -> (List.map viewOutput model.outputs)
 
@@ -507,7 +504,7 @@ viewOutputs model =
                     [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
 
         de_url =
-            "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id
+            "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id --FIXME move base url to config
     in
     div []
         [ h2 [] [ text "Outputs" ]
@@ -544,7 +541,7 @@ viewResults model =
                         False ->
                             case model.loadingResults of
                                 True ->
-                                    div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ]
+                                    spinner
 
                                 False ->
                                     button [ class "btn btn-default", onClick GetResults ] [ text "Show Results" ]

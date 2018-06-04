@@ -1,6 +1,7 @@
 module Page.ProjectGroups exposing (Model, Msg, init, update, view)
 
-import Data.ProjectGroup
+import Data.ProjectGroup exposing (ProjectGroup)
+import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -20,21 +21,21 @@ import Task exposing (Task)
 
 type alias Model =
     { pageTitle : String
-    , projectGroups : List Data.ProjectGroup.ProjectGroup
+    , projectGroups : List ProjectGroup
     , tableState : Table.State
     , query : String
     }
 
 
-init : Task PageLoadError Model
-init =
+init : Session -> Task PageLoadError Model
+init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
             Task.succeed "Project Groups"
 
         loadProjectGroups =
-            Request.ProjectGroup.list |> Http.toTask
+            Request.ProjectGroup.list session.token |> Http.toTask
 
         tblState =
             Task.succeed (Table.initialSort "Name")
@@ -69,7 +70,7 @@ update msg model =
             )
 
 
-config : Table.Config Data.ProjectGroup.ProjectGroup Msg
+config : Table.Config ProjectGroup Msg
 config =
     Table.config
         { toId = toString << .project_group_id
@@ -80,7 +81,7 @@ config =
         }
 
 
-nameColumn : Table.Column Data.ProjectGroup.ProjectGroup Msg
+nameColumn : Table.Column ProjectGroup Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Name"
@@ -89,7 +90,7 @@ nameColumn =
         }
 
 
-nameLink : Data.ProjectGroup.ProjectGroup -> Table.HtmlDetails Msg
+nameLink : ProjectGroup -> Table.HtmlDetails Msg
 nameLink group =
     Table.HtmlDetails []
         [ a [ Route.href (Route.ProjectGroup group.project_group_id) ]

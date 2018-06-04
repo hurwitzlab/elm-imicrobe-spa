@@ -9,6 +9,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
+import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Sample
@@ -17,10 +18,14 @@ import Time exposing (Time)
 import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
-import View.Cart as Cart
-import Util exposing ((=>))
-import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
 import List.Extra
+import Maybe.Extra
+import Util exposing ((=>))
+import View.Cart as Cart
+import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
+import View.Spinner exposing (spinner)
+import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
+import View.FileBrowser as FileBrowser
 
 
 
@@ -48,14 +53,60 @@ type alias Model =
     , proteinQuery : String
     , centrifugeQuery : String
     , proteinFilterType : String
+    , isEditable : Bool
+    , currentUser : Maybe User
+    , showNewAttributeDialog : Bool
+    , showNewAttributeBusy : Bool
+    , newAttributeType : String
+    , newAttributeAliases : String
+    , newAttributeValue : String
+    , showModifyAttributeDialog : Bool
+    , showModifyAttributeBusy : Bool
+    , attributeToModify : Maybe Sample.Attribute
+    , confirmationDialog : Maybe (Dialog.Config Msg)
+    , infoDialog : Maybe (Dialog.Config Msg)
+    , showAddFilesDialog : Bool
+    , showEditInfoDialog : Bool
+    , newSampleName : String
+    , newSampleCode : String
+    , newSampleType : String
+    , dialogError : Maybe String
+    , fileBrowser : FileBrowser.Model
     }
+
+
+type PFAMorKEGG
+    = PFAM UProC_PFAM
+    | KEGG UProC_KEGG
 
 
 init : Session -> Int -> Task PageLoadError Model
 init session id =
     let
         loadSample =
-            Request.Sample.get id |> Http.toTask
+            Request.Sample.get session.token id |> Http.toTask
+
+        userId =
+            Maybe.map .user_id session.user
+
+        allUsers sample =
+            sample.project.users ++ (List.map .users sample.project.project_groups |> List.concat)
+
+        isEditable sample =
+            case userId of
+                Nothing ->
+                    False
+
+                Just userId ->
+                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) (allUsers sample)
+
+        currentUser sample =
+            case userId of
+                Nothing ->
+                    Nothing
+
+                Just userId ->
+                    List.filter (\u -> u.user_id == userId) (allUsers sample) |> List.head
     in
     loadSample
         |> Task.andThen
@@ -63,9 +114,11 @@ init session id =
                 let
                     getAttrValue name =
                         case List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) sample.sample_attrs of
-                            Nothing -> 0
+                            Nothing ->
+                                0
 
-                            Just attr -> (Result.withDefault 0 (String.toFloat attr.attr_value))
+                            Just attr ->
+                                Result.withDefault 0 (String.toFloat attr.attr_value)
 
                     lat =
                         getAttrValue "latitude"
@@ -94,6 +147,25 @@ init session id =
                     , proteinQuery = ""
                     , centrifugeQuery = ""
                     , proteinFilterType = "PFAM"
+                    , isEditable = isEditable sample
+                    , currentUser = currentUser sample
+                    , showNewAttributeDialog = False
+                    , showNewAttributeBusy = False
+                    , newAttributeType = ""
+                    , newAttributeAliases = ""
+                    , newAttributeValue = ""
+                    , showModifyAttributeDialog = False
+                    , showModifyAttributeBusy = False
+                    , attributeToModify = Nothing
+                    , confirmationDialog = Nothing
+                    , infoDialog = Nothing
+                    , showAddFilesDialog = False
+                    , showEditInfoDialog = False
+                    , newSampleName = ""
+                    , newSampleCode = ""
+                    , newSampleType = ""
+                    , dialogError = Nothing
+                    , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False))
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -118,7 +190,41 @@ type Msg
     | SetProteins Proteins
     | GetCentrifugeResults
     | SetCentrifugeResults (List SampleToCentrifuge)
+    | OpenNewAttributeDialog
+    | CloseNewAttributeDialog
+    | CreateNewAttribute
+    | CreateNewAttributeCompleted (Result Http.Error Sample)
+    | SetNewAttributeType String
+    | SetNewAttributeAliases String
+    | SetNewAttributeValue String
+    | RemoveAttribute Int
+    | RemoveAttributeCompleted (Result Http.Error Sample)
+    | OpenModifyAttributeDialog Sample.Attribute
+    | CloseModifyAttributeDialog
+    | UpdateAttribute Int
+    | UpdateAttributeCompleted (Result Http.Error Sample)
+    | OpenConfirmationDialog String Msg
+    | OpenInfoDialog String
+    | OpenAddFilesDialog
+    | OpenEditInfoDialog
+    | CloseConfirmationDialog
+    | CloseInfoDialog
+    | CloseErrorDialog
+    | CloseAddFilesDialog
+    | CloseEditInfoDialog
+    | SetNewSampleName String
+    | SetNewSampleCode String
+    | SetNewSampleType String
+    | UpdateSampleInfo
+    | UpdateSampleInfoCompleted (Result Http.Error Sample)
+    | AddFiles (List String)
+    | AddFilesCompleted (Result Http.Error Sample)
+    | RemoveFile Int
+    | RemoveFileCompleted (Result Http.Error Sample)
+    | SetFileType Int String
+    | SetFileTypeCompleted (Result Http.Error String)
     | CartMsg Cart.Msg
+    | FileBrowserMsg FileBrowser.Msg
 
 
 type ExternalMsg
@@ -162,7 +268,7 @@ update session msg model =
         GetProteins ->
             let
                 loadProteins =
-                    Request.Sample.proteins model.sample_id |> Http.toTask
+                    Request.Sample.proteins session.token model.sample_id |> Http.toTask
 
                 handleProteins proteins =
                     case proteins of
@@ -183,7 +289,7 @@ update session msg model =
         GetCentrifugeResults ->
             let
                 loadCentrifugeResults =
-                    Request.Sample.centrifuge_results model.sample_id |> Http.toTask
+                    Request.Sample.centrifuge_results session.token model.sample_id |> Http.toTask
 
                 handleCentrifugeResults results =
                     case results of
@@ -201,6 +307,218 @@ update session msg model =
         SetCentrifugeResults results ->
             { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
+        OpenNewAttributeDialog ->
+            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, newAttributeType = "", newAttributeAliases = "", newAttributeValue = "" } => Cmd.none => NoOp
+
+        CloseNewAttributeDialog ->
+            { model | showNewAttributeDialog = False } => Cmd.none => NoOp
+
+        CreateNewAttribute ->
+            let
+                createAttribute =
+                    Request.Sample.addAttribute session.token model.sample_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+            in
+            { model | showNewAttributeBusy = True } => Task.attempt CreateNewAttributeCompleted createAttribute => NoOp
+
+        CreateNewAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | showNewAttributeDialog = False, sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        CreateNewAttributeCompleted (Err error) ->
+            { model | showNewAttributeDialog = False, dialogError = Just (toString error) } => Cmd.none => NoOp
+
+        SetNewAttributeType val ->
+            { model | newAttributeType = val } => Cmd.none => NoOp
+
+        SetNewAttributeAliases val ->
+            { model | newAttributeAliases = val } => Cmd.none => NoOp
+
+        SetNewAttributeValue val ->
+            { model | newAttributeValue = val } => Cmd.none => NoOp
+
+        OpenModifyAttributeDialog attr ->
+            { model
+                | attributeToModify = Just attr
+                , showModifyAttributeBusy = False
+                , newAttributeType = attr.sample_attr_type.type_
+                , newAttributeAliases = aliasesToString attr.sample_attr_type.sample_attr_type_aliases
+                , newAttributeValue = attr.attr_value
+            } => Cmd.none => NoOp
+
+        CloseModifyAttributeDialog ->
+            { model | attributeToModify = Nothing } => Cmd.none => NoOp
+
+        UpdateAttribute attr_id ->
+            let
+                updateAttribute =
+                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+            in
+            { model | showModifyAttributeBusy = True } => Task.attempt UpdateAttributeCompleted updateAttribute => NoOp
+
+        UpdateAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | attributeToModify = Nothing, sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        UpdateAttributeCompleted (Err error) ->
+            { model | attributeToModify = Nothing, dialogError = Just (toString error) } => Cmd.none => NoOp
+
+        RemoveAttribute attr_id ->
+            let
+                removeAttribute =
+                    Request.Sample.removeAttribute session.token model.sample_id attr_id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveAttributeCompleted removeAttribute => NoOp
+
+        RemoveAttributeCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_attrs = sample.sample_attrs } } => Cmd.none => NoOp
+
+        RemoveAttributeCompleted (Err error) ->
+            model => Cmd.none => NoOp
+
+        OpenConfirmationDialog confirmationText yesMsg ->
+            let
+                dialog =
+                    confirmationDialogConfig confirmationText CloseConfirmationDialog yesMsg
+            in
+            { model | confirmationDialog = Just dialog } => Cmd.none => NoOp
+
+        CloseConfirmationDialog ->
+            { model | confirmationDialog = Nothing } => Cmd.none => NoOp
+
+        CloseErrorDialog ->
+            { model | dialogError = Nothing } => Cmd.none => NoOp
+
+        OpenInfoDialog infoText ->
+            let
+                dialog =
+                    infoDialogConfig infoText CloseInfoDialog
+            in
+            { model | infoDialog = Just dialog } => Cmd.none => NoOp
+
+        CloseInfoDialog ->
+            { model | infoDialog = Nothing } => Cmd.none => NoOp
+
+        OpenAddFilesDialog ->
+            let
+                (subModel, subCmd) =
+                    FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
+            in
+            { model | showAddFilesDialog = True, fileBrowser = subModel  } => Cmd.map FileBrowserMsg subCmd => NoOp
+
+        CloseAddFilesDialog ->
+            { model | showAddFilesDialog = False } => Cmd.none => NoOp
+
+        AddFiles files ->
+            let
+                addFiles =
+                    Request.Sample.addFiles session.token model.sample_id files |> Http.toTask
+            in
+            { model | showAddFilesDialog = False } => Task.attempt AddFilesCompleted addFiles => NoOp
+
+        AddFilesCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
+
+        AddFilesCompleted (Err error) ->
+            let
+                _ = Debug.log "Error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
+        RemoveFile file_id ->
+            let
+                removeFile =
+                    Request.Sample.removeFile session.token model.sample_id file_id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveFileCompleted removeFile => NoOp
+
+        RemoveFileCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
+
+        RemoveFileCompleted (Err error) ->
+            let
+                _ = Debug.log "Error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
+        SetFileType sampleFileId fileType ->
+            let
+                fileTypeId =
+                    case String.toInt fileType of
+                        Ok id -> id
+                        Err error -> 0 -- FIXME
+
+                updateFile =
+                    Request.Sample.updateFile session.token model.sample_id sampleFileId fileTypeId |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt SetFileTypeCompleted updateFile => NoOp
+
+        SetFileTypeCompleted (Ok _) ->
+            model => Cmd.none => NoOp
+
+        SetFileTypeCompleted (Err error) ->
+            let
+                _ = Debug.log "Error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
+        OpenEditInfoDialog ->
+            { model
+                | showEditInfoDialog = True
+                , newSampleName = model.sample.sample_name
+                , newSampleCode = model.sample.sample_acc
+                , newSampleType = model.sample.sample_type
+             } => Cmd.none => NoOp
+
+        CloseEditInfoDialog ->
+            { model | showEditInfoDialog = False } => Cmd.none => NoOp
+
+        SetNewSampleName val ->
+            { model | newSampleName = val } => Cmd.none => NoOp
+
+        SetNewSampleCode val ->
+            { model | newSampleCode = val } => Cmd.none => NoOp
+
+        SetNewSampleType val ->
+            { model | newSampleType = val } => Cmd.none => NoOp
+
+        UpdateSampleInfo ->
+            let
+                updateInfo =
+                    Request.Sample.update session.token model.sample_id model.newSampleName model.newSampleCode model.newSampleType |> Http.toTask
+            in
+            { model | showEditInfoDialog = False } => Task.attempt UpdateSampleInfoCompleted updateInfo => NoOp
+
+        UpdateSampleInfoCompleted (Ok sample) ->
+            let
+                newSample =
+                    model.sample
+            in
+            { model | sample = { newSample | sample_name = sample.sample_name, sample_acc = sample.sample_acc, sample_type = sample.sample_type } } => Cmd.none => NoOp
+
+        UpdateSampleInfoCompleted (Err error) ->
+            let
+                _ = Debug.log "error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none => NoOp
+
         CartMsg subMsg ->
             let
                 _ = Debug.log "Sample.CartMsg" (toString subMsg)
@@ -210,6 +528,12 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
+        FileBrowserMsg subMsg ->
+            let
+                ( newFileBrowser, subCmd ) =
+                    FileBrowser.update session subMsg model.fileBrowser
+            in
+            { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd => NoOp
 
 
 -- VIEW --
@@ -217,6 +541,17 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        showMapButton =
+            let
+                attrExists name =
+                    List.Extra.find (\attr -> attr.sample_attr_type.type_ == name) model.sample.sample_attrs |> Maybe.Extra.isJust
+            in
+            attrExists "latitude" && attrExists "longitude"
+
+        user =
+            List.filter
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -225,33 +560,109 @@ view model =
                     , small []
                         [ text model.sample.sample_name ]
                     , div [ class "pull-right" ]
-                        [ Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg ]
+                        [ viewShareButton model
+                        , text " "
+                        , Cart.addToCartButton2 model.cart model.sample.sample_id |> Html.map CartMsg
+                        ]
                     ]
                 ]
-            , viewSample model.sample
-            , viewMap model.showMap
-            , viewFiles model.sample.sample_files
+            , viewSample model.sample model.isEditable
+            , if showMapButton then
+                viewMap model.showMap
+              else
+                text ""
+            , viewFiles model.sample.sample_files model.isEditable
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
-            , viewOntologies model.sample.ontologies
-            , viewAttributes model
-            , viewProteins model
-            , viewCentrifugeResults model
+            , viewAttributes model model.isEditable
+            , if not model.isEditable then
+                viewProteins model
+              else
+                text ""
+            , if not model.isEditable then
+                viewCentrifugeResults model
+              else
+                text ""
             ]
+        , Dialog.view
+            (if (model.dialogError /= Nothing) then
+                Just (errorDialogConfig (Maybe.withDefault "Unknown error" model.dialogError) CloseErrorDialog)
+             else if (model.infoDialog /= Nothing) then
+                model.infoDialog
+             else if (model.confirmationDialog /= Nothing) then
+                model.confirmationDialog
+             else if model.showNewAttributeDialog then
+                Just (newAttributeDialogConfig model.showNewAttributeBusy)
+             else if model.showAddFilesDialog then
+                Just (addFilesDialogConfig model False)
+             else if model.showEditInfoDialog then
+                Just (editInfoDialogConfig model False)
+             else
+                case model.attributeToModify of
+                    Nothing ->
+                        Nothing
+
+                    Just attr ->
+                        Just (editAttributeDialogConfig model attr.sample_attr_id model.showModifyAttributeBusy)
+            )
         ]
 
 
-viewSample : Sample -> Html Msg
-viewSample sample =
+--FIXME messy, clean up
+viewShareButton : Model -> Html Msg
+viewShareButton model =
+    if model.sample.project.private == 1 then
+        let
+            (buttonLabel, permissionText, sharingText) =
+                if List.length model.sample.project.users <= 1 && model.sample.project.project_groups == [] then -- users will always have the owner
+                    ("Sample is Private", "You are the owner of this sample.", "  This sample is only visible to you.  To share, open the parent project and click the sharing button.")
+                else
+                    let
+                        permText =
+                            case model.currentUser of
+                                Nothing -> ""
+
+                                Just user ->
+                                    if (user.permission == "owner") then
+                                        "You are the owner of this sample."
+                                    else if (model.isEditable) then
+                                        "You have read-write access to this sample."
+                                    else
+                                        "You have read-only access to this sample."
+                    in
+                    ("Sample is Shared", permText, "  This sample is shared with other users and/or groups.  To view or modify the sharing settings, open the parent project and click the sharing button.")
+        in
+        button [ class "btn btn-default", onClick (OpenInfoDialog (permissionText ++ sharingText)) ]
+            [ span [ class "glyphicon glyphicon-lock" ] [], text " ", text buttonLabel ]
+
+    else
+        text ""
+
+
+viewSample : Sample -> Bool -> Html Msg
+viewSample sample isEditable =
     let
         numFiles =
             List.length sample.sample_files
 
-        numOntologies =
-            List.length sample.ontologies
+        ontologies =
+            case sample.ontologies of
+                [] ->
+                    "none"
+
+                _ ->
+                    List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
+
+        editButton =
+            if isEditable then
+                button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+            else
+                text ""
     in
     table [ class "table" ]
-        [ tr []
+        [ colgroup []
+            [ col [ class "col-md-2" ] [] ]
+        , tr []
             [ th [] [ text "Project" ]
             , td []
                 [ a [ Route.href (Route.Project sample.project_id) ] [ text sample.project.project_name ]
@@ -268,6 +679,9 @@ viewSample sample =
         , tr []
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
+            ]
+        , tr []
+            [ td [] [ editButton ]
             ]
         ]
 
@@ -298,8 +712,53 @@ viewMap showMap =
         ]
 
 
-viewFiles : List SampleFile2 -> Html msg
-viewFiles files =
+editInfoDialogConfig : Model -> Bool -> Dialog.Config Msg
+editInfoDialogConfig model isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Sample Name" ]
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", value model.newSampleName, onInput SetNewSampleName ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Sample Code" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.newSampleCode, onInput SetNewSampleCode ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Type" ]
+                        , div [ class "input-group" ]
+                            [ input [ class "form-control", type_ "text", value model.newSampleType ] []
+                            , div [ class "input-group-btn" ]
+                                [ div [ class "dropdown" ]
+                                    [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
+                                    , ul [ class "dropdown-menu dropdown-menu-right" ]
+                                        (List.map (\s -> li [ onClick (SetNewSampleType s) ] [ a [] [ text s ]]) model.sample.available_types)
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+
+        footer =
+            div [ disabled isBusy ]
+                [ button [ class "btn btn-default pull-left", onClick CloseEditInfoDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick UpdateSampleInfo ] [ text "Update" ]
+                ]
+    in
+    { closeMessage = Just CloseEditInfoDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Modify Sample Info" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+viewFiles : List SampleFile2 -> Bool -> Html Msg
+viewFiles files isEditable =
     let
         numFiles =
             List.length files
@@ -307,7 +766,7 @@ viewFiles files =
         label =
             case numFiles of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -318,6 +777,7 @@ viewFiles files =
             tr []
                 [ th [] [ text "Path" ]
                 , th [] [ text "Type" ]
+                , th [] []
                 ]
 
         body =
@@ -327,27 +787,87 @@ viewFiles files =
 
                 _ ->
                     table [ class "table table-condensed" ]
-                        [ tbody [] (cols :: (List.map viewFile files)) ]
+                        [ tbody [] (cols :: (List.map (viewFile isEditable) files)) ]
+
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm pull-right", onClick OpenAddFilesDialog ]
+                        [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)"
+                        ]
+
+                False ->
+                    text ""
     in
     div []
         [ h2 []
             [ text "Files "
             , label
+            , addButton
             ]
         , body
         ]
 
 
-viewFile : SampleFile2 -> Html msg
-viewFile file =
+viewFile : Bool -> SampleFile2 -> Html Msg
+viewFile isEditable file =
+    let
+        availableTypes =
+            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
+
+        makeOption (id, name) =
+            option [ value (toString id), selected (name == file.sample_file_type.file_type) ] [ text name ]
+    in
     tr []
         [ td []
             [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
             ]
         , td []
-            [ text file.sample_file_type.file_type
+            [ if isEditable then
+--                div [ class "btn-group" ]
+--                    [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
+--                    , ul [ class "dropdown-menu dropdown-menu-right" ]
+--                        (List.map (\s -> li [ onClick (SetFileType file.sample_file_id s) ] [ a [] [ text s ]]) availableTypes)
+--                    ]
+                select [ onInput (SetFileType file.sample_file_id) ]
+                    (List.map makeOption availableTypes)
+              else
+                text file.sample_file_type.file_type
+            ]
+        , td [ class "col-md-2" ]
+            [ if isEditable then
+                button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this file from the sample?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]
+              else
+                text ""
             ]
         ]
+
+
+addFilesDialogConfig : Model -> Bool -> Dialog.Config Msg
+addFilesDialogConfig model isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                 FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg
+
+        footer =
+            let
+                selectedFilepaths =
+                    FileBrowser.getSelected model.fileBrowser |> List.map .path
+            in
+            div []
+                [ button [ class "btn btn-default pull-left", onClick CloseAddFilesDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick (AddFiles selectedFilepaths) ] [ text "Select" ]
+                ]
+    in
+    { closeMessage = Just CloseAddFilesDialog
+    , containerClass = Just "wide-modal-container"
+    , header = Just (h3 [] [ text "Add Files" ])
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 viewAssemblies : List Assembly -> Html msg
@@ -359,7 +879,7 @@ viewAssemblies assemblies =
         label =
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -406,7 +926,7 @@ viewCombinedAssemblies assemblies =
         label =
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -444,70 +964,25 @@ viewCombinedAssembly assembly =
         ]
 
 
-viewOntologies : List Ontology -> Html msg
-viewOntologies ontologies =
+attrTableConfig : Bool -> Table.Config Sample.Attribute Msg
+attrTableConfig isEditable =
     let
-        numOntologies =
-            List.length ontologies
-
-        label =
-            case numOntologies of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numOntologies)
-                        ]
-
-        body =
-            case numOntologies of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ]
-                        [ tbody [] (List.map viewOntology ontologies) ]
-    in
-    div []
-        [ h2 []
-            [ text "Ontologies "
-            , label
+        defaultColumns =
+            [ attrTypeColumn
+            , attrAliasColumn
+            , attrValueColumn
             ]
-        , body
-        ]
 
-
-viewOntology : Ontology -> Html msg
-viewOntology ont =
-    let
-        display =
-            ont.ontology_acc
-                ++ (case ont.label of
-                        "" ->
-                            ""
-
-                        _ ->
-                            " (" ++ ont.label ++ ")"
-                   )
+        columns =
+            if isEditable then
+                defaultColumns ++ [ attrEditColumn ]
+            else
+                defaultColumns
     in
-    tr []
-        [ td []
-            [ text display
-            ]
-        ]
-
-
-attrTableConfig : Table.Config Sample.Attribute Msg
-attrTableConfig =
     Table.customConfig
         { toId = toString << .sample_attr_id
         , toMsg = SetAttrTableState
-        , columns =
-            [ typeColumn
-            , aliasColumn
-            , valueColumn
-            ]
+        , columns = columns
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
         }
@@ -518,8 +993,8 @@ toTableAttrs =
     [ attribute "class" "table table-condensed" ]
 
 
-typeColumn : Table.Column Sample.Attribute Msg
-typeColumn =
+attrTypeColumn : Table.Column Sample.Attribute Msg
+attrTypeColumn =
     Table.customColumn
         { name = "Type"
         , viewData = .type_ << .sample_attr_type
@@ -527,8 +1002,8 @@ typeColumn =
         }
 
 
-aliasColumn : Table.Column Sample.Attribute Msg
-aliasColumn =
+attrAliasColumn : Table.Column Sample.Attribute Msg
+attrAliasColumn =
     Table.customColumn
         { name = "Aliases"
         , viewData = aliasesToString << .sample_attr_type_aliases << .sample_attr_type
@@ -541,8 +1016,8 @@ aliasesToString aliases =
     String.join ", " (List.map .alias_ aliases)
 
 
-valueColumn : Table.Column Sample.Attribute Msg
-valueColumn =
+attrValueColumn : Table.Column Sample.Attribute Msg
+attrValueColumn =
     Table.customColumn
         { name = "Value"
         , viewData = .attr_value
@@ -550,8 +1025,25 @@ valueColumn =
         }
 
 
-viewAttributes : Model -> Html Msg
-viewAttributes model =
+attrEditColumn : Table.Column Sample.Attribute Msg
+attrEditColumn =
+    Table.veryCustomColumn
+        { name = ""
+        , viewData = attrEditView
+        , sorter = Table.unsortable
+        }
+
+
+attrEditView : Sample.Attribute -> Table.HtmlDetails Msg
+attrEditView attr =
+    Table.HtmlDetails [ class "col-md-2", style [("text-align","right")] ]
+        [ button [ class "btn btn-default btn-xs margin-right", onClick (OpenModifyAttributeDialog attr) ] [ text "Modify" ]
+        , button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Are you sure you to remove this attribute?" (RemoveAttribute attr.sample_attr_id)) ] [ text "Remove" ]
+        ]
+
+
+viewAttributes : Model -> Bool -> Html Msg
+viewAttributes model isEditable =
     let
         lowerQuery =
             String.toLower model.attrQuery
@@ -577,36 +1069,126 @@ viewAttributes model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+                    span [ class "badge" ] [ text numStr ]
+
+        searchBar =
+            case acceptableAttributes of
+                [] ->
+                    text ""
+
+                _ ->
+                    small [] [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
+
         display =
             case acceptableAttributes of
                 [] ->
                     text "None"
 
                 _ ->
-                    Table.view attrTableConfig model.attrTableState acceptableAttributes
+                    Table.view (attrTableConfig isEditable) model.attrTableState acceptableAttributes
 
+        addButton =
+            case isEditable of
+                True ->
+                    button [ class "btn btn-default btn-sm", onClick OpenNewAttributeDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
+
+                False ->
+                    text ""
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text "Attributes "
                 , numShowing
-                , small [ class "right" ]
-                    [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
+                , div [ class "pull-right" ]
+                    [ searchBar, text " ", addButton ]
                 ]
             , div [ class "scrollable" ] [ display ]
             ]
         ]
 
 
-type PFAMorKEGG
-    = PFAM UProC_PFAM
-    | KEGG UProC_KEGG
+newAttributeDialogConfig : Bool -> Dialog.Config Msg
+newAttributeDialogConfig isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Name" ]
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", onInput SetNewAttributeType ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Aliases" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetNewAttributeAliases ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Value" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetNewAttributeValue ] []
+                        ]
+                    ]
+
+        footer =
+            let
+                disable =
+                    disabled isBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseNewAttributeDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick CreateNewAttribute, disable ] [ text "Add" ]
+                    ]
+    in
+    { closeMessage = Just CloseNewAttributeDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Add Attribute" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+editAttributeDialogConfig : Model -> Int -> Bool -> Dialog.Config Msg
+editAttributeDialogConfig model attr_id isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                Html.form []
+                    [ div [ class "form-group" ]
+                        [ label [] [ text "Name" ]
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", value model.newAttributeType, onInput SetNewAttributeType ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Aliases" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.newAttributeAliases, onInput SetNewAttributeAliases ] []
+                        ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Value" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.newAttributeValue, onInput SetNewAttributeValue ] []
+                        ]
+                    ]
+
+        footer =
+            let
+                disable =
+                    disabled isBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseModifyAttributeDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick (UpdateAttribute attr_id), disable ] [ text "Update" ]
+                    ]
+    in
+    { closeMessage = Just CloseModifyAttributeDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Modify Attribute" ])
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 pfamTableConfig : Table.Config UProC_PFAM Msg
@@ -714,10 +1296,10 @@ viewProteins model =
         searchBar =
             case model.proteins.pfam of
                 [] ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    small [ class "right" ]
+                    small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
 
         filterButton label =
@@ -783,7 +1365,7 @@ viewProteins model =
                         False ->
                             case model.loadingProteins of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
@@ -811,7 +1393,7 @@ viewProteins model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -949,7 +1531,7 @@ viewCentrifugeResults model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
@@ -958,10 +1540,10 @@ viewCentrifugeResults model =
         searchBar =
             case model.centrifugeResults of
                 [] ->
-                    span [] []
+                    text ""
 
                 _ ->
-                    small [ class "right" ]
+                    small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetCentrifugeQuery ] [] ]
 
         body =
@@ -982,7 +1564,7 @@ viewCentrifugeResults model =
                         False ->
                             case model.loadingCentrifugeResults of
                                 True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ] ]
+                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
 
                                 False ->
                                     table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCentrifugeResults ] [ text "Show Results" ] ] ] ] ]

@@ -1,6 +1,6 @@
 module Page.Samples exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Sample as Sample exposing (Sample)
+import Data.Sample as Sample exposing (Sample, Investigator, JsonType(..), SearchResult)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import FormatNumber exposing (format)
@@ -13,15 +13,11 @@ import Http
 import List exposing (map)
 import List.Extra
 import Dict exposing (Dict)
-import Exts.Dict as EDict
 import Set exposing (Set)
 import String.Extra as SE
-import Json.Decode as Decode
-import Json.Encode as Encode
 import Page.Error as Error exposing (PageLoadError)
-import RemoteData exposing (..)
+import RemoteData exposing (RemoteData(..), WebData)
 import Request.Sample
-import Request.MetaSearch
 import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
@@ -29,7 +25,8 @@ import Task exposing (Task)
 import Time exposing (Time)
 import Util exposing ((=>), truncate)
 import View.Cart as Cart
-import Config exposing (apiBaseUrl)
+import View.Sample
+import View.FilterButtonGroup
 
 
 
@@ -39,6 +36,7 @@ import Config exposing (apiBaseUrl)
 type alias Model =
     { pageTitle : String
     , samples : List Sample
+    , user_id : Maybe Int
     , tableState : Table.State
     , query : String
     , sampleTypeRestriction : List String
@@ -46,18 +44,20 @@ type alias Model =
     , params : Dict String String
     , selectedParams : List ( String, String )
     , optionValues : Dict String (List String)
-    , searchResults : WebData (List (Dict String JsonType))
+    , searchResults : WebData (List SearchResult)--(List (Dict String JsonType))
     , possibleOptionValues : Dict String (List JsonType)
     , restrictedParams : Dict String String
     , doSearch : Bool
+    , selectedRowId : Int
+    , permFilterType : String
     }
 
 
-type JsonType
-    = StrType String
-    | IntType Int
-    | FloatType Float
-    | ValueType Decode.Value
+--type JsonType
+--    = StrType String
+--    | IntType Int
+--    | FloatType Float
+--    | ValueType Decode.Value
 
 
 init : Session -> Task PageLoadError Model
@@ -65,10 +65,13 @@ init session =
     let
         -- Load page - Perform tasks to load the resources of a page
         loadSamples =
-            Request.Sample.list |> Http.toTask
+            Request.Sample.list session.token |> Http.toTask
 
         loadSearchParams =
-            Request.MetaSearch.getParams |> Http.toTask
+            Request.Sample.getParams |> Http.toTask
+
+        user_id =
+            Maybe.map .user_id session.user
     in
     -- FIXME load samples and search params in parallel
     loadSamples |> Task.andThen
@@ -78,6 +81,7 @@ init session =
                     Task.succeed
                     { pageTitle = "Samples"
                     , samples = samples
+                    , user_id = user_id
                     , tableState = Table.initialSort "Name"
                     , query = ""
                     , sampleTypeRestriction = []
@@ -89,6 +93,8 @@ init session =
                     , possibleOptionValues = Dict.empty
                     , restrictedParams = Dict.empty
                     , doSearch = False
+                    , selectedRowId = 0
+                    , permFilterType = "All"
                     }
                 )
             )
@@ -113,7 +119,9 @@ type Msg
     | UpdatePossibleOptionValues (Result Http.Error (Dict String (List JsonType)))
 --    | Search
     | DelayedSearch Time
-    | UpdateSearchResults (WebData (List (Dict String JsonType)))
+    | UpdateSearchResults (WebData (List SearchResult))--(WebData (List (Dict String JsonType)))
+    | SelectRow Int
+    | FilterPermType String
 
 
 type ExternalMsg
@@ -167,8 +175,12 @@ update session msg model =
             { model | cart = newCart } => Cmd.none => NoOp
 
         AddParamOption opt ->
+            let
+                req =
+                    Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.params |> Http.toTask
+            in
             { model | selectedParams = addSelectedParam model opt }
-            => getParamValues opt model.optionValues model.possibleOptionValues model.params
+            => Task.attempt UpdatePossibleOptionValues req
             => NoOp
 
         RemoveOption opt ->
@@ -193,7 +205,11 @@ update session msg model =
                             { model | doSearch = False, searchResults = NotAsked } => Cmd.none => NoOp
 
                         _ ->
-                            { model | doSearch = False } => doSearch model => NoOp
+                            let
+                                cmd =
+                                    Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
+                            in
+                            { model | doSearch = False } => cmd => NoOp
 
                 False ->
                     model => Cmd.none => NoOp
@@ -259,9 +275,25 @@ update session msg model =
             in
             newModel => Cmd.none => NoOp
 
+        SelectRow id ->
+            let
+                selectedRowId =
+                    if model.selectedRowId == id then
+                        0 -- unselect
+                    else
+                         id
+            in
+            { model | selectedRowId = selectedRowId } => Cmd.none => NoOp
 
-config : Cart.Model -> Table.Config Sample Msg
-config cart =
+        FilterPermType filterType ->
+            let
+                _ = Debug.log "filter" filterType
+            in
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
+
+
+config : Cart.Model -> Int -> Table.Config Sample Msg
+config cart selectedRowId =
     Table.customConfig
         { toId = toString << .sample_id
         , toMsg = SetTableState
@@ -272,14 +304,24 @@ config cart =
             , addToCartColumn cart
             ]
         , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs }
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
         }
 
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table"
+    [ attribute "class" "table table-hover"
     ]
+
+
+toRowAttrs : Int -> Sample -> List (Attribute Msg)
+toRowAttrs selectedRowId data =
+    onClick (SelectRow data.sample_id)
+    :: (if (data.sample_id == selectedRowId) then
+            [ attribute "class" "active" ]
+         else
+            []
+        )
 
 
 
@@ -315,7 +357,20 @@ searchView model =
         ]
 
 
-showSearchResults : Model -> List (Dict String JsonType) -> Html Msg
+filterView : String -> Html Msg
+filterView permFilterType =
+    div []
+        [ span [ class "bold" ] [ text "Access: " ]
+        , View.FilterButtonGroup.view permissionFilterConfig permFilterType
+        ]
+
+
+permissionFilterConfig : View.FilterButtonGroup.Config Msg
+permissionFilterConfig =
+    View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
+
+
+showSearchResults : Model -> List SearchResult -> Html Msg
 showSearchResults model results =
     let
         lowerQuery =
@@ -354,7 +409,7 @@ showSearchResults model results =
                     0
 
         sampleIds =
-            List.map sampleIdFromResult results
+            List.map (.attributes >> sampleIdFromResult) results
 
         cartTh =
             th [ class "nowrap" ] [ text "Cart ", br [] [], Cart.addAllToCartButton model.cart sampleIds |> Html.map CartMsg ]
@@ -362,11 +417,31 @@ showSearchResults model results =
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__project_name" :: "specimen__sample_name" :: "specimen__sample_type" :: fieldNames)) ++ [cartTh]) ]
 
-        resultRows =
+        checkPerms permFilterType userId users =
+            case permFilterType of
+                "All" ->
+                    True
+
+                _ -> -- Mine
+                    case userId of
+                        Nothing ->
+                            False
+
+                        Just id ->
+                            List.map .user_id users |> List.member id
+
+        filteredSamples =
             results
-                |> List.filter (\result -> String.contains (String.toLower model.query) (String.toLower (getVal "specimen__sample_name" result)))
+                |> List.filter (\result -> String.contains (String.toLower model.query) (String.toLower (getVal "specimen__sample_name" result.attributes)))
                 |> List.filter filterOnType
-                |> List.map (mkResultRow model.cart model.selectedParams)
+
+        acceptableSamples =
+            filteredSamples
+                |> List.filter (\result -> checkPerms model.permFilterType model.user_id result.users)
+
+        resultRows =
+            acceptableSamples
+                |> List.map (.attributes >> mkResultRow model.selectedRowId model.cart model.selectedParams)
 
         filterOnType result =
             case List.length model.sampleTypeRestriction of
@@ -374,17 +449,33 @@ showSearchResults model results =
                     True
 
                 _ ->
-                    List.member (getVal "specimen__sample_type" result) model.sampleTypeRestriction
+                    List.member (getVal "specimen__sample_type" result.attributes) model.sampleTypeRestriction
+
+        (infoPanel, sizeClass) =
+            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
+                [] ->
+                    (text "", "")
+
+                sample :: _ ->
+                    (View.Sample.viewInfo sample, "col-md-8")
 
         body =
-            case resultRows of
-                [] ->
-                    noResults
-
-                _ ->
-                    div [ style [("padding-top", "1em")] ]
-                        [ table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]
-                        ]
+            if results == [] then
+                noResults
+            else if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+                noResults
+            else if acceptableSamples == [] then
+                noResults --noResultsLoggedIn model.user_id
+            else
+               div [ class "container" ]
+                   [ div [ class "row" ]
+                       [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                           [ table [ class "table table-hover" ]
+                               [ tbody [] (headerRow ++ resultRows) ]
+                           ]
+                       , infoPanel
+                       ]
+                   ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -399,6 +490,7 @@ showSearchResults model results =
                 [ div [ class "panel-body" ]
                     [ showTypes model.samples
                     , searchView model
+                    , filterView model.permFilterType
                     ]
                 ]
             , body
@@ -425,10 +517,26 @@ showAll model =
                 )
                 |> String.toLower
 
+        checkPerms permFilterType userId project =
+            case permFilterType of
+                "All" ->
+                    True
+
+                _ ->
+                    case userId of
+                        Nothing ->
+                            False
+
+                        Just id ->
+                            (List.map .user_id project.users |> List.member id) ||
+                            (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
+
+        filter sample =
+            (String.contains lowerQuery (catter sample))
+                && (checkPerms model.permFilterType model.user_id sample.project)
+
         filteredSamples =
-            List.filter
-                (\sample -> String.contains lowerQuery (catter sample))
-                model.samples
+            List.filter filter model.samples
 
         acceptableSamples =
             case List.length model.sampleTypeRestriction of
@@ -456,43 +564,82 @@ showAll model =
             in
             case count of
                 0 ->
-                    span [] []
+                    text ""
 
                 _ ->
                     span [ class "badge" ]
                         [ text numStr ]
 
-        body =
-            case count of
-                0 ->
-                    noResults
+        (infoPanel, sizeClass) =
+            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
+                [] ->
+                    (text "", "")
 
-                _ ->
-                    div [] [ Table.view (config model.cart) model.tableState acceptableSamples ]
+                sample :: _ ->
+                    (View.Sample.viewInfo sample, "col-md-9")
+
+        body =
+            if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+                noResults
+            else if acceptableSamples == [] then
+                noResultsLoggedIn model.user_id
+            else
+               div [ class "container" ]
+                [ div [ class "row" ]
+                    [ div [ class sizeClass, style [("overflow-x", "auto")] ]
+                        [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
+                    , infoPanel
+                    ]
+                ]
     in
-        div [ class "container" ]
-            [ div [ class "row" ]
-                [ div [ class "page-header" ]
-                    [ h1 []
-                        [ text (model.pageTitle ++ " ")
-                        , numShowing
-                        , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
-                        ]
+    div [ class "container" ]
+        [ div [ class "row" ]
+            [ div [ class "page-header" ]
+                [ h1 []
+                    [ text (model.pageTitle ++ " ")
+                    , numShowing
+                    , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
-                , div [ class "panel panel-default" ]
-                    [ div [ class "panel-body" ]
-                        [ showTypes model.samples
-                        , searchView model
-                        ]
-                    ]
-                , body
                 ]
             ]
+        , div [ class "row" ]
+            [ div [ class "panel panel-default" ]
+                [ div [ class "panel-body" ]
+                    [ showTypes model.samples
+                    , searchView model
+                    , filterView model.permFilterType
+                    ]
+                ]
+            ]
+        , div [ class "row" ]
+            [ body ]
+        ]
 
 
 noResults : Html Msg
 noResults =
     div [ class "italic gray", style [("font-size", "2em")] ] [ text "No results" ]
+
+
+noResultsLoggedIn : Maybe Int -> Html Msg
+noResultsLoggedIn userId =
+    if userId /= Nothing then
+        div [ class "well" ]
+            [ p [] [ text "You don't have any samples yet." ]
+            , p []
+                [ text "To add a sample, go to the "
+                , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                , text ", select 'Projects', and click 'New'."
+                ]
+            ]
+    else
+        div [ class "well" ]
+            [ p []
+                [ text "Please "
+                , a [ Route.href Route.Login ] [ text "login" ]
+                , text " to see samples you own."
+                ]
+            ]
 
 
 showTypes : List Sample -> Html Msg
@@ -828,127 +975,16 @@ rmOptionValue optionValues optToRemove =
         |> Dict.fromList
 
 
-oneOfJsonType : Decode.Decoder JsonType
-oneOfJsonType =
-    [ Decode.string
-        |> Decode.map StrType
-    , Decode.int
-        |> Decode.map IntType
-    , Decode.float
-        |> Decode.map FloatType
-    , Decode.value
-        |> Decode.map ValueType
-    ]
-        |> Decode.oneOf
-
-
-serializeForm :
-    Dict String (List String)
-    -> Dict String (List JsonType)
-    -> Dict String String
-    -> Encode.Value
-serializeForm optionValues possibleOptionValues paramTypes =
-    let
-        mkFloats =
-            List.filterMap (String.toFloat >> Result.toMaybe)
-
-        encodeVals param vals =
-            let
-                paramName =
-                    case
-                        String.startsWith "min__" param
-                            || String.startsWith "max__" param
-                    of
-                        True ->
-                            String.dropLeft 5 param
-
-                        False ->
-                            param
-
-                dataType =
-                    EDict.getWithDefault "string" paramName paramTypes
-
-                enc f xs =
-                    case xs of
-                        [] ->
-                            Encode.null
-
-                        x :: [] ->
-                            f x
-
-                        _ ->
-                            Encode.list (List.map f xs)
-            in
-            case dataType of
-                "number" ->
-                    enc Encode.float (mkFloats vals)
-
-                _ ->
-                    enc Encode.string vals
-    in
-    Dict.toList optionValues
-        |> List.map (\( k, vs ) -> ( k, encodeVals k vs ))
-        |> Encode.object
-
-
---FIXME move to Request/MetaSearch.elm
-doSearch : Model -> Cmd Msg
-doSearch model =
-    let
-        url =
-            apiBaseUrl ++ "/samples/search"
-
-        body =
-            serializeForm model.optionValues model.possibleOptionValues model.params
-                |> Http.jsonBody
-
-        decoderDict =
-            Decode.dict oneOfJsonType
-
-        decoder =
-            Decode.list decoderDict
-    in
-    Http.post url body decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map UpdateSearchResults
-
-
---FIXME move to Request/MetaSearch.elm
-getParamValues :
-    String
-    -> Dict String (List String)
-    -> Dict String (List JsonType)
-    -> Dict String String
-    -> Cmd Msg
-getParamValues optionName optionValues possibleOptionValues params =
-    let
-        url =
-            apiBaseUrl ++ "/search_param_values"
-
-        decoder =
-            Decode.dict (Decode.list oneOfJsonType)
-
-        body =
-            Encode.object
-                [ ( "param", Encode.string optionName )
-                , ( "query", serializeForm optionValues possibleOptionValues params )
-                ]
-                |> Http.jsonBody
-    in
-    Http.post url body decoder
-        |> Http.send UpdatePossibleOptionValues
-
-
 mkRestrictedParams :
     Dict String String
-    -> WebData (List (Dict String JsonType))
+    -> WebData (List SearchResult)--(List (Dict String JsonType))
     -> Dict String String
 mkRestrictedParams curParams searchResults =
     case searchResults of
-        Success data ->
+        Success results ->
             let
                 keys =
-                    List.map Dict.keys data
+                    List.map (.attributes >> Dict.keys) results
                         |> List.concat
                         |> List.filter (\v -> v /= "_id")
                         |> List.Extra.unique
@@ -962,8 +998,8 @@ mkRestrictedParams curParams searchResults =
             Dict.empty
 
 
-mkResultRow : Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
-mkResultRow cart fieldList result =
+mkResultRow : Int -> Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
+mkResultRow selectedRowId cart fieldList result =
     let
         mkTd : ( String, String ) -> Html msg
         mkTd ( fldName, dataType ) =
@@ -991,6 +1027,14 @@ mkResultRow cart fieldList result =
                             text name
             in
             td [ style [ ( "text-align", "left" ) ] ] [ projectLink ]
+
+        sample_id =
+            case String.toInt (getVal "specimen__sample_id" result) of
+                Ok sampleId ->
+                    sampleId
+
+                Err _ ->
+                    0
 
         nameCol =
             let
@@ -1029,8 +1073,11 @@ mkResultRow cart fieldList result =
 
         otherCols =
             List.map mkTd fieldList
+
+        isSelected =
+            (sample_id == selectedRowId)
     in
-    tr [] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
+    tr [ onClick (SelectRow sample_id), classList [("active", isSelected)] ] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
 
 
 getVal : String -> Dict String JsonType -> String
