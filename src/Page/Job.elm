@@ -34,6 +34,7 @@ type alias Model =
     , loadingJob : Bool
     , loadingOutputs : Bool
     , loadingHistory : Bool
+    , loadedHistory : Bool
     , outputs : List Agave.JobOutput
     , history : List Agave.JobHistory
     , app : App.App
@@ -55,10 +56,10 @@ init session id =
             Request.PlanB.getJob session.token id |> Http.toTask |> Task.map .result
 
         loadJob =
-            case String.startsWith "planb" id of
-                True -> loadJobFromPlanB
-
-                False -> loadJobFromAgave
+            if String.startsWith "planb" id then
+                loadJobFromPlanB
+            else
+                loadJobFromAgave
 
         loadApp app_name =
             Request.App.getByName app_name |> Http.toTask
@@ -83,6 +84,7 @@ init session id =
                                 , loadingJob = False
                                 , loadingOutputs = False
                                 , loadingHistory = False
+                                , loadedHistory = False
                                 , outputs = []
                                 , history = []
                                 , app = app
@@ -125,8 +127,17 @@ update session msg model =
     case msg of
         GetHistory ->
             let
-                loadHistory =
+                loadHistoryFromAgave =
                     Request.Agave.getJobHistory session.token model.job_id |> Http.toTask |> Task.map .result
+
+                loadHistoryFromPlanB =
+                    Request.PlanB.getJobHistory session.token model.job_id |> Http.toTask |> Task.map .result
+
+                loadHistory =
+                    if String.startsWith "planb" model.job_id then
+                        loadHistoryFromPlanB
+                    else
+                       loadHistoryFromAgave
 
                 handleHistory history =
                     case history of
@@ -146,7 +157,7 @@ update session msg model =
 --                filtered =
 --                    List.filter (\output -> output.name /= ".") outputs
 --            in
-            { model | history = history } => Cmd.none
+            { model | history = history, loadingHistory = False, loadedHistory = True } => Cmd.none
 
         GetOutputs ->
             let
@@ -259,10 +270,10 @@ update session msg model =
                         Request.PlanB.getJob session.token model.job.id |> Http.toTask |> Task.map .result
 
                     loadJob =
-                        case String.startsWith "planb" model.job_id of
-                            True -> loadJobFromPlanB
-
-                            False -> loadJobFromAgave
+                        if String.startsWith "planb" model.job_id then
+                            loadJobFromPlanB
+                        else
+                            loadJobFromAgave
 
                     handleJob job =
                         case job of
@@ -458,10 +469,12 @@ viewHistory model =
         body =
             case model.history of
                 [] ->
-                    case model.loadingHistory of
-                        False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetHistory ] [ text "Show History" ] ] ] ]
-
-                        True -> [ tr [] [ td [] [ div [ class "center" ] [ div [ class "padded-xl spinner" ] [] ] ] ] ]
+                    if model.loadedHistory then
+                        [ tr [] [ td [] [ text "None" ] ] ]
+                    else if model.loadingHistory then
+                        [ tr [] [ td [] [ spinner ] ] ]
+                    else
+                        [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetHistory ] [ text "Show History" ] ] ] ]
 
                 _ -> (List.map viewEvent model.history)
     in
@@ -490,10 +503,10 @@ viewOutputs model =
                 "FINISHED" ->
                     case model.outputs of
                         [] ->
-                            case model.loadingOutputs of
-                                False ->[ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
-
-                                True -> [ tr [] [ td [] [ spinner ] ] ]
+                            if model.loadingOutputs then
+                                [ tr [] [ td [] [ spinner ] ] ]
+                            else
+                                [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
 
                         _ -> (List.map viewOutput model.outputs)
 
