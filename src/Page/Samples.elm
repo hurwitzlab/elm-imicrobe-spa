@@ -637,7 +637,7 @@ noResultsLoggedIn userId =
             [ p []
                 [ text "Please "
                 , a [ Route.href Route.Login ] [ text "login" ]
-                , text " to see samples you own."
+                , text " to see your samples."
                 ]
             ]
 

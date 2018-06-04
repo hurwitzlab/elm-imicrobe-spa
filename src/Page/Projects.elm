@@ -240,7 +240,7 @@ view model =
                     [ p []
                         [ text "Please "
                         , a [ Route.href Route.Login ] [ text "login" ]
-                        , text " to see projects you own."
+                        , text " to see your projects."
                         ]
                     ]
     in
