@@ -749,7 +749,7 @@ mkParamsSelect model =
             List.map Tuple.first model.selectedParams |> Set.fromList
 
         -- mdb added 2/14/18 - list of curated metadata terms from Alise
---        curated =
+--        curated = 
 --            Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
 
         showKeys =
