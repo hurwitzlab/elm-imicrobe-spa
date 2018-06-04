@@ -237,7 +237,16 @@ div.info-panel {
     background: #ffc266;
 }
 
+a.label {
+    color: #fff;
+}
+
 .label-primary {
-    background-color: #2ab4bd;
+    background-color: #008d97;
+    border-color: #008d97;
+}
+
+.label-primary:hover, .label-primary:focus {
+    background-color: #2ab4bd !important;
     border-color: #2ab4bd;
 }

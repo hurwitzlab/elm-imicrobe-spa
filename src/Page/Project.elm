@@ -839,7 +839,7 @@ viewShareButton model =
     else if model.project.project_groups /= [] then
         let
             mkLabel group =
-                span [ class "label label-primary tiny-text", title (group.group_name ++ " Group") ] [ text group.group_name ]
+                a [ class "label label-primary tiny-text", title (group.group_name ++ " Group"), Route.href (Route.ProjectGroup group.project_group_id) ] [ text group.group_name ]
         in
         span [ class "pull-right" ] (List.map mkLabel model.project.project_groups |> List.intersperse (text " "))
     else
