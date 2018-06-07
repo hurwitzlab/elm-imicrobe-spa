@@ -60,9 +60,9 @@ errorMessage error =
 
                 403 ->
                     div []
-                        [ text "You do not have access to this resource.  Please "
-                        , a [ Route.href Route.Login ] [ text "log-in"]
-                        , text " and try again"
+                        [ text "You do not have access to this resource.  Please make sure you are "
+                        , a [ Route.href Route.Login ] [ text "logged-in"]
+                        , text " and try again."
                         ]
 
                 _ ->
