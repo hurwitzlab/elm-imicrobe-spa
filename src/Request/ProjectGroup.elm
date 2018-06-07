@@ -1,9 +1,11 @@
 module Request.ProjectGroup exposing (..)
 
-import Data.ProjectGroup as ProjectGroup exposing (ProjectGroup)
+import Data.ProjectGroup as ProjectGroup exposing (ProjectGroup, Project, User, decoder, decoderProject, decoderUser)
 import Http
 import HttpBuilder
 import Json.Decode as Decode
+import Json.Encode as Encode exposing (Value)
+import Util exposing ((=>))
 import Config exposing (apiBaseUrl)
 
 
@@ -62,14 +64,11 @@ searchByName token term =
         |> HttpBuilder.toRequest
 
 
-addProject : String -> Int -> Int -> Http.Request (List ProjectGroup)
+addProject : String -> Int -> Int -> Http.Request ProjectGroup
 addProject token project_group_id project_id =
     let
         url =
             apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/projects/" ++ (toString project_id)
-
-        decoder =
-            Decode.list ProjectGroup.decoder
 
         headers =
             [( "Authorization", token)]
@@ -80,7 +79,7 @@ addProject token project_group_id project_id =
         |> HttpBuilder.toRequest
 
 
-removeProject : String -> Int -> Int -> Http.Request String
+removeProject : String -> Int -> Int -> Http.Request ProjectGroup
 removeProject token project_group_id project_id =
     let
         url =
@@ -91,5 +90,46 @@ removeProject token project_group_id project_id =
     in
     HttpBuilder.delete url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson Decode.string)
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+addUser : String -> Int -> Int -> String -> Http.Request (List User)
+addUser token project_group_id user_id permission =
+    let
+        url =
+            apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/users/" ++ (toString user_id)
+
+        decoder =
+            Decode.list decoderUser
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "permission" => Encode.string permission ]
+    in
+    HttpBuilder.put url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
+removeUser : String -> Int -> Int -> Http.Request (List User)
+removeUser token project_group_id user_id =
+    let
+        url =
+            apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/users/" ++ (toString user_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        decoder =
+            Decode.list decoderUser
+    in
+    HttpBuilder.delete url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest

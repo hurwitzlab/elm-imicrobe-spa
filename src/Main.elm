@@ -810,6 +810,14 @@ updatePage page msg model =
         ProjectGroupLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
+        ProjectGroupMsg subMsg ->
+            case page of
+                ProjectGroup id subModel ->
+                    toPage (ProjectGroup id) ProjectGroupMsg (ProjectGroup.update session) subMsg subModel
+
+                _ ->
+                    model => Cmd.none
+
         ProjectGroupsLoaded (Ok subModel) ->
             { model | pageState = Loaded (ProjectGroups subModel) } => scrollToTop
 
