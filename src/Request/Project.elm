@@ -9,6 +9,7 @@ import Util exposing ((=>))
 import Config exposing (apiBaseUrl)
 
 
+
 list : String -> Http.Request (List Project)
 list token =
     let
@@ -39,6 +40,25 @@ get token id =
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+searchByName : String -> String -> Http.Request (List Project)
+searchByName token term =
+    let
+        url =
+            apiBaseUrl ++ "/projects"
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [("term", term)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list Project.decoder))
         |> HttpBuilder.toRequest
 
 

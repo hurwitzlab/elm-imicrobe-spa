@@ -98,7 +98,7 @@ init session id =
                     False
 
                 Just userId ->
-                    List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write")) (allUsers sample)
+                    List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write")) (allUsers sample)
 
         currentUser sample =
             case userId of
@@ -623,7 +623,7 @@ viewShareButton model =
                                 Nothing -> ""
 
                                 Just user ->
-                                    if (user.permission == "owner") then
+                                    if (user.permconn.permission == "owner") then
                                         "You are the owner of this sample."
                                     else if (model.isEditable) then
                                         "You have read-write access to this sample."

@@ -12,7 +12,7 @@ type alias ProjectGroup =
     , url : String
     , projects : List Project
     , users : List User
-    , user_count : Int
+--    , user_count : Int
     }
 
 
@@ -27,7 +27,12 @@ type alias User =
     , user_name : String
     , first_name : String
     , last_name : String
-    , permission : String
+    , permconn : ProjectGroupToUser
+    }
+
+
+type alias ProjectGroupToUser =
+    { permission : String
     }
 
 
@@ -44,7 +49,7 @@ decoder =
         |> optional "url" Decode.string "NA"
         |> optional "projects" (Decode.list decoderProject) []
         |> optional "users" (Decode.list decoderUser) []
-        |> optional "user_count" Decode.int 0
+--        |> optional "user_count" Decode.int 0
 
 
 decoderProject : Decoder Project
@@ -61,4 +66,10 @@ decoderUser =
         |> required "user_name" Decode.string
         |> required "first_name" Decode.string
         |> required "last_name" Decode.string
+        |> required "project_group_to_user" decoderProjectGroupToUser
+
+
+decoderProjectGroupToUser : Decoder ProjectGroupToUser
+decoderProjectGroupToUser =
+    decode ProjectGroupToUser
         |> required "permission" Decode.string

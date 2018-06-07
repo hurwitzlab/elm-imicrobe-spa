@@ -526,7 +526,7 @@ projectOwnerColumn currentUserId =
 
 viewProjectOwner : Int -> Data.User.Project -> String
 viewProjectOwner currentUserId project =
-    case List.filter (\u -> u.permission == "owner") project.users of
+    case List.filter (\u -> u.project_to_user.permission == "owner") project.users of
         user :: [] ->
             if user.user_id == currentUserId then
                 "You"
@@ -582,7 +582,7 @@ viewSampleOwner : Int -> List Data.User.Project -> Data.User.Sample -> String
 viewSampleOwner currentUserId projects sample =
     case List.filter (\p -> p.project_id == sample.project.project_id) projects of
         project :: [] ->
-            case List.filter (\u -> u.permission == "owner") project.users of
+            case List.filter (\u -> u.project_to_user.permission == "owner") project.users of
                 user :: [] ->
                     if user.user_id == currentUserId then
                         "You"
@@ -643,7 +643,7 @@ viewInfo model =
                             let
                                 isDeleteable =
                                     project.users
-                                        |> List.filter (\u -> u.permission == "owner")
+                                        |> List.filter (\u -> u.project_to_user.permission == "owner")
                                         |> List.map .user_id
                                         |> List.member model.user.user_id
                             in
@@ -671,7 +671,7 @@ viewInfo model =
                                         |> List.filter (\p -> p.project_id == sample.project.project_id)
                                         |> List.map .users
                                         |> List.concat
-                                        |> List.filter (\u -> u.permission == "owner")
+                                        |> List.filter (\u -> u.project_to_user.permission == "owner")
                                         |> List.map .user_id
                                         |> List.member model.user.user_id
                             in

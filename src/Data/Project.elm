@@ -38,8 +38,8 @@ type alias Project =
 type alias ProjectGroup =
     { project_group_id : Int
     , group_name : String
-    , user_count : Int
-    , users : List User
+--    , user_count : Int
+    , users : List User2
     }
 
 
@@ -108,7 +108,26 @@ type alias User =
     , user_name : String
     , first_name : String
     , last_name : String
-    , permission : String
+    , permconn : ProjectToUser
+    }
+
+
+type alias ProjectToUser =
+    { permission : String
+    }
+
+
+type alias User2 =
+    { user_id : Int
+    , user_name : String
+    , first_name : String
+    , last_name : String
+    , permconn : ProjectGroupToUser
+    }
+
+
+type alias ProjectGroupToUser =
+    { permission : String
     }
 
 
@@ -150,8 +169,8 @@ decoderProjectGroup =
     decode ProjectGroup
         |> required "project_group_id" Decode.int
         |> required "group_name" Decode.string
-        |> optional "user_count" Decode.int 0
-        |> optional "users" (Decode.list decoderUser) []
+--        |> optional "user_count" Decode.int 0
+        |> optional "users" (Decode.list decoderUser2) []
 
 
 decoderInv : Decoder Investigator
@@ -228,7 +247,29 @@ decoderUser =
         |> required "user_name" Decode.string
         |> optional "first_name" Decode.string ""
         |> optional "last_name" Decode.string ""
-        |> optional "permission" Decode.string ""
+        |> required "project_to_user" decoderProjectToUser
+
+
+decoderProjectToUser : Decoder ProjectToUser
+decoderProjectToUser =
+    decode ProjectToUser
+        |> required "permission" Decode.string
+
+
+decoderUser2 : Decoder User2
+decoderUser2 =
+    decode User2
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
+        |> optional "first_name" Decode.string ""
+        |> optional "last_name" Decode.string ""
+        |> required "project_group_to_user" decoderProjectGroupToUser
+
+
+decoderProjectGroupToUser : Decoder ProjectGroupToUser
+decoderProjectGroupToUser =
+    decode ProjectGroupToUser
+        |> required "permission" Decode.string
 
 
 encode : Project -> Value

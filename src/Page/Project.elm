@@ -102,7 +102,7 @@ init session id =
 
                 Just userId ->
                     allUsers project
-                        |> List.any (\u -> u.user_id == userId && (u.permission == "owner" || u.permission == "read-write"))
+                        |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
     in
     loadProject
         |> Task.andThen
@@ -177,9 +177,9 @@ type Msg
     | SearchUsersAndGroupsCompleted (Result Http.Error (List Data.User.User, List Data.ProjectGroup.ProjectGroup))
     | ShareWithUser String Int String --FIXME create new type for permission instead of using string
     | ShareWithUserCompleted (Result Http.Error Project)
-    | AddToProjectGroupCompleted (Result Http.Error (List Data.ProjectGroup.ProjectGroup))
+    | AddToProjectGroupCompleted (Result Http.Error Data.ProjectGroup.ProjectGroup)
     | RemoveFromProjectGroup Int
-    | RemoveFromProjectGroupCompleted (Result Http.Error String)
+    | RemoveFromProjectGroupCompleted (Result Http.Error Data.ProjectGroup.ProjectGroup)
     | UnshareWithUser Int
     | UnshareWithUserCompleted (Result Http.Error String)
     | OpenEditInfoDialog
@@ -326,7 +326,7 @@ update session msg model =
                 in
                 { model | shareDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersAndGroupsCompleted searchByName => NoOp
             else
-            { model | shareDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none => NoOp
+                { model | shareDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none => NoOp
 
         SearchUsersAndGroupsCompleted (Ok (users, groups)) ->
             let
@@ -379,10 +379,10 @@ update session msg model =
             else
                 let
                     noChange =
-                        List.any (\u -> u.user_id == id && u.permission == permission) model.project.users
+                        List.any (\u -> u.user_id == id && u.permconn.permission == permission) model.project.users
 
                     isOwner =
-                        List.any (\u -> u.user_id == id && u.permission == "owner") model.project.users
+                        List.any (\u -> u.user_id == id && u.permconn.permission == "owner") model.project.users
 
                     addUserToProject =
                         Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
@@ -405,13 +405,13 @@ update session msg model =
             in
             model => Cmd.none => NoOp
 
-        AddToProjectGroupCompleted (Ok groups) ->
+        AddToProjectGroupCompleted (Ok group) ->
             let
                 newProject =
                     model.project
 
                 newGroups =
-                    List.map (\g -> ProjectGroup g.project_group_id g.group_name g.user_count []) groups -- FIXME kludge due to multiple type defs
+                    (ProjectGroup group.project_group_id group.group_name group.users) :: model.project.project_groups -- FIXME kludge due to multiple type defs
             in
             { model | showShareDialogBusy = False, project = { newProject | project_groups = newGroups } } => Cmd.none => NoOp
 
@@ -1410,17 +1410,18 @@ viewUsersAndGroups currentUserId isEditable users groups =
     else
         let
             sortByNameAndPerm a b =
-                if a.permission == "owner" then
+                if a.permconn.permission == "owner" then
                     LT
-                else if b.permission == "owner" then
+                else if b.permconn.permission == "owner" then
                     GT
                 else
                     compare (userDisplayName a) (userDisplayName b)
         in
         table [ class "table" ]
             [ tbody []
-                ((List.sortWith sortByNameAndPerm users |> List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u)) ++
-                    (List.map (\g -> viewGroup isEditable g) groups))
+                ( (List.sortWith sortByNameAndPerm users |> List.map (\u -> viewUser (u.user_id == currentUserId) isEditable u)) ++
+                    (List.sortBy .group_name groups |> List.map (\g -> viewGroup isEditable g))
+                )
             ]
 
 
@@ -1435,10 +1436,10 @@ viewUser isMe isEditable user =
                 text " (you)"
               else
                 text ""
-            , if user.permission /= "owner" && isEditable then
+            , if user.permconn.permission /= "owner" && isEditable then
                 viewPermissionDropdown user
               else
-                span [ class "pull-right" ] [ text (capitalize user.permission) ]
+                span [ class "pull-right" ] [ text (capitalize user.permconn.permission) ]
             ]
         ]
 
@@ -1450,15 +1451,19 @@ userDisplayName user =
 
 viewGroup : Bool -> ProjectGroup -> Html Msg
 viewGroup isEditable group =
+    let
+        numUsers =
+            List.length group.users
+    in
     tr []
         [ td []
             [ i [ class "fas fa-user-friends" ] []
             , text " "
             , a [ Route.href (Route.ProjectGroup group.project_group_id), target "_blank" ] [ text group.group_name ]
             , text " ("
-            , text (toString group.user_count)
+            , text (toString numUsers)
             , text " "
-            , text (Util.pluralize "user" group.user_count)
+            , text (Util.pluralize "user" numUsers)
             , text ")"
             , if isEditable then
                 button [ class "btn btn-default btn-xs pull-right", onClick (RemoveFromProjectGroup group.project_group_id) ] [ text "Remove" ]
@@ -1471,7 +1476,7 @@ viewGroup isEditable group =
 viewPermissionDropdown : User -> Html Msg
 viewPermissionDropdown user =
     div [ class "pull-right dropdown" ]
-        [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text (capitalize user.permission), text " ", span [ class "caret" ] [] ]
+        [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text (capitalize user.permconn.permission), text " ", span [ class "caret" ] [] ]
         , ul [ class "dropdown-menu nowrap" ]
             [ li [] [ a [ onClick (ShareWithUser "read-only" user.user_id user.user_name) ] [ text "Read-only: can view but not modify" ] ]
             , li [] [ a [ onClick (ShareWithUser "read-write" user.user_id user.user_name) ] [ text "Read-write: can view/edit but not delete" ] ]

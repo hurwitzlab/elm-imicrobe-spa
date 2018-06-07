@@ -48,7 +48,12 @@ type alias User2 =
     , user_name : String
     , first_name : String
     , last_name : String
-    , permission : String
+    , project_to_user : ProjectToUser
+    }
+
+
+type alias ProjectToUser =
+    { permission : String
     }
 
 
@@ -125,6 +130,12 @@ decoderUser2 =
         |> required "user_name" Decode.string
         |> required "first_name" Decode.string
         |> required "last_name" Decode.string
+        |> required "project_to_user" decoderProjectToUser
+
+
+decoderProjectToUser : Decoder ProjectToUser
+decoderProjectToUser =
+    decode ProjectToUser
         |> required "permission" Decode.string
 
 
