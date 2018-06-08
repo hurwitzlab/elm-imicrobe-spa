@@ -64,6 +64,29 @@ searchByName token term =
         |> HttpBuilder.toRequest
 
 
+update : String -> Int -> String -> String -> String -> Http.Request ProjectGroup
+update token project_group_id group_name group_description group_url =
+    let
+        url =
+            apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id)
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "group_name" => Encode.string group_name
+                , "group_description" => Encode.string group_description
+                , "group_url" => Encode.string group_url
+                ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.toRequest
+
+
 addProject : String -> Int -> Int -> Http.Request ProjectGroup
 addProject token project_group_id project_id =
     let

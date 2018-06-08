@@ -37,6 +37,10 @@ type alias Model =
     , showAddProjectBusy : Bool
     , projectDropdownState : View.SearchableDropdown.State
     , confirmationDialog : Maybe (Dialog.Config Msg)
+    , showEditInfoDialog : Bool
+    , projectGroupName : String
+    , projectGroupDescription : String
+    , projectGroupURL : String
     }
 
 
@@ -73,6 +77,10 @@ init session id =
                     , showAddProjectBusy = False
                     , projectDropdownState = View.SearchableDropdown.init
                     , confirmationDialog = Nothing
+                    , showEditInfoDialog = False
+                    , projectGroupName = ""
+                    , projectGroupDescription = ""
+                    , projectGroupURL = ""
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -101,6 +109,13 @@ type Msg
     | RemoveProjectCompleted (Result Http.Error ProjectGroup)
     | OpenConfirmationDialog String Msg
     | CloseConfirmationDialog
+    | OpenEditInfoDialog
+    | CloseEditInfoDialog
+    | SetProjectGroupName String
+    | SetProjectGroupDescription String
+    | SetProjectGroupURL String
+    | UpdateProjectGroupInfo
+    | UpdateProjectGroupInfoCompleted (Result Http.Error ProjectGroup)
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -276,6 +291,53 @@ update session msg model =
         CloseConfirmationDialog ->
             { model | confirmationDialog = Nothing } => Cmd.none
 
+        OpenEditInfoDialog ->
+            { model
+                | showEditInfoDialog = True
+                , projectGroupName = model.projectGroup.group_name
+                , projectGroupDescription = model.projectGroup.description
+                , projectGroupURL = model.projectGroup.url
+             } => Cmd.none
+
+        CloseEditInfoDialog ->
+            { model | showEditInfoDialog = False } => Cmd.none
+
+        SetProjectGroupName name ->
+            { model | projectGroupName = name } => Cmd.none
+
+        SetProjectGroupDescription desc ->
+            { model | projectGroupDescription = desc } => Cmd.none
+
+        SetProjectGroupURL url ->
+            { model | projectGroupURL = url } => Cmd.none
+
+        UpdateProjectGroupInfo ->
+            let
+                updateInfo =
+                    Request.ProjectGroup.update session.token model.projectGroupId model.projectGroupName model.projectGroupDescription model.projectGroupURL |> Http.toTask
+            in
+            { model | showEditInfoDialog = False } => Task.attempt UpdateProjectGroupInfoCompleted updateInfo
+
+        UpdateProjectGroupInfoCompleted (Ok group) ->
+            let
+                newProjectGroup =
+                    model.projectGroup
+            in
+            { model
+                | projectGroup =
+                    { newProjectGroup
+                        | group_name = group.group_name
+                        , description = group.description
+                        , url = group.url
+                    }
+            } => Cmd.none
+
+        UpdateProjectGroupInfoCompleted (Err error) ->
+            let
+                _ = Debug.log "UpdateProjectGroupInfoCompleted" (toString error) -- TODO show to user
+            in
+            model => Cmd.none
+
 
 
 -- VIEW --
@@ -292,7 +354,7 @@ view model =
                         [ text model.projectGroup.group_name ]
                     ]
                 ]
-            , viewProjectGroup model.projectGroup
+            , viewProjectGroup model.isEditable model.projectGroup
             , viewProjects model.projectGroup.projects model.isEditable
             , viewUsers model.projectGroup.users model.isEditable
             ]
@@ -301,6 +363,8 @@ view model =
                 Just (addUserDialogConfig model)
             else if model.showAddProjectDialog then
                 Just (addProjectDialogConfig model)
+            else if model.showEditInfoDialog then
+                Just (editInfoDialogConfig model)
             else if (model.confirmationDialog /= Nothing) then
                 model.confirmationDialog
             else
@@ -309,8 +373,15 @@ view model =
         ]
 
 
-viewProjectGroup : ProjectGroup -> Html Msg
-viewProjectGroup group =
+viewProjectGroup : Bool -> ProjectGroup -> Html Msg
+viewProjectGroup isEditable group =
+    let
+        editButton =
+            if isEditable then
+                button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+            else
+                text ""
+    in
     table [ class "table" ]
         [ colgroup []
             [ col [ class "col-md-1" ] [] ]
@@ -326,6 +397,8 @@ viewProjectGroup group =
             [ th [] [ text "URL" ]
             , td [] [ viewUrl group.url ]
             ]
+        , tr []
+            [ td [] [ editButton ] ]
         ]
 
 
@@ -561,4 +634,37 @@ userDropdownConfig =
     , autofocus = False
     , inputMsg = SetUserName
     , selectMsg = (AddUser "read-only")
+    }
+
+
+editInfoDialogConfig : Model -> Dialog.Config Msg
+editInfoDialogConfig model =
+    let
+        content =
+            Html.form []
+                [ div [ class "form-group" ]
+                    [ label [] [ text "Name" ]
+                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectGroupName, onInput SetProjectGroupName ] []
+                    ]
+                , div [ class "form-group" ]
+                    [ label [] [ text "Description" ]
+                    , input [ class "form-control", type_ "text", placeholder "Enter the description (required)", value model.projectGroupDescription, onInput SetProjectGroupDescription ] []
+                    ]
+                , div [ class "form-group" ]
+                    [ label [] [ text "URL" ]
+                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.projectGroupURL, onInput SetProjectGroupURL ] []
+                    ]
+                ]
+
+        footer =
+            div []
+                [ button [ class "btn btn-default pull-left", onClick CloseEditInfoDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick UpdateProjectGroupInfo ] [ text "Update" ]
+                ]
+    in
+    { closeMessage = Just CloseEditInfoDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Modify Project Group Info" ])
+    , body = Just content
+    , footer = Just footer
     }
