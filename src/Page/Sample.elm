@@ -57,9 +57,9 @@ type alias Model =
     , currentUser : Maybe User
     , showNewAttributeDialog : Bool
     , showNewAttributeBusy : Bool
-    , newAttributeType : String
-    , newAttributeAliases : String
-    , newAttributeValue : String
+    , attributeType : String
+    , attributeAliases : String
+    , attributeValue : String
     , showModifyAttributeDialog : Bool
     , showModifyAttributeBusy : Bool
     , attributeToModify : Maybe Sample.Attribute
@@ -67,9 +67,9 @@ type alias Model =
     , infoDialog : Maybe (Dialog.Config Msg)
     , showAddFilesDialog : Bool
     , showEditInfoDialog : Bool
-    , newSampleName : String
-    , newSampleCode : String
-    , newSampleType : String
+    , sampleName : String
+    , sampleCode : String
+    , sampleType : String
     , dialogError : Maybe String
     , fileBrowser : FileBrowser.Model
     }
@@ -151,9 +151,9 @@ init session id =
                     , currentUser = currentUser sample
                     , showNewAttributeDialog = False
                     , showNewAttributeBusy = False
-                    , newAttributeType = ""
-                    , newAttributeAliases = ""
-                    , newAttributeValue = ""
+                    , attributeType = ""
+                    , attributeAliases = ""
+                    , attributeValue = ""
                     , showModifyAttributeDialog = False
                     , showModifyAttributeBusy = False
                     , attributeToModify = Nothing
@@ -161,9 +161,9 @@ init session id =
                     , infoDialog = Nothing
                     , showAddFilesDialog = False
                     , showEditInfoDialog = False
-                    , newSampleName = ""
-                    , newSampleCode = ""
-                    , newSampleType = ""
+                    , sampleName = ""
+                    , sampleCode = ""
+                    , sampleType = ""
                     , dialogError = Nothing
                     , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False))
                     }
@@ -194,9 +194,9 @@ type Msg
     | CloseNewAttributeDialog
     | CreateNewAttribute
     | CreateNewAttributeCompleted (Result Http.Error Sample)
-    | SetNewAttributeType String
-    | SetNewAttributeAliases String
-    | SetNewAttributeValue String
+    | SetAttributeType String
+    | SetAttributeAliases String
+    | SetAttributeValue String
     | RemoveAttribute Int
     | RemoveAttributeCompleted (Result Http.Error Sample)
     | OpenModifyAttributeDialog Sample.Attribute
@@ -212,9 +212,9 @@ type Msg
     | CloseErrorDialog
     | CloseAddFilesDialog
     | CloseEditInfoDialog
-    | SetNewSampleName String
-    | SetNewSampleCode String
-    | SetNewSampleType String
+    | SetSampleName String
+    | SetSampleCode String
+    | SetSampleType String
     | UpdateSampleInfo
     | UpdateSampleInfoCompleted (Result Http.Error Sample)
     | AddFiles (List String)
@@ -308,7 +308,7 @@ update session msg model =
             { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
         OpenNewAttributeDialog ->
-            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, newAttributeType = "", newAttributeAliases = "", newAttributeValue = "" } => Cmd.none => NoOp
+            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, attributeType = "", attributeAliases = "", attributeValue = "" } => Cmd.none => NoOp
 
         CloseNewAttributeDialog ->
             { model | showNewAttributeDialog = False } => Cmd.none => NoOp
@@ -316,7 +316,7 @@ update session msg model =
         CreateNewAttribute ->
             let
                 createAttribute =
-                    Request.Sample.addAttribute session.token model.sample_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+                    Request.Sample.addAttribute session.token model.sample_id model.attributeType model.attributeAliases model.attributeValue |> Http.toTask
             in
             { model | showNewAttributeBusy = True } => Task.attempt CreateNewAttributeCompleted createAttribute => NoOp
 
@@ -330,22 +330,22 @@ update session msg model =
         CreateNewAttributeCompleted (Err error) ->
             { model | showNewAttributeDialog = False, dialogError = Just (toString error) } => Cmd.none => NoOp
 
-        SetNewAttributeType val ->
-            { model | newAttributeType = val } => Cmd.none => NoOp
+        SetAttributeType val ->
+            { model | attributeType = val } => Cmd.none => NoOp
 
-        SetNewAttributeAliases val ->
-            { model | newAttributeAliases = val } => Cmd.none => NoOp
+        SetAttributeAliases val ->
+            { model | attributeAliases = val } => Cmd.none => NoOp
 
-        SetNewAttributeValue val ->
-            { model | newAttributeValue = val } => Cmd.none => NoOp
+        SetAttributeValue val ->
+            { model | attributeValue = val } => Cmd.none => NoOp
 
         OpenModifyAttributeDialog attr ->
             { model
                 | attributeToModify = Just attr
                 , showModifyAttributeBusy = False
-                , newAttributeType = attr.sample_attr_type.type_
-                , newAttributeAliases = aliasesToString attr.sample_attr_type.sample_attr_type_aliases
-                , newAttributeValue = attr.attr_value
+                , attributeType = attr.sample_attr_type.type_
+                , attributeAliases = aliasesToString attr.sample_attr_type.sample_attr_type_aliases
+                , attributeValue = attr.attr_value
             } => Cmd.none => NoOp
 
         CloseModifyAttributeDialog ->
@@ -354,7 +354,7 @@ update session msg model =
         UpdateAttribute attr_id ->
             let
                 updateAttribute =
-                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.newAttributeType model.newAttributeAliases model.newAttributeValue |> Http.toTask
+                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.attributeType model.attributeAliases model.attributeValue |> Http.toTask
             in
             { model | showModifyAttributeBusy = True } => Task.attempt UpdateAttributeCompleted updateAttribute => NoOp
 
@@ -482,27 +482,27 @@ update session msg model =
         OpenEditInfoDialog ->
             { model
                 | showEditInfoDialog = True
-                , newSampleName = model.sample.sample_name
-                , newSampleCode = model.sample.sample_acc
-                , newSampleType = model.sample.sample_type
+                , sampleName = model.sample.sample_name
+                , sampleCode = model.sample.sample_acc
+                , sampleType = model.sample.sample_type
              } => Cmd.none => NoOp
 
         CloseEditInfoDialog ->
             { model | showEditInfoDialog = False } => Cmd.none => NoOp
 
-        SetNewSampleName val ->
-            { model | newSampleName = val } => Cmd.none => NoOp
+        SetSampleName val ->
+            { model | sampleName = val } => Cmd.none => NoOp
 
-        SetNewSampleCode val ->
-            { model | newSampleCode = val } => Cmd.none => NoOp
+        SetSampleCode val ->
+            { model | sampleCode = val } => Cmd.none => NoOp
 
-        SetNewSampleType val ->
-            { model | newSampleType = val } => Cmd.none => NoOp
+        SetSampleType val ->
+            { model | sampleType = val } => Cmd.none => NoOp
 
         UpdateSampleInfo ->
             let
                 updateInfo =
-                    Request.Sample.update session.token model.sample_id model.newSampleName model.newSampleCode model.newSampleType |> Http.toTask
+                    Request.Sample.update session.token model.sample_id model.sampleName model.sampleCode model.sampleType |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateSampleInfoCompleted updateInfo => NoOp
 
@@ -646,12 +646,10 @@ viewSample sample isEditable =
             List.length sample.sample_files
 
         ontologies =
-            case sample.ontologies of
-                [] ->
-                    "none"
-
-                _ ->
-                    List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
+            if sample.ontologies == [] then
+                "none"
+            else
+                List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
 
         editButton =
             if isEditable then
@@ -699,12 +697,10 @@ viewMap : Bool -> Html Msg
 viewMap showMap =
     let
         hideorShow =
-            case showMap of
-                True ->
-                    style [ ( "display", "block") ]
-
-                False ->
-                    style [ ( "display", "none") ]
+            if showMap then
+                style [ ( "display", "block") ]
+            else
+                style [ ( "display", "none") ]
     in
     div []
         [ button [ class "btn btn-xs btn-default", onClick (MapTick Time.millisecond) ] [ text "View Map" ]
@@ -722,21 +718,21 @@ editInfoDialogConfig model isBusy =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Sample Name" ]
-                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", value model.newSampleName, onInput SetNewSampleName ] []
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", value model.sampleName, onInput SetSampleName ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Sample Code" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.newSampleCode, onInput SetNewSampleCode ] []
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.sampleCode, onInput SetSampleCode ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Type" ]
                         , div [ class "input-group" ]
-                            [ input [ class "form-control", type_ "text", value model.newSampleType ] []
+                            [ input [ class "form-control", type_ "text", value model.sampleType ] []
                             , div [ class "input-group-btn" ]
                                 [ div [ class "dropdown" ]
                                     [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
                                     , ul [ class "dropdown-menu dropdown-menu-right" ]
-                                        (List.map (\s -> li [ onClick (SetNewSampleType s) ] [ a [] [ text s ]]) model.sample.available_types)
+                                        (List.map (\s -> li [ onClick (SetSampleType s) ] [ a [] [ text s ]]) model.sample.available_types)
                                     ]
                                 ]
                             ]
@@ -764,14 +760,12 @@ viewFiles files isEditable =
             List.length files
 
         label =
-            case numFiles of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numFiles)
-                        ]
+            if numFiles == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text (toString numFiles)
+                    ]
 
         cols =
             tr []
@@ -781,23 +775,19 @@ viewFiles files isEditable =
                 ]
 
         body =
-            case numFiles of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ]
-                        [ tbody [] (cols :: (List.map (viewFile isEditable) files)) ]
+            if numFiles == 0 then
+                text "None"
+            else
+                table [ class "table table-condensed" ]
+                    [ tbody [] (cols :: (List.map (viewFile isEditable) files)) ]
 
         addButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-sm pull-right", onClick OpenAddFilesDialog ]
-                        [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)"
-                        ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-sm pull-right", onClick OpenAddFilesDialog ]
+                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)"
+                    ]
+            else
+                text ""
     in
     div []
         [ h2 []
@@ -877,35 +867,30 @@ viewAssemblies assemblies =
             List.length assemblies
 
         label =
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString count)
-                        ]
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text (toString count)
+                    ]
 
         body =
-            case count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table" ]
-                        [ tbody [] (List.map viewAssembly assemblies) ]
+            if count == 0 then
+                text "None"
+            else
+                table [ class "table" ]
+                    [ tbody [] (List.map viewAssembly assemblies) ]
     in
-    case count of
-        0 -> text ""
-
-        _ ->
-            div []
-                [ h2 []
-                    [ text "Assemblies "
-                    , label
-                    ]
-                , body
+    if count == 0 then
+        text ""
+    else
+        div []
+            [ h2 []
+                [ text "Assemblies "
+                , label
                 ]
+            , body
+            ]
 
 
 viewAssembly : Assembly -> Html msg
@@ -924,35 +909,30 @@ viewCombinedAssemblies assemblies =
             List.length assemblies
 
         label =
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString count)
-                        ]
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text (toString count)
+                    ]
 
         body =
-            case count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table" ]
-                        [ tbody [] (List.map viewCombinedAssembly assemblies) ]
+            if count == 0 then
+                text "None"
+            else
+                table [ class "table" ]
+                    [ tbody [] (List.map viewCombinedAssembly assemblies) ]
     in
-    case count of
-        0 -> text ""
-
-        _ ->
-            div []
-                [ h2 []
-                    [ text "Combined Assemblies "
-                    , label
-                    ]
-                , body
+    if count == 0 then
+        text ""
+    else
+        div []
+            [ h2 []
+                [ text "Combined Assemblies "
+                , label
                 ]
+            , body
+            ]
 
 
 viewCombinedAssembly : CombinedAssembly -> Html msg
@@ -1067,36 +1047,28 @@ viewAttributes model isEditable =
                 numStr =
                     count |> toFloat |> format myLocale
             in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ] [ text numStr ]
 
         searchBar =
-            case acceptableAttributes of
-                [] ->
-                    text ""
-
-                _ ->
-                    small [] [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
+            if acceptableAttributes == [] then
+                text ""
+            else
+                small [] [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
 
         display =
-            case acceptableAttributes of
-                [] ->
-                    text "None"
-
-                _ ->
-                    Table.view (attrTableConfig isEditable) model.attrTableState acceptableAttributes
+            if acceptableAttributes == [] then
+                text "None"
+            else
+                Table.view (attrTableConfig isEditable) model.attrTableState acceptableAttributes
 
         addButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-sm", onClick OpenNewAttributeDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-sm", onClick OpenNewAttributeDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Attribute" ]
+            else
+                text ""
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -1121,15 +1093,15 @@ newAttributeDialogConfig isBusy =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Name" ]
-                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", onInput SetNewAttributeType ] []
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", onInput SetAttributeType ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Aliases" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetNewAttributeAliases ] []
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetAttributeAliases ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Value" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetNewAttributeValue ] []
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetAttributeValue ] []
                         ]
                     ]
 
@@ -1161,15 +1133,15 @@ editAttributeDialogConfig model attr_id isBusy =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Name" ]
-                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", value model.newAttributeType, onInput SetNewAttributeType ] []
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", value model.attributeType, onInput SetAttributeType ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Aliases" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.newAttributeAliases, onInput SetNewAttributeAliases ] []
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.attributeAliases, onInput SetAttributeAliases ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Value" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.newAttributeValue, onInput SetNewAttributeValue ] []
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.attributeValue, onInput SetAttributeValue ] []
                         ]
                     ]
 
@@ -1294,13 +1266,11 @@ viewProteins model =
 --                "KEGG" -> model.proteins.kegg--List.filter proteinFilter model.proteins.kegg
 
         searchBar =
-            case model.proteins.pfam of
-                [] ->
-                    text ""
-
-                _ ->
-                    small [ class "pull-right" ]
-                        [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
+            if model.proteins.pfam == [] then
+                text ""
+            else
+                small [ class "pull-right" ]
+                    [ input [ placeholder "Search", onInput SetProteinQuery ] [] ]
 
         filterButton label =
             let
@@ -1345,30 +1315,22 @@ viewProteins model =
                 _ -> (text "", 0)
 
         body =
-            case model.sample.protein_count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    case model.loadedProteins of
-                        True ->
-                            case proteinCount of
-                                0 ->
-                                    text "None"
-
-                                _ ->
-                                    div []
-                                        [ filterBar
-                                        , div [ class "scrollable" ] [ proteinTable ]
-                                        ]
-
-                        False ->
-                            case model.loadingProteins of
-                                True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
-
-                                False ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
+            if model.sample.protein_count == 0 then
+                text "None"
+            else
+                if model.loadedProteins then
+                    if proteinCount == 0 then
+                        text "None"
+                    else
+                        div []
+                            [ filterBar
+                            , div [ class "scrollable" ] [ proteinTable ]
+                            ]
+                else
+                    if model.loadingProteins then
+                        table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
+                    else
+                        table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
 
         numShowing =
             let
@@ -1376,28 +1338,22 @@ viewProteins model =
                     { usLocale | decimals = 0 }
 
                 count =
-                    case proteinCount of
-                        0 ->
-                            case model.proteinQuery of
-                                 "" ->
-                                    model.sample.protein_count
-
-                                 _ ->
-                                    0
-
-                        _ ->
-                            proteinCount
+                    if proteinCount == 0 then
+                        if model.proteinQuery == "" then
+                            model.sample.protein_count
+                        else
+                            0
+                    else
+                        proteinCount
 
                 numStr =
                     count |> toFloat |> format myLocale
             in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -1514,60 +1470,44 @@ viewCentrifugeResults model =
                     { usLocale | decimals = 0 }
 
                 count =
-                    case acceptableResults of
-                        [] ->
-                            case model.centrifugeQuery of
-                                 "" ->
-                                    model.sample.centrifuge_count
-
-                                 _ ->
-                                    0
-
-                        _ ->
-                            List.length acceptableResults
+                    if acceptableResults == [] then
+                        if model.centrifugeQuery == "" then
+                            model.sample.centrifuge_count
+                        else
+                            0
+                    else
+                        List.length acceptableResults
 
                 numStr =
                     count |> toFloat |> format myLocale
             in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text numStr ]
 
         searchBar =
-            case model.centrifugeResults of
-                [] ->
-                    text ""
-
-                _ ->
-                    small [ class "pull-right" ]
-                        [ input [ placeholder "Search", onInput SetCentrifugeQuery ] [] ]
+            if model.centrifugeResults == [] then
+                text ""
+            else
+                small [ class "pull-right" ]
+                    [ input [ placeholder "Search", onInput SetCentrifugeQuery ] [] ]
 
         body =
-            case model.sample.centrifuge_count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    case model.loadedCentrifugeResults of
-                        True ->
-                            case acceptableResults of
-                                [] ->
-                                    text "None"
-
-                                _ ->
-                                    Table.view centrifugeTableConfig model.centrifugeTableState acceptableResults
-
-                        False ->
-                            case model.loadingCentrifugeResults of
-                                True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
-
-                                False ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCentrifugeResults ] [ text "Show Results" ] ] ] ] ]
+            if model.sample.centrifuge_count == 0 then
+                text "None"
+            else
+                if model.loadedCentrifugeResults then
+                    if acceptableResults == [] then
+                        text "None"
+                    else
+                        Table.view centrifugeTableConfig model.centrifugeTableState acceptableResults
+                else
+                    if model.loadingCentrifugeResults then
+                        table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
+                    else
+                        table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCentrifugeResults ] [ text "Show Results" ] ] ] ] ]
     in
     div [ class "container" ]
         [ div [ class "row" ]

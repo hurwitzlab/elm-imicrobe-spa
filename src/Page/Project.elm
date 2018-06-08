@@ -61,10 +61,10 @@ type alias Model =
     , shareDialogError : String
     , shareDropdownState : View.SearchableDropdown.State
     , showEditInfoDialog : Bool
-    , newProjectName : String
-    , newProjectCode : String
-    , newProjectType : String
-    , newProjectURL : String
+    , projectName : String
+    , projectCode : String
+    , projectType : String
+    , projectURL : String
     , domainDropdownState : View.TagsDropdown.State
     , groupDropdownState : View.TagsDropdown.State
     , showNewSampleDialog : Bool
@@ -75,11 +75,11 @@ type alias Model =
     , showAddOrEditPublicationDialog : Bool
     , showAddOrEditPublicationBusy : Bool
     , publicationIdToEdit : Maybe Int
-    , newPublicationTitle : String
-    , newPublicationAuthors : String
-    , newPublicationDate : String
-    , newPublicationPubMedID : String
-    , newPublicationDOI : String
+    , publicationTitle : String
+    , publicationAuthors : String
+    , publicationDate : String
+    , publicationPubMedID : String
+    , publicationDOI : String
     }
 
 
@@ -130,10 +130,10 @@ init session id =
                     , shareDialogError = ""
                     , shareDropdownState = View.SearchableDropdown.init
                     , showEditInfoDialog = False
-                    , newProjectName = ""
-                    , newProjectCode = ""
-                    , newProjectType = ""
-                    , newProjectURL = ""
+                    , projectName = ""
+                    , projectCode = ""
+                    , projectType = ""
+                    , projectURL = ""
                     , domainDropdownState = View.TagsDropdown.init (List.map (\d -> (d.domain_id, d.domain_name)) project.domains)
                     , groupDropdownState = View.TagsDropdown.init (List.map (\g -> (g.project_group_id, g.group_name)) project.project_groups)
                     , showNewSampleDialog = False
@@ -144,11 +144,11 @@ init session id =
                     , showAddOrEditPublicationDialog = False
                     , showAddOrEditPublicationBusy = False
                     , publicationIdToEdit = Nothing
-                    , newPublicationTitle = ""
-                    , newPublicationAuthors = ""
-                    , newPublicationDate = ""
-                    , newPublicationPubMedID = ""
-                    , newPublicationDOI = ""
+                    , publicationTitle = ""
+                    , publicationAuthors = ""
+                    , publicationDate = ""
+                    , publicationPubMedID = ""
+                    , publicationDOI = ""
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -184,12 +184,12 @@ type Msg
     | UnshareWithUserCompleted (Result Http.Error String)
     | OpenEditInfoDialog
     | CloseEditInfoDialog
-    | SetNewProjectName String
-    | SetNewProjectCode String
-    | SetNewProjectType String
-    | SetNewProjectURL String
-    | AddNewProjectDomain Int String
-    | RemoveNewProjectDomain Int
+    | SetProjectName String
+    | SetProjectCode String
+    | SetProjectType String
+    | SetProjectURL String
+    | AddProjectDomain Int String
+    | RemoveProjectDomain Int
     | UpdateProjectInfo
     | UpdateProjectInfoCompleted (Result Http.Error Project)
     | OpenNewSampleDialog
@@ -469,35 +469,35 @@ update session msg model =
         OpenEditInfoDialog ->
             { model
                 | showEditInfoDialog = True
-                , newProjectName = model.project.project_name
-                , newProjectCode = model.project.project_code
-                , newProjectType = model.project.project_type
-                , newProjectURL = model.project.url
+                , projectName = model.project.project_name
+                , projectCode = model.project.project_code
+                , projectType = model.project.project_type
+                , projectURL = model.project.url
              } => Cmd.none => NoOp
 
         CloseEditInfoDialog ->
             { model | showEditInfoDialog = False } => Cmd.none => NoOp
 
-        SetNewProjectName name ->
-            { model | newProjectName = name } => Cmd.none => NoOp
+        SetProjectName name ->
+            { model | projectName = name } => Cmd.none => NoOp
 
-        SetNewProjectCode code ->
-            { model | newProjectCode = code } => Cmd.none => NoOp
+        SetProjectCode code ->
+            { model | projectCode = code } => Cmd.none => NoOp
 
-        SetNewProjectType type_ ->
-            { model | newProjectType = type_ } => Cmd.none => NoOp
+        SetProjectType type_ ->
+            { model | projectType = type_ } => Cmd.none => NoOp
 
-        SetNewProjectURL url ->
-            { model | newProjectURL = url } => Cmd.none => NoOp
+        SetProjectURL url ->
+            { model | projectURL = url } => Cmd.none => NoOp
 
-        AddNewProjectDomain id name ->
+        AddProjectDomain id name ->
             let
                 newDropdownState =
                     View.TagsDropdown.add id name model.domainDropdownState
             in
             { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
 
-        RemoveNewProjectDomain id ->
+        RemoveProjectDomain id ->
             let
                 newDropdownState =
                     View.TagsDropdown.remove id model.domainDropdownState
@@ -513,7 +513,7 @@ update session msg model =
                     View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
 
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.newProjectName model.newProjectCode model.newProjectType model.newProjectURL domains investigators |> Http.toTask
+                    Request.Project.update session.token model.project_id model.projectName model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
 
@@ -639,38 +639,38 @@ update session msg model =
                 | showAddOrEditPublicationDialog = True
                 , showAddOrEditPublicationBusy = False
                 , publicationIdToEdit = Maybe.map .publication_id publication
-                , newPublicationTitle = Maybe.withDefault "" (Maybe.map .title publication)
-                , newPublicationAuthors = Maybe.withDefault "" (Maybe.map .author publication)
-                , newPublicationDate = Maybe.withDefault "" (Maybe.map .pub_date publication)
-                , newPublicationPubMedID = Maybe.withDefault "" (Maybe.map (.pubmed_id >> toString) publication)
-                , newPublicationDOI = Maybe.withDefault "" (Maybe.map .doi publication)
+                , publicationTitle = Maybe.withDefault "" (Maybe.map .title publication)
+                , publicationAuthors = Maybe.withDefault "" (Maybe.map .author publication)
+                , publicationDate = Maybe.withDefault "" (Maybe.map .pub_date publication)
+                , publicationPubMedID = Maybe.withDefault "" (Maybe.map (.pubmed_id >> toString) publication)
+                , publicationDOI = Maybe.withDefault "" (Maybe.map .doi publication)
             } => Cmd.none => NoOp
 
         CloseAddOrEditPublicationDialog ->
             { model | showAddOrEditPublicationDialog = False } => Cmd.none => NoOp
 
         SetPublicationTitle title ->
-            { model | newPublicationTitle = title } => Cmd.none => NoOp
+            { model | publicationTitle = title } => Cmd.none => NoOp
 
         SetPublicationAuthors authors ->
-            { model | newPublicationAuthors = authors } => Cmd.none => NoOp
+            { model | publicationAuthors = authors } => Cmd.none => NoOp
 
         SetPublicationDate date ->
-            { model | newPublicationDate = date } => Cmd.none => NoOp
+            { model | publicationDate = date } => Cmd.none => NoOp
 
         SetPublicationPubMedID id ->
-            { model | newPublicationPubMedID = id } => Cmd.none => NoOp
+            { model | publicationPubMedID = id } => Cmd.none => NoOp
 
         SetPublicationDOI doi ->
-            { model | newPublicationDOI = doi } => Cmd.none => NoOp
+            { model | publicationDOI = doi } => Cmd.none => NoOp
 
         AddPublication ->
             let
                 pubmedId =
-                    String.toInt model.newPublicationPubMedID |> Result.toMaybe
+                    String.toInt model.publicationPubMedID |> Result.toMaybe
 
                 createPublication =
-                    Request.Publication.create session.token model.project_id model.newPublicationTitle model.newPublicationAuthors model.newPublicationDate pubmedId model.newPublicationDOI |> Http.toTask
+                    Request.Publication.create session.token model.project_id model.publicationTitle model.publicationAuthors model.publicationDate pubmedId model.publicationDOI |> Http.toTask
                         |> Task.andThen loadProject
             in
             { model | showAddOrEditPublicationBusy = True } => Task.attempt AddPublicationCompleted createPublication => NoOp
@@ -691,10 +691,10 @@ update session msg model =
         UpdatePublication pub_id ->
             let
                 pubmedId =
-                    String.toInt model.newPublicationPubMedID |> Result.toMaybe
+                    String.toInt model.publicationPubMedID |> Result.toMaybe
 
                 updatePublication =
-                    Request.Publication.update session.token pub_id model.newPublicationTitle model.newPublicationAuthors model.newPublicationDate pubmedId model.newPublicationDOI |> Http.toTask
+                    Request.Publication.update session.token pub_id model.publicationTitle model.publicationAuthors model.publicationDate pubmedId model.publicationDOI |> Http.toTask
                         |> Task.andThen loadProject
             in
             { model | confirmationDialog = Nothing, showAddOrEditPublicationBusy = True } => Task.attempt UpdatePublicationCompleted updatePublication => NoOp
@@ -849,24 +849,14 @@ viewShareButton model =
 viewProject : Project -> Bool -> Html Msg
 viewProject project isEditable =
     let
-        numDomains =
-            List.length project.domains
-
         domainText =
-            case numDomains of
-                1 ->
-                    "Domain"
-
-                _ ->
-                    "Domains"
+            pluralize "Domain" (List.length project.domains)
 
         editButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+            else
+                text ""
     in
     table [ class "table" ]
         [ colgroup []
@@ -1492,21 +1482,21 @@ editInfoDialogConfig model =
             Html.form []
                 [ div [ class "form-group" ]
                     [ label [] [ text "Name" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.newProjectName, onInput SetNewProjectName ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectName, onInput SetProjectName ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Accession" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the accession (required)", value model.newProjectCode, onInput SetNewProjectCode ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the accession (required)", value model.projectCode, onInput SetProjectCode ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Type" ]
                     , div [ class "input-group" ]
-                        [ input [ class "form-control", type_ "text", value model.newProjectType ] []
+                        [ input [ class "form-control", type_ "text", value model.projectType ] []
                         , div [ class "input-group-btn" ]
                             [ div [ class "dropdown" ]
                                 [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
                                 , ul [ class "dropdown-menu dropdown-menu-right" ]
-                                    (List.map (\s -> li [ onClick (SetNewProjectType s) ] [ a [] [ text s ]]) model.project.available_types)
+                                    (List.map (\s -> li [ onClick (SetProjectType s) ] [ a [] [ text s ]]) model.project.available_types)
                                 ]
                             ]
                         ]
@@ -1528,7 +1518,7 @@ editInfoDialogConfig model =
 --                    ]
                 , div [ class "form-group" ]
                     [ label [] [ text "URL" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.newProjectURL, onInput SetNewProjectURL ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.projectURL, onInput SetProjectURL ] []
                     ]
                 ]
 
@@ -1549,8 +1539,8 @@ editInfoDialogConfig model =
 domainDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
 domainDropdownConfig domains =
     { options = domains
-    , addMsg = AddNewProjectDomain
-    , removeMsg = RemoveNewProjectDomain
+    , addMsg = AddProjectDomain
+    , removeMsg = RemoveProjectDomain
     }
 
 
@@ -1608,23 +1598,23 @@ addOrEditPublicationDialogConfig model =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Title" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.newPublicationTitle, placeholder "Enter the title (required)", onInput SetPublicationTitle ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationTitle, placeholder "Enter the title (required)", onInput SetPublicationTitle ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Authors" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.newPublicationAuthors, placeholder "Enter the author names separated by commas (required)", onInput SetPublicationAuthors ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationAuthors, placeholder "Enter the author names separated by commas (required)", onInput SetPublicationAuthors ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Publication Date" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.newPublicationDate, placeholder "Enter the publication date as MM/DD/YYYY (required)", onInput SetPublicationDate ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationDate, placeholder "Enter the publication date as MM/DD/YYYY (required)", onInput SetPublicationDate ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "PubMed ID" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.newPublicationPubMedID, placeholder "Enter the PubMed ID or leave blank (optional)", onInput SetPublicationPubMedID ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationPubMedID, placeholder "Enter the PubMed ID or leave blank (optional)", onInput SetPublicationPubMedID ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "DOI" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.newPublicationDOI, placeholder "Enter the DOI or leave blank (optional)", onInput SetPublicationDOI ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationDOI, placeholder "Enter the DOI or leave blank (optional)", onInput SetPublicationDOI ] []
                         ]
                     ]
 
