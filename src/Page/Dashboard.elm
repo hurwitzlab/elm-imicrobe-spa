@@ -2,6 +2,7 @@ module Page.Dashboard exposing (Model, Msg(..), init, update, view)
 
 import Data.Session exposing (Session)
 import Data.Project exposing (Project)
+import Data.ProjectGroup exposing (ProjectGroup)
 import Data.User exposing (User, Sample, LogEntry)
 import Data.Agave exposing (FileResult)
 import Html exposing (..)
@@ -14,6 +15,7 @@ import Table exposing (defaultCustomizations)
 import Http
 import Route
 import Request.Project
+import Request.ProjectGroup
 import Request.Sample
 import Request.User
 import Page.Error as Error exposing (PageLoadError)
@@ -22,6 +24,7 @@ import Util exposing ((=>))
 import View.FileBrowser as FileBrowser
 import View.Spinner exposing (spinner)
 import View.Project
+import View.ProjectGroup
 import View.Sample
 import View.Dialog exposing (confirmationDialogConfig)
 import Ports
@@ -36,13 +39,18 @@ type alias Model =
     , newProjectName : String
     , showNewProjectDialog : Bool
     , showNewProjectBusy : Bool
+    , newProjectGroupName : String
+    , showNewProjectGroupDialog : Bool
+    , showNewProjectGroupBusy : Bool
     , selectedContentType : ContentType
     , projectTableState : Table.State
     , sampleTableState : Table.State
+    , projectGroupTableState : Table.State
     , dsTableState : Table.State
     , activityTableState : Table.State
     , selectedProjectRowId : Int
     , selectedSampleRowId : Int
+    , selectedProjectGroupRowId : Int
     , selectedActivityRowId : String
     , fileBrowser : FileBrowser.Model
     , fileBrowserInitialized : Bool
@@ -55,6 +63,7 @@ type alias Model =
 type ContentType
     = Project
     | Sample
+    | ProjectGroup
     | Storage
     | Activity
 
@@ -76,13 +85,18 @@ init session =
                     , newProjectName = ""
                     , showNewProjectDialog = False
                     , showNewProjectBusy = False
+                    , newProjectGroupName = ""
+                    , showNewProjectGroupDialog = False
+                    , showNewProjectGroupBusy = False
                     , selectedContentType = Project
                     , projectTableState = Table.initialSort "Name"
                     , sampleTableState = Table.initialSort "Name"
+                    , projectGroupTableState = Table.initialSort "Name"
                     , dsTableState = Table.initialSort "Name"
                     , activityTableState = Table.initialSort "Date"
                     , selectedProjectRowId = 0
                     , selectedSampleRowId = 0
+                    , selectedProjectGroupRowId = 0
                     , selectedActivityRowId = ""
                     , fileBrowser = FileBrowser.init session Nothing
                     , fileBrowserInitialized = False
@@ -109,19 +123,28 @@ type Msg
     | SetNewProjectName String
     | CreateNewProject
     | CreateNewProjectCompleted (Result Http.Error Project)
+    | OpenNewProjectGroupDialog
+    | CloseNewProjectGroupDialog
+    | SetNewProjectGroupName String
+    | CreateNewProjectGroup
+    | CreateNewProjectGroupCompleted (Result Http.Error ProjectGroup)
     | SetProjectTableState Table.State
     | SetSampleTableState Table.State
+    | SetProjectGroupTableState Table.State
     | SetActivityTableState Table.State
     | SelectContent ContentType
     | RefreshContent
     | RefreshContentCompleted (Result Http.Error User)
     | SelectProjectRow Int
     | SelectSampleRow Int
+    | SelectProjectGroupRow Int
     | SelectActivityRow String
     | RemoveProject Int
     | RemoveProjectCompleted (Result Http.Error String)
     | RemoveSample Int
     | RemoveSampleCompleted (Result Http.Error String)
+    | RemoveProjectGroup Int
+    | RemoveProjectGroupCompleted (Result Http.Error String)
     | OpenConfirmationDialog String Msg
     | CloseConfirmationDialog
     | FileBrowserMsg FileBrowser.Msg
@@ -153,7 +176,29 @@ update session msg model =
         CreateNewProjectCompleted (Ok project) ->
             model => Route.modifyUrl (Route.Project project.project_id)
 
-        CreateNewProjectCompleted (Err error) ->
+        CreateNewProjectCompleted (Err error) -> --TODO show error message
+            model => Cmd.none
+
+        OpenNewProjectGroupDialog ->
+            { model | showNewProjectGroupDialog = True } => Cmd.none
+
+        CloseNewProjectGroupDialog ->
+            { model | showNewProjectGroupDialog = False } => Cmd.none
+
+        SetNewProjectGroupName name ->
+            { model | newProjectGroupName = name } => Cmd.none
+
+        CreateNewProjectGroup ->
+            let
+                createProjectGroup =
+                    Request.ProjectGroup.create session.token model.newProjectGroupName |> Http.toTask
+            in
+            { model | showNewProjectGroupBusy = True } => Task.attempt CreateNewProjectGroupCompleted createProjectGroup
+
+        CreateNewProjectGroupCompleted (Ok group) ->
+            model => Route.modifyUrl (Route.ProjectGroup group.project_group_id)
+
+        CreateNewProjectGroupCompleted (Err error) -> --TODO show error message
             model => Cmd.none
 
         SelectContent contentType ->
@@ -195,6 +240,9 @@ update session msg model =
         SetSampleTableState newState ->
             { model | sampleTableState = newState } => Cmd.none
 
+        SetProjectGroupTableState newState ->
+            { model | projectGroupTableState = newState } => Cmd.none
+
         SetActivityTableState newState ->
             { model | activityTableState = newState } => Cmd.none
 
@@ -217,6 +265,16 @@ update session msg model =
                         id
             in
             { model | selectedSampleRowId = selectedRowId } => Cmd.none
+
+        SelectProjectGroupRow id ->
+            let
+                selectedRowId =
+                    if model.selectedProjectGroupRowId == id then
+                        0 -- unselect
+                    else
+                        id
+            in
+            { model | selectedProjectGroupRowId = selectedRowId } => Cmd.none
 
         SelectActivityRow id ->
             let
@@ -252,6 +310,19 @@ update session msg model =
             update session RefreshContent model
 
         RemoveSampleCompleted (Err error) -> -- TODO finish me
+            model => Cmd.none
+
+        RemoveProjectGroup id ->
+            let
+                removeProjectGroup =
+                    Request.ProjectGroup.remove session.token id |> Http.toTask
+            in
+            { model | confirmationDialog = Nothing } => Task.attempt RemoveProjectGroupCompleted removeProjectGroup
+
+        RemoveProjectGroupCompleted (Ok _) ->
+            update session RefreshContent model
+
+        RemoveProjectGroupCompleted (Err error) -> -- TODO finish me
             model => Cmd.none
 
         OpenConfirmationDialog confirmationText yesMsg ->
@@ -300,6 +371,8 @@ view model =
         , Dialog.view
             (if model.showNewProjectDialog then
                 Just (newProjectDialogConfig model)
+             else if model.showNewProjectGroupDialog then
+                Just (newProjectGroupDialogConfig model)
              else if model.showFileUploadDialog then
                 Just (fileUploadDialogConfig model)
              else if model.confirmationDialog /= Nothing then
@@ -319,6 +392,7 @@ viewMenu model =
     div [ class "menu-panel" ]
         [ div [] [ mkButton "Projects" Project ]
         , div [] [ mkButton "Samples" Sample ]
+        , div [] [ mkButton "Groups" ProjectGroup ]
         , div [] [ mkButton "Data Store" Storage ]
         , div [] [ mkButton "Activity" Activity ]
         ]
@@ -394,6 +468,26 @@ viewContent model =
                                 Table.view (sampleTableConfig model.user.user_id model.user.projects model.selectedSampleRowId) model.sampleTableState samples
                     in
                     ( "Samples", view, List.length samples, text "")
+
+                ProjectGroup ->
+                    let
+                        view =
+                            if model.user.project_groups == [] then
+                                div [ class "well" ]
+                                    [ p [] [ text "You don't have any project groups yet." ]
+                                    , p []
+                                        [ text "Click 'New Project Group' to create a new project group or just click "
+                                        , a [ onClick OpenNewProjectGroupDialog ] [ text "here" ]
+                                        , text "."
+                                        ]
+                                    ]
+                            else
+                                Table.view (projectGroupTableConfig model.selectedProjectGroupRowId model.user.user_id) model.projectGroupTableState model.user.project_groups
+
+                        newButton =
+                            button [ class "btn btn-default pull-right", onClick OpenNewProjectGroupDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " New Project Group" ]
+                    in
+                    ( "Project Groups", view, List.length model.user.projects, newButton )
 
                 Storage ->
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser, text "")
@@ -473,6 +567,16 @@ toSampleRowAttrs selectedRowId data =
         )
 
 
+toProjectGroupRowAttrs : Int -> Data.User.ProjectGroup -> List (Attribute Msg)
+toProjectGroupRowAttrs selectedRowId data =
+    onClick (SelectProjectGroupRow data.project_group_id)
+    :: (if (data.project_group_id == selectedRowId) then
+            [ attribute "class" "active" ]
+         else
+            []
+        )
+
+
 toActivityRowAttrs : String -> Data.User.LogEntry -> List (Attribute Msg)
 toActivityRowAttrs selectedRowId data =
     onClick (SelectActivityRow data.id)
@@ -526,7 +630,7 @@ projectOwnerColumn currentUserId =
 
 viewProjectOwner : Int -> Data.User.Project -> String
 viewProjectOwner currentUserId project =
-    case List.filter (\u -> u.project_to_user.permission == "owner") project.users of
+    case List.filter (\u -> u.permconn.permission == "owner") project.users of
         user :: [] ->
             if user.user_id == currentUserId then
                 "You"
@@ -582,7 +686,7 @@ viewSampleOwner : Int -> List Data.User.Project -> Data.User.Sample -> String
 viewSampleOwner currentUserId projects sample =
     case List.filter (\p -> p.project_id == sample.project.project_id) projects of
         project :: [] ->
-            case List.filter (\u -> u.project_to_user.permission == "owner") project.users of
+            case List.filter (\u -> u.permconn.permission == "owner") project.users of
                 user :: [] ->
                     if user.user_id == currentUserId then
                         "You"
@@ -591,6 +695,59 @@ viewSampleOwner currentUserId projects sample =
 
                 _ ->
                     ""
+
+        _ ->
+            ""
+
+
+projectGroupTableConfig : Int -> Int -> Table.Config Data.User.ProjectGroup Msg
+projectGroupTableConfig selectedRowId currentUserId =
+    Table.customConfig
+        { toId = toString << .project_group_id
+        , toMsg = SetProjectGroupTableState
+        , columns =
+            [ projectGroupNameColumn
+            , projectGroupOwnerColumn currentUserId
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toProjectGroupRowAttrs selectedRowId }
+        }
+
+
+projectGroupNameColumn : Table.Column Data.User.ProjectGroup Msg
+projectGroupNameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = projectGroupLink
+        , sorter = Table.unsortable
+        }
+
+
+projectGroupLink : Data.User.ProjectGroup -> Table.HtmlDetails Msg
+projectGroupLink group =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.ProjectGroup group.project_group_id) ]
+            [ text group.group_name ]
+        ]
+
+
+projectGroupOwnerColumn : Int -> Table.Column Data.User.ProjectGroup Msg
+projectGroupOwnerColumn currentUserId =
+    Table.customColumn
+        { name = "Owner"
+        , viewData = viewProjectGroupOwner currentUserId
+        , sorter = Table.unsortable
+        }
+
+
+viewProjectGroupOwner : Int -> Data.User.ProjectGroup -> String
+viewProjectGroupOwner currentUserId group =
+    case List.filter (\u -> u.permconn.permission == "owner") group.users of
+        user :: [] ->
+            if user.user_id == currentUserId then
+                "You"
+            else
+                user.first_name ++ " " ++ user.last_name
 
         _ ->
             ""
@@ -643,7 +800,7 @@ viewInfo model =
                             let
                                 isDeleteable =
                                     project.users
-                                        |> List.filter (\u -> u.project_to_user.permission == "owner")
+                                        |> List.filter (\u -> u.permconn.permission == "owner")
                                         |> List.map .user_id
                                         |> List.member model.user.user_id
                             in
@@ -671,13 +828,38 @@ viewInfo model =
                                         |> List.filter (\p -> p.project_id == sample.project.project_id)
                                         |> List.map .users
                                         |> List.concat
-                                        |> List.filter (\u -> u.project_to_user.permission == "owner")
+                                        |> List.filter (\u -> u.permconn.permission == "owner")
                                         |> List.map .user_id
                                         |> List.member model.user.user_id
                             in
                             div []
                                 [ View.Sample.viewInfo sample
                                 , View.Sample.viewActions sample isDeleteable (OpenConfirmationDialog "Are you sure you want to remove this sample?" (RemoveSample sample.sample_id))
+                                ]
+
+                ProjectGroup ->
+                    case List.filter (\p -> p.project_group_id == model.selectedProjectGroupRowId) model.user.project_groups of
+                        [] ->
+                            if model.user.project_groups == [] then
+                                text ""
+                            else
+                                div []
+                                    [ p [] [ text "Here are project groups you created or are a member of." ]
+                                    , p [] [ text "Click on a project group row to see detailed info." ]
+                                    , p [] [ text "To create a new project group click the 'New' button." ]
+                                    ]
+
+                        group :: _ ->
+                            let
+                                isDeleteable =
+                                    group.users
+                                        |> List.filter (\u -> u.permconn.permission == "owner")
+                                        |> List.map .user_id
+                                        |> List.member model.user.user_id
+                            in
+                            div []
+                                [ View.ProjectGroup.viewInfo group
+                                , View.ProjectGroup.viewActions group isDeleteable (OpenConfirmationDialog "Are you sure you want to remove this project group?" (RemoveProjectGroup group.project_group_id))
                                 ]
 
                 Storage ->
@@ -823,6 +1005,35 @@ newProjectDialogConfig model =
     { closeMessage = Just CloseNewProjectDialog
     , containerClass = Nothing
     , header = Just (h3 [] [ text "New Project" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
+newProjectGroupDialogConfig : Model -> Dialog.Config Msg
+newProjectGroupDialogConfig model =
+    let
+        content =
+            case model.showNewProjectGroupBusy of
+                False ->
+                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project group", onInput SetNewProjectGroupName ] []
+
+                True ->
+                    spinner
+
+        footer =
+            let
+                disable =
+                    disabled model.showNewProjectGroupBusy
+            in
+                div []
+                    [ button [ class "btn btn-default pull-left", onClick CloseNewProjectGroupDialog, disable ] [ text "Cancel" ]
+                    , button [ class "btn btn-primary", onClick CreateNewProjectGroup, disable ] [ text "OK" ]
+                    ]
+    in
+    { closeMessage = Just CloseNewProjectGroupDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "New Project Group" ])
     , body = Just content
     , footer = Just footer
     }

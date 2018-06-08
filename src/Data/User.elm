@@ -15,6 +15,7 @@ type alias User =
     , date : String
     , orcid : String
     , projects : List Project
+    , project_groups : List ProjectGroup
     , log : List LogEntry
     }
 
@@ -48,11 +49,35 @@ type alias User2 =
     , user_name : String
     , first_name : String
     , last_name : String
-    , project_to_user : ProjectToUser
+    , permconn : ProjectToUser
     }
 
 
 type alias ProjectToUser =
+    { permission : String
+    }
+
+
+type alias ProjectGroup =
+    { project_group_id : Int
+    , group_name : String
+    , description : String
+    , url : String
+    , projects : List Project
+    , users : List User3
+    }
+
+
+type alias User3 =
+    { user_id : Int
+    , user_name : String
+    , first_name : String
+    , last_name : String
+    , permconn : ProjectGroupToUser
+    }
+
+
+type alias ProjectGroupToUser =
     { permission : String
     }
 
@@ -120,6 +145,7 @@ decoder =
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
+        |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "log" (Decode.list decoderLogEntry) []
 
 
@@ -136,6 +162,33 @@ decoderUser2 =
 decoderProjectToUser : Decoder ProjectToUser
 decoderProjectToUser =
     decode ProjectToUser
+        |> required "permission" Decode.string
+
+
+decoderProjectGroup : Decoder ProjectGroup
+decoderProjectGroup =
+    decode ProjectGroup
+        |> required "project_group_id" Decode.int
+        |> required "group_name" Decode.string
+        |> optional "description" Decode.string "NA"
+        |> optional "url" Decode.string "NA"
+        |> optional "projects" (Decode.list decoderProject) []
+        |> optional "users" (Decode.list decoderUser3) []
+
+
+decoderUser3 : Decoder User3
+decoderUser3 =
+    decode User3
+        |> required "user_id" Decode.int
+        |> required "user_name" Decode.string
+        |> required "first_name" Decode.string
+        |> required "last_name" Decode.string
+        |> required "project_group_to_user" decoderProjectGroupToUser
+
+
+decoderProjectGroupToUser : Decoder ProjectGroupToUser
+decoderProjectGroupToUser =
+    decode ProjectGroupToUser
         |> required "permission" Decode.string
 
 
