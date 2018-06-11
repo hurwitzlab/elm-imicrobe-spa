@@ -13,6 +13,7 @@ import FormatNumber.Locales exposing (usLocale)
 import Dialog
 import Table exposing (defaultCustomizations)
 import Http
+import List.Extra
 import Route
 import Request.Project
 import Request.ProjectGroup
@@ -424,15 +425,18 @@ viewMenu model =
 viewContent : Model -> List (Html Msg)
 viewContent model =
     let
+        projects =
+            allProjects model.user
+
         samples =
-            samplesFromProjects model.user.projects
+            allSamples model.user
 
         (title, viewTable, count, buttonPanel) =
             case model.selectedContentType of
                 Project ->
                     let
                         view =
-                            if model.user.projects == [] then
+                            if projects == [] then
                                 div [ class "well" ]
                                     [ p [] [ text "You don't have any projects yet." ]
                                     , p []
@@ -442,12 +446,12 @@ viewContent model =
                                         ]
                                     ]
                             else
-                                Table.view (projectTableConfig model.selectedProjectRowId model.user.user_id) model.projectTableState model.user.projects
+                                Table.view (projectTableConfig model.selectedProjectRowId model.user.user_id) model.projectTableState projects
 
                         newButton =
                             button [ class "btn btn-default pull-right", onClick OpenNewProjectDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " New Project" ]
                     in
-                    ( "Projects", view, List.length model.user.projects, newButton )
+                    ( "Projects", view, List.length projects, newButton )
 
                 Sample ->
                     let
@@ -536,9 +540,18 @@ viewContent model =
     ]
 
 
-samplesFromProjects : List Data.User.Project -> List Sample
-samplesFromProjects projects =
-    List.map .samples projects |> List.concat
+allProjects : User -> List Data.User.Project
+allProjects user =
+    user.project_groups
+        |> List.map .projects
+        |> List.concat
+        |> List.append user.projects
+        |> List.Extra.uniqueBy .project_id
+
+
+allSamples : User -> List Sample
+allSamples user =
+    allProjects user |> List.map .samples |> List.concat
 
 
 toTableAttrs : List (Attribute Msg)
@@ -779,15 +792,18 @@ dateColumn =
 viewInfo : Model -> Html Msg
 viewInfo model =
     let
+        projects =
+            allProjects model.user
+
         samples =
-            samplesFromProjects model.user.projects
+            allSamples model.user
 
         info =
             case model.selectedContentType of
                 Project ->
-                    case List.filter (\p -> p.project_id == model.selectedProjectRowId) model.user.projects of
+                    case List.filter (\p -> p.project_id == model.selectedProjectRowId) projects of
                         [] ->
-                            if model.user.projects == [] then
+                            if projects == [] then
                                 text ""
                             else
                                 div []
