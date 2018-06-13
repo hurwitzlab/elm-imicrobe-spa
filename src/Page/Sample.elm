@@ -840,7 +840,7 @@ addFilesDialogConfig model isBusy =
             if isBusy then
                 spinner
             else
-                div [ class "scrollable-half" ]
+                div [ class "scrollable", style [ ("min-height","50vh"),("max-height","50vh") ] ]
                     [ FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg ]
 
         footer =
