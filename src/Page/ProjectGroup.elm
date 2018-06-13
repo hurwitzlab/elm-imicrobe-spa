@@ -6,7 +6,7 @@ import Data.User
 import Data.Project
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick)
+import Html.Events exposing (onInput, onClick, onCheck)
 import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
@@ -33,6 +33,7 @@ type alias Model =
     , showAddUserDialog : Bool
     , showAddUserBusy : Bool
     , userDropdownState : View.SearchableDropdown.State
+    , shareFiles : Bool
     , showAddProjectDialog : Bool
     , showAddProjectBusy : Bool
     , projectDropdownState : View.SearchableDropdown.State
@@ -73,6 +74,7 @@ init session id =
                     , showAddUserDialog = False
                     , showAddUserBusy = False
                     , userDropdownState = View.SearchableDropdown.init
+                    , shareFiles = True
                     , showAddProjectDialog = False
                     , showAddProjectBusy = False
                     , projectDropdownState = View.SearchableDropdown.init
@@ -96,6 +98,7 @@ type Msg
     | OpenAddProjectDialog
     | CloseAddProjectDialog
     | SetUserName String
+    | ToggleFileSharing Bool
     | SearchUsersCompleted (Result Http.Error (List Data.User.User))
     | AddUser String Int String
     | AddUserCompleted (Result Http.Error (List User))
@@ -122,13 +125,13 @@ update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
         OpenAddUserDialog ->
-            { model | showAddUserDialog = True, showAddUserBusy = False } => Cmd.none
+            { model | showAddUserDialog = True, showAddUserBusy = False, shareFiles = True } => Cmd.none
 
         CloseAddUserDialog ->
             { model | showAddUserDialog = False } => Cmd.none
 
         OpenAddProjectDialog ->
-            { model | showAddProjectDialog = True } => Cmd.none
+            { model | showAddProjectDialog = True, shareFiles = True } => Cmd.none
 
         CloseAddProjectDialog ->
             { model | showAddProjectDialog = False } => Cmd.none
@@ -146,6 +149,9 @@ update session msg model =
                 { model | userDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersCompleted searchByName
             else
                 { model | userDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none
+
+        ToggleFileSharing val ->
+            { model | shareFiles = val } => Cmd.none
 
         SearchUsersCompleted (Ok users) ->
             let
@@ -172,7 +178,7 @@ update session msg model =
                     model.userDropdownState
 
                 addUser =
-                    Request.ProjectGroup.addUser session.token model.projectGroupId id permission |> Http.toTask
+                    Request.ProjectGroup.addUser session.token model.projectGroupId id permission model.shareFiles |> Http.toTask
             in
             { model | showAddUserBusy = True, userDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt AddUserCompleted addUser
 
@@ -248,7 +254,7 @@ update session msg model =
                     model.projectDropdownState
 
                 addUser =
-                    Request.ProjectGroup.addProject session.token model.projectGroupId id |> Http.toTask
+                    Request.ProjectGroup.addProject session.token model.projectGroupId id model.shareFiles |> Http.toTask
             in
             { model | showAddProjectBusy = True, projectDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt AddProjectCompleted addUser
 
@@ -571,6 +577,8 @@ addProjectDialogConfig model =
             else
                 div [ class "form-group" ]
                     [ View.SearchableDropdown.view projectDropdownConfig model.projectDropdownState
+                    , br [] []
+                    , shareFilesCheckbox model.shareFiles
                     ]
         footer =
             let
@@ -608,6 +616,8 @@ addUserDialogConfig model =
             else
                 div [ class "form-group" ]
                     [ View.SearchableDropdown.view userDropdownConfig model.userDropdownState
+                    , br [] []
+                    , shareFilesCheckbox model.shareFiles
                     ]
 
         footer =
@@ -636,6 +646,14 @@ userDropdownConfig =
     , selectMsg = (AddUser "read-only")
     }
 
+
+shareFilesCheckbox : Bool -> Html Msg
+shareFilesCheckbox shareFiles =
+    div []
+        [ input [ type_ "checkbox", checked shareFiles, onCheck ToggleFileSharing ] []
+        , text " Share associated project files (may be slow for large projects)"
+        ]
+        
 
 editInfoDialogConfig : Model -> Dialog.Config Msg
 editInfoDialogConfig model =

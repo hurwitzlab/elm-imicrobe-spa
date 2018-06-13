@@ -122,17 +122,22 @@ remove token project_group_id =
         |> HttpBuilder.toRequest
 
 
-addProject : String -> Int -> Int -> Http.Request ProjectGroup
-addProject token project_group_id project_id =
+addProject : String -> Int -> Int -> Bool -> Http.Request ProjectGroup
+addProject token project_group_id project_id shareFiles =
     let
         url =
             apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/projects/" ++ (toString project_id)
 
         headers =
             [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "shareFiles" => Encode.bool shareFiles ]
     in
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
@@ -152,8 +157,8 @@ removeProject token project_group_id project_id =
         |> HttpBuilder.toRequest
 
 
-addUser : String -> Int -> Int -> String -> Http.Request (List User)
-addUser token project_group_id user_id permission =
+addUser : String -> Int -> Int -> String -> Bool -> Http.Request (List User)
+addUser token project_group_id user_id permission shareFiles =
     let
         url =
             apiBaseUrl ++ "/project_groups/" ++ (toString project_group_id) ++ "/users/" ++ (toString user_id)
@@ -166,7 +171,9 @@ addUser token project_group_id user_id permission =
 
         body =
             Encode.object
-                [ "permission" => Encode.string permission ]
+                [ "permission" => Encode.string permission
+                , "shareFiles" => Encode.bool shareFiles
+                ]
     in
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers

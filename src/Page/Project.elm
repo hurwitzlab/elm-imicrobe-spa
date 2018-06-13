@@ -370,7 +370,7 @@ update session msg model =
                         List.any (\g -> g.project_group_id == id) model.project.project_groups
 
                     addProjectToProjectGroup =
-                        Request.ProjectGroup.addProject session.token id model.project_id |> Http.toTask
+                        Request.ProjectGroup.addProject session.token id model.project_id True |> Http.toTask
                 in
                 if noChange then
                     model => Cmd.none => NoOp
