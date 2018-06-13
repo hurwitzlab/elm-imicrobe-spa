@@ -577,8 +577,6 @@ addProjectDialogConfig model =
             else
                 div [ class "form-group" ]
                     [ View.SearchableDropdown.view projectDropdownConfig model.projectDropdownState
-                    , br [] []
-                    , shareFilesCheckbox model.shareFiles
                     ]
         footer =
             let
@@ -616,8 +614,6 @@ addUserDialogConfig model =
             else
                 div [ class "form-group" ]
                     [ View.SearchableDropdown.view userDropdownConfig model.userDropdownState
-                    , br [] []
-                    , shareFilesCheckbox model.shareFiles
                     ]
 
         footer =
@@ -647,13 +643,13 @@ userDropdownConfig =
     }
 
 
-shareFilesCheckbox : Bool -> Html Msg
-shareFilesCheckbox shareFiles =
-    div []
-        [ input [ type_ "checkbox", checked shareFiles, onCheck ToggleFileSharing ] []
-        , text " Share associated project files (may be slow for large projects)"
-        ]
-        
+--shareFilesCheckbox : Bool -> Html Msg
+--shareFilesCheckbox shareFiles =
+--    div []
+--        [ input [ type_ "checkbox", checked shareFiles, onCheck ToggleFileSharing ] []
+--        , text " Share associated project files (may be slow for large projects)"
+--        ]
+
 
 editInfoDialogConfig : Model -> Dialog.Config Msg
 editInfoDialogConfig model =
