@@ -9,7 +9,6 @@ import Json.Encode as Encode exposing (Value)
 import Dict exposing (Dict)
 import Exts.Dict as EDict
 import Util exposing ((=>))
-import String exposing (join)
 import Config exposing (apiBaseUrl)
 
 
@@ -48,13 +47,18 @@ getSome : String -> List Int -> Http.Request (List Sample)
 getSome token id_list =
     let
         url =
-            apiBaseUrl ++ "/samples/?id=" ++ (join "," (List.map toString id_list))
+            apiBaseUrl ++ "/samples"
 
         headers =
             [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "ids" => Encode.string (id_list |> List.map toString |> String.join ",") ]
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list Sample.decoder))
         |> HttpBuilder.toRequest
 
@@ -167,13 +171,18 @@ files : String -> List Int -> Http.Request (List SampleFile)
 files token id_list =
     let
         url =
-            apiBaseUrl ++ "/samples/files/?id=" ++ (join "," (List.map toString id_list))
+            apiBaseUrl ++ "/samples/files"
 
         headers =
             [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "ids" => Encode.string (id_list |> List.map toString |> String.join ",") ]
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleFile))
         |> HttpBuilder.toRequest
 
