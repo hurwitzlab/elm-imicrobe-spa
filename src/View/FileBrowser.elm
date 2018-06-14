@@ -37,7 +37,7 @@ type alias InternalModel =
     , rootPath : String
     , homePath : String
     , sharedPath : String
-    , selectedPath : Maybe String
+    , selectedPaths : Maybe (List String)
     , pathFilter : String
     , contents : List FileResult
     , tableState : Table.State
@@ -83,7 +83,7 @@ init session maybeConfig =
         , rootPath = startingPath
         , homePath = startingPath
         , sharedPath = "/shared"
-        , selectedPath = Nothing
+        , selectedPaths = Nothing
         , pathFilter = "Home"
         , contents = []
         , tableState = Table.initialSort "Name"
@@ -152,24 +152,24 @@ updateInternal session msg model =
 
         SelectPath path ->
             let
-                newPath =
-                    case model.selectedPath of
+                newPaths =
+                    case model.selectedPaths of
                         Nothing ->
-                            Just path
+                            Just (List.singleton path)
 
-                        Just selectedPath ->
-                            if selectedPath == path then
+                        Just paths ->
+                            if List.member path paths then
                                 Nothing -- unselect
                             else
-                                Just path
+                                Just (path :: paths)
             in
-            { model | selectedPath = newPath } => Cmd.none
+            { model | selectedPaths = newPaths } => Cmd.none
 
         RefreshPath ->
             updateInternal session (LoadPath model.path) model
 
         LoadPath path ->
-            { model | path = path, selectedPath = Nothing, errorMessage = Nothing, isBusy = True } => Task.attempt LoadPathCompleted (loadPath session.token path)
+            { model | path = path, selectedPaths = Nothing, errorMessage = Nothing, isBusy = True } => Task.attempt LoadPathCompleted (loadPath session.token path)
 
         LoadPathCompleted (Ok files) ->
             let
@@ -291,7 +291,7 @@ determinePreviousPath path =
 
 
 view : Model -> Html Msg
-view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
+view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
     let
         filterButton label =
             let
@@ -350,7 +350,7 @@ view (Model {path, pathFilter, contents, tableState, selectedPath, isBusy, error
             spinner
           else
             div [ style [("overflow-y","auto"),("height","100%")] ] --("height","60vh")] ]
-                [ Table.view (tableConfig config selectedPath) tableState contents ]
+                [ Table.view (tableConfig config selectedPaths) tableState contents ]
         , Dialog.view
             (if (confirmationDialog /= Nothing) then
                 confirmationDialog
@@ -369,27 +369,28 @@ toTableAttrs =
     ]
 
 
-toRowAttrs : Config -> Maybe String -> FileResult -> List (Attribute Msg)
-toRowAttrs config selectedPath data =
+toRowAttrs : Config -> Maybe (List String) -> FileResult -> List (Attribute Msg)
+toRowAttrs config selectedPaths data =
     onClick (SelectPath data.path)
-    :: (case selectedPath of
+    :: (case selectedPaths of
             Nothing ->
                 []
 
-            Just selectedPath ->
-                if (data.path == selectedPath && (data.type_ == "file" || config.allowDirSelection)) then
+            Just selectedPaths ->
+                if (List.member data.path selectedPaths && (data.type_ == "file" || config.allowDirSelection)) then
                     [ attribute "class" "active" ]
                 else
                     []
-        )
-    |> List.append (if data.type_ == "dir" then
+       )
+    |> List.append
+        (if data.type_ == "dir" then
             [ onDoubleClick (LoadPath data.path) ]
         else
             []
         )
 
-tableConfig : Config -> Maybe String -> Table.Config FileResult Msg
-tableConfig config selectedRowId =
+tableConfig : Config -> Maybe (List String) -> Table.Config FileResult Msg
+tableConfig config selectedRowIds =
     Table.customConfig
         { toId = .path
         , toMsg = SetTableState
@@ -398,7 +399,7 @@ tableConfig config selectedRowId =
             , sizeColumn
             ]
         , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs config selectedRowId }
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs config selectedRowIds }
         }
 
 
@@ -471,10 +472,10 @@ numItems (Model {contents}) =
 
 
 getSelected : Model -> List FileResult
-getSelected (Model { selectedPath, contents }) =
-    case selectedPath of
+getSelected (Model { selectedPaths, contents }) =
+    case selectedPaths of
         Nothing ->
             []
 
-        Just selectedPath ->
-            List.filter (\f -> f.path == selectedPath) contents
+        Just paths ->
+            List.filter (\f -> List.member f.path paths) contents
