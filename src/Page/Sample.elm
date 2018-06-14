@@ -72,6 +72,7 @@ type alias Model =
     , sampleType : String
     , dialogError : Maybe String
     , fileBrowser : FileBrowser.Model
+    , filesBusy : Bool
     }
 
 
@@ -166,6 +167,7 @@ init session id =
                     , sampleType = ""
                     , dialogError = Nothing
                     , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False))
+                    , filesBusy = False
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -419,27 +421,27 @@ update session msg model =
             { model | showAddFilesDialog = False } => Cmd.none => NoOp
 
         AddFiles files ->
-            let
-                cmd =
-                    if files /= [] then
-                        Request.Sample.addFiles session.token model.sample_id files |> Http.toTask |> Task.attempt AddFilesCompleted
-                    else
-                        Cmd.none
-            in
-            { model | showAddFilesDialog = False } => cmd => NoOp
+            if files /= [] then
+                let
+                    addFiles =
+                        Request.Sample.addFiles session.token model.sample_id files |> Http.toTask
+                in
+                { model | showAddFilesDialog = False, filesBusy = True } => Task.attempt AddFilesCompleted addFiles => NoOp
+            else
+                { model | showAddFilesDialog = False } => Cmd.none => NoOp
 
         AddFilesCompleted (Ok sample) ->
             let
                 newSample =
                     model.sample
             in
-            { model | sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
+            { model | filesBusy = False, sample = { newSample | sample_files = sample.sample_files } } => Cmd.none => NoOp
 
         AddFilesCompleted (Err error) ->
             let
                 _ = Debug.log "Error" (toString error) -- TODO show to user
             in
-            model => Cmd.none => NoOp
+            { model | filesBusy = False } => Cmd.none => NoOp
 
         RemoveFile file_id ->
             let
@@ -574,7 +576,7 @@ view model =
                 viewMap model.showMap
               else
                 text ""
-            , viewFiles model.sample.sample_files model.isEditable
+            , viewFiles model.sample.sample_files model.isEditable model.filesBusy
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
             , viewAttributes model model.isEditable
@@ -756,8 +758,8 @@ editInfoDialogConfig model isBusy =
     }
 
 
-viewFiles : List SampleFile2 -> Bool -> Html Msg
-viewFiles files isEditable =
+viewFiles : List SampleFile2 -> Bool -> Bool -> Html Msg
+viewFiles files isEditable isBusy =
     let
         numFiles =
             List.length files
@@ -780,9 +782,11 @@ viewFiles files isEditable =
         body =
             if numFiles == 0 then
                 text "None"
+            else if isBusy then
+                spinner
             else
                 table [ class "table table-condensed" ]
-                    [ tbody [] (cols :: (List.map (viewFile isEditable) files)) ]
+                    [ tbody [] (cols :: (List.sortBy .file files |> List.map (viewFile isEditable))) ]
 
         addButton =
             if isEditable then
