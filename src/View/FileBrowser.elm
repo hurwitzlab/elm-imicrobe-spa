@@ -55,6 +55,16 @@ type alias Config =
     { showNewFolderButton : Bool
     , showUploadFileButton : Bool
     , allowDirSelection : Bool
+    , allowMultiSelection : Bool
+    }
+
+
+defaultConfig : Config
+defaultConfig =
+    { showNewFolderButton = True
+    , showUploadFileButton = True
+    , allowDirSelection = True
+    , allowMultiSelection = False
     }
 
 
@@ -73,7 +83,7 @@ init session maybeConfig =
         config =
             case maybeConfig of
                 Nothing ->
-                    Config True True True
+                    defaultConfig
 
                 Just config ->
                     config
@@ -161,7 +171,10 @@ updateInternal session msg model =
                             if List.member path paths then
                                 Just (List.filter (\p -> p /= path) paths) -- unselect
                             else
-                                Just (path :: paths)
+                                if model.config.allowMultiSelection then
+                                    Just (path :: paths)
+                                else
+                                    Just (List.singleton path)
             in
             { model | selectedPaths = newPaths } => Cmd.none
 

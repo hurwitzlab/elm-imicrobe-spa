@@ -166,7 +166,7 @@ init session id =
                     , sampleCode = ""
                     , sampleType = ""
                     , dialogError = Nothing
-                    , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False))
+                    , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config False False False True))
                     , filesBusy = False
                     }
             )
