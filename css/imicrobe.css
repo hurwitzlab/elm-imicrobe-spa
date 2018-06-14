@@ -125,6 +125,10 @@ tr.padded > td {
     max-height: 50vh;
 }
 
+div.search-dropdown {
+    max-width: 30em;
+}
+
 
 /* Dialog styles
  *

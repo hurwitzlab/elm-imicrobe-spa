@@ -27,6 +27,7 @@ import Util exposing ((=>), truncate)
 import View.Cart as Cart
 import View.Sample
 import View.FilterButtonGroup
+import View.SearchableDropdown2
 
 
 
@@ -44,20 +45,14 @@ type alias Model =
     , params : Dict String String
     , selectedParams : List ( String, String )
     , optionValues : Dict String (List String)
-    , searchResults : WebData (List SearchResult)--(List (Dict String JsonType))
+    , searchResults : WebData (List SearchResult)
     , possibleOptionValues : Dict String (List JsonType)
     , restrictedParams : Dict String String
     , doSearch : Bool
+    , attrDropdownState : View.SearchableDropdown2.State
     , selectedRowId : Int
     , permFilterType : String
     }
-
-
---type JsonType
---    = StrType String
---    | IntType Int
---    | FloatType Float
---    | ValueType Decode.Value
 
 
 init : Session -> Task PageLoadError Model
@@ -93,6 +88,7 @@ init session =
                     , possibleOptionValues = Dict.empty
                     , restrictedParams = Dict.empty
                     , doSearch = False
+                    , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
                     , selectedRowId = 0
                     , permFilterType = "All"
                     }
@@ -119,7 +115,10 @@ type Msg
     | UpdatePossibleOptionValues (Result Http.Error (Dict String (List JsonType)))
 --    | Search
     | DelayedSearch Time
-    | UpdateSearchResults (WebData (List SearchResult))--(WebData (List (Dict String JsonType)))
+    | UpdateSearchResults (WebData (List SearchResult))
+    | SetAttrName String
+    | SelectAttr String String
+    | ToggleAttr
     | SelectRow Int
     | FilterPermType String
 
@@ -131,6 +130,10 @@ type ExternalMsg
 
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
+    let
+        dropdownState =
+            model.attrDropdownState
+    in
     case msg of
         CartMsg subMsg ->
             let
@@ -184,35 +187,27 @@ update session msg model =
             => NoOp
 
         RemoveOption opt ->
-            let
-                newModel =
-                    { model
-                        | selectedParams = rmParam model.selectedParams opt
-                        , optionValues = rmOptionValue model.optionValues opt
-                        , doSearch = True
-                    }
-            in
-            newModel => Cmd.none => NoOp
+            { model
+                | selectedParams = rmParam model.selectedParams opt
+                , optionValues = rmOptionValue model.optionValues opt
+                , doSearch = True
+            } => Cmd.none => NoOp
 
 --        Search ->
 --            { model | doSearch = False } => doSearch model => NoOp
 
         DelayedSearch time ->
-            case model.doSearch of
-                True ->
-                    case model.selectedParams of
-                        [] ->
-                            { model | doSearch = False, searchResults = NotAsked } => Cmd.none => NoOp
-
-                        _ ->
-                            let
-                                cmd =
-                                    Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
-                            in
-                            { model | doSearch = False } => cmd => NoOp
-
-                False ->
-                    model => Cmd.none => NoOp
+            if model.doSearch then
+                if model.selectedParams == [] then
+                    { model | doSearch = False, searchResults = NotAsked } => Cmd.none => NoOp
+                else
+                    let
+                        cmd =
+                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
+                    in
+                    { model | doSearch = False } => cmd => NoOp
+            else
+                model => Cmd.none => NoOp
 
         UpdateOptionValue opt val ->
             { model
@@ -274,6 +269,19 @@ update session msg model =
                             }
             in
             newModel => Cmd.none => NoOp
+
+        SetAttrName name ->
+            { model | attrDropdownState = { dropdownState | value = name } } => Cmd.none => NoOp
+
+        SelectAttr id name ->
+            let
+                ((newModel, newCmd), extMsg) =
+                    update session (AddParamOption id) model
+            in
+            { newModel | attrDropdownState = { dropdownState | value = "", show = False } } => newCmd => extMsg
+
+        ToggleAttr ->
+            { model | attrDropdownState = { dropdownState | show = not dropdownState.show } } => Cmd.none => NoOp
 
         SelectRow id ->
             let
@@ -489,8 +497,8 @@ showSearchResults model results =
             , div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
                     [ showTypes model.samples
-                    , searchView model
                     , filterView model.permFilterType
+                    , searchView model
                     ]
                 ]
             , body
@@ -606,8 +614,8 @@ showAll model =
             [ div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
                     [ showTypes model.samples
-                    , searchView model
                     , filterView model.permFilterType
+                    , searchView model
                     ]
                 ]
             ]
@@ -734,41 +742,49 @@ addSelectedParam model optionName =
 mkParamsSelect : Model -> Html Msg
 mkParamsSelect model =
     let
-        first =
-            Html.option [ selected True ] [ text "-- Select --" ]
+        attrDropdownState =
+            model.attrDropdownState
 
-        paramList =
-            case Dict.isEmpty model.restrictedParams of
-                True ->
-                    model.params
-
-                _ ->
-                    model.restrictedParams
+        params =
+            if Dict.isEmpty model.restrictedParams || model.selectedParams == [] then
+                model.params
+            else
+                model.restrictedParams
 
         alreadySelected =
             List.map Tuple.first model.selectedParams |> Set.fromList
 
-        -- mdb added 2/14/18 - list of curated metadata terms from Alise
---        curated = 
+     -- mdb added 2/14/18 - list of curated metadata terms from Alise
+--        curated =
 --            Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
 
-        showKeys =
-            Dict.keys paramList
-                |> List.filter (\v -> not (Set.member v alreadySelected))
---                |> List.filter (\v -> (Set.member v curated)) -- mdb added 2/14/18 - only show curated terms
-
-        rest =
-            List.map mkParamOption showKeys
+        filteredParams =
+            if attrDropdownState.value == "" then
+                params
+            else
+                params
+                    |> Dict.filter (\k v -> String.contains (String.toLower attrDropdownState.value) (String.toLower k)) -- filter on search string
+                    |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
+--                  |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
     in
     div [ class "padded", style [("padding-left","1em")] ]
-        [ text "Add: "
-        , select [ onInput AddParamOption ] (first :: rest)
-        ]
+        [ View.SearchableDropdown2.view attrDropdownConfig { attrDropdownState | results = attrDropdownInit filteredParams } ]
 
 
-mkParamOption : String -> Html msg
-mkParamOption s =
-    Html.option [ value s ] [ text (prettyName s) ]
+attrDropdownConfig : View.SearchableDropdown2.Config Msg Msg Msg
+attrDropdownConfig =
+    { placeholder = "Search for an attribute to add "
+    , autofocus = False
+    , inputMsg = SetAttrName
+    , selectMsg = SelectAttr
+    , toggleMsg = ToggleAttr
+    , className = "search-dropdown"
+    }
+
+
+attrDropdownInit : Dict String String -> List (String, String)
+attrDropdownInit params =
+    params |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
 
 
 prettyName : String -> String
@@ -806,25 +822,15 @@ prettyName s =
 mkOptionTable : Model -> Html Msg
 mkOptionTable model =
     let
-        options =
-            model.selectedParams
-
         rows =
-            List.map (mkOptionRow model.possibleOptionValues) options
-
---        searchButtonRow =
---            [ tr []
---                [ td [ colspan 4, style [ ( "text-align", "center" ) ] ]
---                    [ button [ class "padded btn btn-primary", onClick Search ] [ text "Search" ] ]
---                ]
---            ]
+            List.map (mkOptionRow model.possibleOptionValues) model.selectedParams
     in
     case rows of
         [] ->
             text ""
 
         _ ->
-            table [ style [ ( "width", "100%" ), ( "margin-left", "2em" ) ] ] rows
+            table [ style [ ("width", "95%"), ("margin-left", "2em"), ("padding", "4px"), ("background-color", "#f0f0f0") ] ] rows
 
 
 unpackJsonType : JsonType -> String
@@ -905,7 +911,7 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
             [ td [] [ button [ class "btn btn-default btn-sm", onClick (RemoveOption optionName) ] [ text "Remove" ] ]
             ]
     in
-    tr [ class "padded", style [("padding", "10px")] ] (title ++ el ++ buttons)
+    tr [ class "padded" ] (title ++ el ++ buttons)
 
 
 maxMinForOpt : String -> Dict String (List JsonType) -> (String, String)
@@ -977,7 +983,7 @@ rmOptionValue optionValues optToRemove =
 
 mkRestrictedParams :
     Dict String String
-    -> WebData (List SearchResult)--(List (Dict String JsonType))
+    -> WebData (List SearchResult)
     -> Dict String String
 mkRestrictedParams curParams searchResults =
     case searchResults of
