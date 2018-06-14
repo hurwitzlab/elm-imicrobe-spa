@@ -791,7 +791,7 @@ viewFiles files isEditable isBusy =
         addButton =
             if isEditable then
                 button [ class "btn btn-default btn-sm pull-right", onClick OpenAddFilesDialog ]
-                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add File(s)"
+                    [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Files"
                     ]
             else
                 text ""
