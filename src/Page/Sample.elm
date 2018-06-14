@@ -420,10 +420,13 @@ update session msg model =
 
         AddFiles files ->
             let
-                addFiles =
-                    Request.Sample.addFiles session.token model.sample_id files |> Http.toTask
+                cmd =
+                    if files /= [] then
+                        Request.Sample.addFiles session.token model.sample_id files |> Http.toTask |> Task.attempt AddFilesCompleted
+                    else
+                        Cmd.none
             in
-            { model | showAddFilesDialog = False } => Task.attempt AddFilesCompleted addFiles => NoOp
+            { model | showAddFilesDialog = False } => cmd => NoOp
 
         AddFilesCompleted (Ok sample) ->
             let

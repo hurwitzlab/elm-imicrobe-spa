@@ -159,7 +159,7 @@ updateInternal session msg model =
 
                         Just paths ->
                             if List.member path paths then
-                                Nothing -- unselect
+                                Just (List.filter (\p -> p /= path) paths) -- unselect
                             else
                                 Just (path :: paths)
             in
