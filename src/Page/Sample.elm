@@ -1071,7 +1071,7 @@ viewAttributes model isEditable =
                 span [ class "badge" ] [ text numStr ]
 
         searchBar =
-            if acceptableAttributes == [] then
+            if model.sample.sample_attrs == [] then
                 text ""
             else
                 small [] [ input [ placeholder "Search", onInput SetAttrQuery ] [] ]
