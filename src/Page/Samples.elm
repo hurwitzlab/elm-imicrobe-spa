@@ -659,15 +659,13 @@ showTypes samples =
                 |> List.sort
                 |> List.Extra.unique
     in
-    case List.length sampleTypes of
-        0 ->
-            text ""
-
-        _ ->
-            fieldset []
-                (span [ class "bold" ] [ text "Types: " ]
-                    :: List.map mkCheckbox sampleTypes
-                )
+    if List.length sampleTypes == 0 then
+        text ""
+    else
+        fieldset []
+            (span [ class "bold" ] [ text "Types: " ]
+                :: List.map mkCheckbox sampleTypes
+            )
 
 
 mkCheckbox : String -> Html Msg
@@ -823,7 +821,7 @@ mkOptionTable : Model -> Html Msg
 mkOptionTable model =
     let
         rows =
-            List.map (mkOptionRow model.possibleOptionValues) model.selectedParams
+            List.map (mkOptionRow model.optionValues model.possibleOptionValues) model.selectedParams
     in
     case rows of
         [] ->
@@ -849,19 +847,14 @@ unpackJsonType v =
             toString x
 
 
-mkOptionRow : Dict String (List JsonType) -> ( String, String ) -> Html Msg
-mkOptionRow possibleOptionValues ( optionName, dataType ) =
+mkOptionRow : Dict String (List String) -> Dict String (List JsonType) -> ( String, String ) -> Html Msg
+mkOptionRow optionValues possibleOptionValues ( optionName, dataType ) =
     let
         title =
             [ th [] [ text (prettyName optionName) ] ]
 
         vals =
-            case Dict.get optionName possibleOptionValues of
-                Just v ->
-                    v
-
-                _ ->
-                    []
+            Dict.get optionName possibleOptionValues |> Maybe.withDefault []
 
         (minVal, maxVal) =
             maxMinForOpt optionName possibleOptionValues
@@ -871,17 +864,15 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
                 mkOption s =
                     Html.option [ value s ] [ text s ]
             in
-            case List.length vals > 1000 of
-                True ->
-                    input
-                        [ onInput (UpdateOptionValue optionName)
-                        , type_ "text"
-                        , placeholder dataType
-                        ]
-                        []
-
-                False ->
-                    mkMultiSelect optionName vals
+            if List.length vals > 1000 then
+                input
+                    [ onInput (UpdateOptionValue optionName)
+                    , type_ "text"
+                    , placeholder dataType
+                    ]
+                    []
+            else
+                mkMultiSelect optionName vals
 
         minName =
             "min__" ++ optionName
@@ -889,16 +880,22 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
         maxName =
             "max__" ++ optionName
 
+        curMinVal =
+            Dict.get minName optionValues |> Maybe.withDefault [] |> List.head |> Maybe.withDefault ""
+
+        curMaxVal =
+            Dict.get maxName optionValues |> Maybe.withDefault [] |> List.head |> Maybe.withDefault ""
+
         el =
             case dataType of
                 "number" ->
                     [ td [ onInput (UpdateOptionValue minName) ]
                         [ text "Min: "
-                        , input [ type_ "text", name minName, placeholder minVal ] []
+                        , input [ type_ "text", name minName, placeholder minVal, value (if curMinVal == minVal then "" else curMinVal) ] []
                         ]
                     , td [ onInput (UpdateOptionValue maxName) ]
                         [ text "Max: "
-                        , input [ type_ "text", name maxName, placeholder maxVal ] []
+                        , input [ type_ "text", name maxName, placeholder maxVal, value (if curMaxVal == maxVal then "" else curMaxVal) ] []
                         ]
                     ]
 
@@ -918,12 +915,7 @@ maxMinForOpt : String -> Dict String (List JsonType) -> (String, String)
 maxMinForOpt optionName possibleOptionValues =
     let
         vals =
-            case Dict.get optionName possibleOptionValues of
-                Just v ->
-                    v
-
-                _ ->
-                    []
+            Dict.get optionName possibleOptionValues |> Maybe.withDefault []
 
         minVal =
             case List.take 1 vals of
