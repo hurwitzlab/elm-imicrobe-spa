@@ -959,6 +959,7 @@ attrTableConfig isEditable =
             [ attrTypeColumn
             , attrAliasColumn
             , attrValueColumn
+            , attrUnitColumn
             ]
 
         columns =
@@ -1010,6 +1011,15 @@ attrValueColumn =
         { name = "Value"
         , viewData = .attr_value
         , sorter = Table.increasingOrDecreasingBy .attr_value
+        }
+
+
+attrUnitColumn : Table.Column Sample.Attribute Msg
+attrUnitColumn =
+    Table.customColumn
+        { name = "Unit"
+        , viewData = .unit
+        , sorter = Table.increasingOrDecreasingBy .unit
         }
 
 

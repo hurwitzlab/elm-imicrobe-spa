@@ -41,7 +41,7 @@ type alias Attribute =
     , sample_attr_type_id : Int
     , sample_id : Int
     , attr_value : String
-    , unit : Maybe String
+    , unit : String
     , sample_attr_type : AttributeType
     }
 
@@ -363,7 +363,7 @@ decoderAttribute =
         |> required "sample_attr_type_id" Decode.int
         |> required "sample_id" Decode.int
         |> required "attr_value" Decode.string
-        |> optional "unit" (Decode.nullable Decode.string) Nothing
+        |> optional "unit" Decode.string ""
         |> required "sample_attr_type" decoderAttributeType
 
 
