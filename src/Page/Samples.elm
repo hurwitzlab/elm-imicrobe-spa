@@ -23,7 +23,7 @@ import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Time exposing (Time)
-import Util exposing ((=>), truncate)
+import Util exposing ((=>), truncate, capitalize)
 import View.Cart as Cart
 import View.Sample
 import View.FilterButtonGroup
@@ -356,28 +356,6 @@ view model =
                     showSearchResults model data
 
 
-searchView : Model -> Html Msg
-searchView model =
-    div []
-        [ div [ class "bold" ] [ text "Attributes:" ]
-        , div [] [ mkOptionTable model ]
-        , div [] [ mkParamsSelect model ]
-        ]
-
-
-filterView : String -> Html Msg
-filterView permFilterType =
-    div []
-        [ span [ class "bold" ] [ text "Access: " ]
-        , View.FilterButtonGroup.view permissionFilterConfig permFilterType
-        ]
-
-
-permissionFilterConfig : View.FilterButtonGroup.Config Msg
-permissionFilterConfig =
-    View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
-
-
 showSearchResults : Model -> List SearchResult -> Html Msg
 showSearchResults model results =
     let
@@ -438,12 +416,10 @@ showSearchResults model results =
                 |> List.map (.attributes >> mkResultRow model.selectedRowId model.cart model.selectedParams)
 
         filterOnType result =
-            case List.length model.sampleTypeRestriction of
-                0 ->
-                    True
-
-                _ ->
-                    List.member (getVal "specimen__sample_type" result.attributes) model.sampleTypeRestriction
+            if model.sampleTypeRestriction == [] then
+                True
+            else
+                List.member (getVal "specimen__sample_type" result.attributes |> capitalize) model.sampleTypeRestriction
 
         sampleIdFromResult result =
             case String.toInt (getVal "specimen__sample_id" result) of
@@ -504,8 +480,8 @@ showSearchResults model results =
                 ]
             , div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
-                    [ showTypes model.samples
-                    , filterView model.permFilterType
+                    [ viewTypes model.samples
+                    , viewAccessFilter model.permFilterType
                     , searchView model
                     ]
                 ]
@@ -621,8 +597,8 @@ showAll model =
         , div [ class "row" ]
             [ div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
-                    [ showTypes model.samples
-                    , filterView model.permFilterType
+                    [ viewTypes model.samples
+                    , viewAccessFilter model.permFilterType
                     , searchView model
                     ]
                 ]
@@ -658,12 +634,13 @@ noResultsLoggedIn userId =
             ]
 
 
-showTypes : List Sample -> Html Msg
-showTypes samples =
+viewTypes : List Sample -> Html Msg
+viewTypes samples =
     let
         sampleTypes =
             List.map (\x -> x.sample_type) samples
                 |> List.filter ((/=) "")
+                |> List.map capitalize
                 |> List.sort
                 |> List.Extra.unique
     in
@@ -682,6 +659,28 @@ mkCheckbox val =
         [ input [ type_ "checkbox", onCheck (SelectType val) ] []
         , text (" " ++ val)
         ]
+
+
+searchView : Model -> Html Msg
+searchView model =
+    div []
+        [ div [ class "bold" ] [ text "Attributes:" ]
+        , div [] [ mkOptionTable model ]
+        , div [] [ mkParamsSelect model ]
+        ]
+
+
+viewAccessFilter : String -> Html Msg
+viewAccessFilter permFilterType =
+    div []
+        [ span [ class "bold" ] [ text "Access: " ]
+        , View.FilterButtonGroup.view permissionFilterConfig permFilterType
+        ]
+
+
+permissionFilterConfig : View.FilterButtonGroup.Config Msg
+permissionFilterConfig =
+    View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
 
 
 nameColumn : Table.Column Sample Msg
