@@ -140,10 +140,6 @@ type alias Sample =
     , sample_name : String
     , sample_type : String
     , sample_description : String
-    , comments : String
-    , taxon_id : String
-    , latitude : String
-    , longitude : String
     , url : String
     , project : Project
     , investigators : List Investigator
@@ -441,10 +437,6 @@ decoder =
         |> required "sample_name" Decode.string
         |> optional "sample_type" Decode.string "NA"
         |> optional "sample_description" Decode.string ""
-        |> optional "comments" Decode.string ""
-        |> optional "taxon_id" Decode.string ""
-        |> optional "latitude" Decode.string ""
-        |> optional "longitude" Decode.string ""
         |> optional "url" Decode.string "NA"
         |> required "project" decoderProject
         |> optional "investigators" (Decode.list decoderInv) []
@@ -673,10 +665,6 @@ encode sample =
         , "sample_name" => Encode.string sample.sample_name
         , "sample_type" => Encode.string sample.sample_type
         , "sample_description" => Encode.string sample.sample_description
-        , "comments" => Encode.string sample.comments
-        , "taxon_id" => Encode.string sample.taxon_id
-        , "latitude" => Encode.string sample.latitude
-        , "longitude" => Encode.string sample.longitude
         , "url" => Encode.string sample.url
 --        , "project" => Project.encode sample.project
         ]
