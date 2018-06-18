@@ -4,11 +4,11 @@ import Data.Project exposing (Project, Domain, Investigator)
 import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick)
+import Html.Events exposing (onInput, onClick, onCheck)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
-import List
+import List.Extra
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Route
@@ -17,7 +17,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Project
 import View.FilterButtonGroup
-import Util exposing ((=>))
+import Util exposing ((=>), capitalize)
 
 
 
@@ -32,6 +32,7 @@ type alias Model =
     , query : String
     , selectedRowId : Int
     , permFilterType : String
+    , typeRestriction : List String
     }
 
 
@@ -55,6 +56,7 @@ init session =
                     , query = ""
                     , selectedRowId = 0
                     , permFilterType = "All"
+                    , typeRestriction = []
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -69,6 +71,7 @@ type Msg
     | SetTableState Table.State
     | SelectRow Int
     | FilterPermType String
+    | SelectType String Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -92,6 +95,21 @@ update msg model =
 
         FilterPermType filterType ->
             { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none
+
+        SelectType value bool ->
+            let
+                curOptions =
+                    model.typeRestriction
+
+                newOpts =
+                    case bool of
+                        True ->
+                            List.sort (value :: curOptions)
+
+                        False ->
+                            List.filter ((/=) value) curOptions
+            in
+            { model | typeRestriction = newOpts } => Cmd.none
 
 
 tableConfig : Int -> Table.Config Project Msg
@@ -163,25 +181,20 @@ nameLink project =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         checkPerms project =
-            case model.permFilterType of
-                "All" ->
-                    True
+            if model.permFilterType == "All" then
+                True
+            else
+                case model.user_id of
+                    Nothing ->
+                        False
 
-                _ -> -- "Mine"
-                    case model.user_id of
-                        Nothing ->
-                            False
-
-                        Just id ->
-                            (List.map .user_id project.users |> List.member id) ||
-                            (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
+                    Just id ->
+                        (List.map .user_id project.users |> List.member id) ||
+                        (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
 
 
         searchFilter project =
@@ -189,11 +202,17 @@ view model =
                 || (String.contains lowerQuery (String.toLower project.project_type))
                 || (List.map (String.contains lowerQuery << .domain_name) project.domains |> List.foldr (||) False))
 
-        matchingProjects =
-            List.filter searchFilter model.projects
+        filterOnType result =
+            if model.typeRestriction == [] then
+                True
+            else
+                List.member (result.project_type |> capitalize) model.typeRestriction
 
         acceptableProjects =
-            List.filter checkPerms matchingProjects
+            model.projects
+            |> List.filter searchFilter
+            |> List.filter filterOnType
+            |> List.filter checkPerms
 
         numShowing =
             let
@@ -206,16 +225,11 @@ view model =
                 numStr =
                     count |> toFloat |> format myLocale
             in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-
-        permissionFilterConfig =
-            View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
+            if count == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text numStr ]
 
         (infoPanel, sizeClass) =
             case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
@@ -253,13 +267,16 @@ view model =
                     , small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
-                , View.FilterButtonGroup.view permissionFilterConfig model.permFilterType
-                , br [] []
-                , br [] []
+                , div [ class "panel panel-default" ]
+                    [ div [ class "panel-body" ]
+                        [ viewTypes model.projects
+                        , viewAccessFilter model.permFilterType
+                        ]
+                    ]
                 , div [ class "container" ]
                     [ div [ class "row" ]
                         [ div [ class sizeClass ]
-                            [ if query /= "" && (matchingProjects == [] || acceptableProjects == []) then
+                            [ if model.projects == [] then
                                 text "None"
                               else if acceptableProjects == [] then
                                 noProjects
@@ -272,3 +289,43 @@ view model =
                 ]
            ]
         ]
+
+
+viewTypes : List Project -> Html Msg
+viewTypes projects =
+    let
+        types =
+            List.map (\p -> p.project_type) projects
+                |> List.filter ((/=) "")
+                |> List.map capitalize
+                |> List.sort
+                |> List.Extra.unique
+    in
+    if List.length types == 0 then
+        text ""
+    else
+        fieldset []
+            (span [ class "bold" ] [ text "Types: " ]
+                :: List.map mkCheckbox types
+            )
+
+
+mkCheckbox : String -> Html Msg
+mkCheckbox val =
+    span [ style [("padding-left", "1em")]]
+        [ input [ type_ "checkbox", onCheck (SelectType val) ] []
+        , text (" " ++ val)
+        ]
+
+
+viewAccessFilter : String -> Html Msg
+viewAccessFilter permFilterType =
+    div []
+        [ span [ class "bold" ] [ text "Access: " ]
+        , View.FilterButtonGroup.view permissionFilterConfig permFilterType
+        ]
+
+
+permissionFilterConfig : View.FilterButtonGroup.Config Msg
+permissionFilterConfig =
+    View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
