@@ -408,20 +408,6 @@ showSearchResults model results =
         fieldNames =
             List.map Tuple.first model.selectedParams
 
-        sampleIdFromResult result =
-            case String.toInt (getVal "specimen__sample_id" result) of
-                Ok sampleId ->
-                    sampleId
-
-                Err _ ->
-                    0
-
-        sampleIds =
-            List.map (.attributes >> sampleIdFromResult) results
-
-        cartTh =
-            th [ class "nowrap" ] [ text "Cart ", br [] [], Cart.addAllToCartButton model.cart sampleIds |> Html.map CartMsg ]
-
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__project_name" :: "specimen__sample_name" :: "specimen__sample_type" :: fieldNames)) ++ [cartTh]) ]
 
@@ -458,6 +444,28 @@ showSearchResults model results =
 
                 _ ->
                     List.member (getVal "specimen__sample_type" result.attributes) model.sampleTypeRestriction
+
+        sampleIdFromResult result =
+            case String.toInt (getVal "specimen__sample_id" result) of
+                Ok sampleId ->
+                    sampleId
+
+                Err _ ->
+                    0
+
+        addAllBtn =
+            acceptableSamples
+                |> List.map (.attributes >> sampleIdFromResult)
+                |> List.filter (\id -> id /= 0)
+                |> Cart.addAllToCartButton model.cart
+                |> Html.map CartMsg
+
+        cartTh =
+            th [ class "nowrap" ]
+                [ text "Cart "
+                , br [] []
+                , addAllBtn
+                ]
 
         (infoPanel, sizeClass) =
             case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
