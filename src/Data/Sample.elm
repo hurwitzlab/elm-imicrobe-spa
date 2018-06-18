@@ -67,18 +67,8 @@ type alias Project =
     { project_id : Int
     , project_code : String
     , project_name : String
-    , pi : String
-    , institution : String
     , project_type : String
     , description : String
-    , url : String
-    , email : String
-    , read_file : String
-    , meta_file : String
-    , assembly_file : String
-    , peptide_file : String
-    , read_pep_file : String
-    , nt_file : String
     , users : List User
     , project_groups : List ProjectGroup
     , private : Int
@@ -160,10 +150,6 @@ type alias SampleFile =
     , sample_id : Int
     , sample_file_type_id : Int
     , file : String
-    , num_seqs : Int
-    , num_bp : Int
-    , avg_len : Int
-    , pct_gc : Float
     , sample_file_type : SampleFileType
     , sample : SampleFileSample
     }
@@ -175,10 +161,6 @@ type alias SampleFile2 =
     , sample_id : Int
     , sample_file_type_id : Int
     , file : String
-    , num_seqs : Int
-    , num_bp : Int
-    , avg_len : Int
-    , pct_gc : Float
     , sample_file_type : SampleFileType
     }
 
@@ -388,18 +370,8 @@ decoderProject =
         |> required "project_id" Decode.int
         |> optional "project_code" Decode.string "NA"
         |> required "project_name" Decode.string
-        |> optional "pi" Decode.string "NA"
-        |> optional "institution" Decode.string "NA"
         |> optional "project_type" Decode.string "NA"
         |> optional "description" Decode.string "NA"
-        |> optional "url" Decode.string "NA"
-        |> optional "email" Decode.string "NA"
-        |> optional "read_file" Decode.string "NA"
-        |> optional "meta_file" Decode.string "NA"
-        |> optional "assembly_file" Decode.string "NA"
-        |> optional "peptide_file" Decode.string "NA"
-        |> optional "read_pep_file" Decode.string "NA"
-        |> optional "nt_file" Decode.string "NA"
         |> optional "users" (Decode.list decoderUser) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "private" Decode.int 0
@@ -458,10 +430,6 @@ decoderSampleFile =
         |> required "sample_id" Decode.int
         |> optional "sample_file_type_id" Decode.int 0
         |> required "file" Decode.string
-        |> optional "num_seqs" Decode.int 0
-        |> optional "num_bp" Decode.int 0
-        |> optional "avg_len" Decode.int 0
-        |> optional "pct_gc" Decode.float 0
         |> required "sample_file_type" decoderSampleFileType
         |> required "sample" decoderSampleFileSample
 
@@ -473,10 +441,6 @@ decoderSampleFile2 =
         |> required "sample_id" Decode.int
         |> optional "sample_file_type_id" Decode.int 0
         |> required "file" Decode.string
-        |> optional "num_seqs" Decode.int 0
-        |> optional "num_bp" Decode.int 0
-        |> optional "avg_len" Decode.int 0
-        |> optional "pct_gc" Decode.float 0
         |> required "sample_file_type" decoderSampleFileType
 
 
