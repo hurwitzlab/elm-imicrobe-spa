@@ -26,6 +26,7 @@ import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDi
 import View.Spinner exposing (spinner)
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
 import View.FileBrowser as FileBrowser
+import View.Investigator
 
 
 
@@ -650,12 +651,6 @@ viewSample sample isEditable =
         numFiles =
             List.length sample.sample_files
 
-        ontologies =
-            if sample.ontologies == [] then
-                "none"
-            else
-                List.map (\o -> o.ontology_acc ++ o.label) sample.ontologies |> String.join ", "
-
         editButton =
             if isEditable then
                 button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
@@ -682,6 +677,10 @@ viewSample sample isEditable =
         , tr []
             [ th [] [ text "Sample Type" ]
             , td [] [ text sample.sample_type ]
+            ]
+        , tr []
+            [ th [] [ text "Investigators" ]
+            , td [] (View.Investigator.viewList sample.investigators)
             ]
         , tr []
             [ td [] [ editButton ]

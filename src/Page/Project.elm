@@ -31,6 +31,7 @@ import View.Dialog exposing (confirmationDialogConfig, errorDialogConfig)
 import View.SearchableDropdown
 import View.TagsDropdown
 import View.Tags
+import View.Investigator
 import Util exposing ((=>), capitalize, pluralize)
 
 
@@ -879,7 +880,7 @@ viewProject project isEditable =
             ]
         , tr []
             [ th [] [ text "Investigators" ]
-            , td [] (viewInvestigators project.investigators)
+            , td [] (View.Investigator.viewList project.investigators)
             ]
 --        , tr []
 --            [ th [] [ text "Groups" ]
@@ -897,22 +898,6 @@ viewProject project isEditable =
             [ td [] [ editButton ]
             ]
         ]
-
-
-viewInvestigators : List Investigator -> List (Html msg)
-viewInvestigators investigators =
-    case List.length investigators of
-        0 ->
-            [ text "None" ]
-
-        _ ->
-            List.sortBy .investigator_name investigators |> List.map viewInvestigator |> List.intersperse (text ", ")
-
-
-viewInvestigator : Investigator -> Html msg
-viewInvestigator investigator =
-    a [ Route.href (Route.Investigator investigator.investigator_id) ]
-        [ text investigator.investigator_name ]
 
 
 viewDomains : List Domain -> List (Html msg)
