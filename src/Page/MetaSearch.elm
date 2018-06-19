@@ -588,7 +588,7 @@ resultsTable cart fieldList query results =
             List.map Tuple.first fieldList
 
         cartTh =
-            th [ class "nowrap" ] [ Cart.addAllToCartButton cart sampleIds |> Html.map CartMsg ]
+            th [ class "nowrap" ] [ Cart.addAllToCartButton cart Nothing sampleIds |> Html.map CartMsg ]
 
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__sample_name" :: fieldNames)) ++ [cartTh]) ]

@@ -1,10 +1,12 @@
-module Page.Projects exposing (Model, Msg, init, update, view)
+module Page.Projects exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Project exposing (Project, Domain, Investigator)
 import Data.Session exposing (Session)
+import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick, onCheck)
+import Html.Events exposing (onInput, onClick, onDoubleClick, onCheck)
+import Dialog
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Http
@@ -17,6 +19,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Project
 import View.FilterButtonGroup
+import View.Cart as Cart
 import Util exposing ((=>), capitalize)
 
 
@@ -27,12 +30,14 @@ import Util exposing ((=>), capitalize)
 type alias Model =
     { pageTitle : String
     , user_id : Maybe Int
+    , cart : Cart.Model
     , projects : List Project
     , tableState : Table.State
     , query : String
     , selectedRowId : Int
     , permFilterType : String
     , typeRestriction : List String
+    , showInfoDialog : Bool
     }
 
 
@@ -51,12 +56,14 @@ init session =
                 Task.succeed
                     { pageTitle = "Projects"
                     , user_id = user_id
+                    , cart = (Cart.init session.cart Cart.Editable)
                     , projects = projects
                     , tableState = Table.initialSort "Name"
                     , query = ""
                     , selectedRowId = 0
                     , permFilterType = "All"
                     , typeRestriction = []
+                    , showInfoDialog = False
                     }
             )
         |> Task.mapError Error.handleLoadError
@@ -67,34 +74,49 @@ init session =
 
 
 type Msg
-    = SetQuery String
+    = CartMsg Cart.Msg
+    | SetSession Session
+    | SetQuery String
     | SetTableState Table.State
-    | SelectRow Int
     | FilterPermType String
     | SelectType String Bool
+    | OpenInfoDialog Int
+    | CloseInfoDialog
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+type ExternalMsg
+    = NoOp
+    | SetCart Data.Cart.Cart
+
+
+update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update session msg model =
     case msg of
+        CartMsg subMsg ->
+            let
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
+        SetSession newSession ->
+            let
+                newCart =
+                    Cart.init newSession.cart Cart.Editable
+
+                (subModel, cmd) =
+                    Cart.update newSession (Cart.SetSession newSession) model.cart
+            in
+            { model | cart = newCart } => Cmd.none => NoOp
+
         SetQuery newQuery ->
-            { model | query = newQuery } => Cmd.none
+            { model | query = newQuery } => Cmd.none => NoOp
 
         SetTableState newState ->
-            { model | tableState = newState } => Cmd.none
-
-        SelectRow id ->
-            let
-                selectedRowId =
-                    if model.selectedRowId == id then
-                        0 -- unselect
-                    else
-                         id
-            in
-            { model | selectedRowId = selectedRowId } => Cmd.none
+            { model | tableState = newState } => Cmd.none => NoOp
 
         FilterPermType filterType ->
-            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
 
         SelectType value bool ->
             let
@@ -109,70 +131,13 @@ update msg model =
                         False ->
                             List.filter ((/=) value) curOptions
             in
-            { model | typeRestriction = newOpts } => Cmd.none
+            { model | typeRestriction = newOpts } => Cmd.none => NoOp
 
+        OpenInfoDialog id ->
+            { model | showInfoDialog = True, selectedRowId = id } => Cmd.none => NoOp
 
-tableConfig : Int -> Table.Config Project Msg
-tableConfig selectedRowId =
-    Table.customConfig
-        { toId = .project_name
-        , toMsg = SetTableState
-        , columns =
-            [ nameColumn
-            , Table.stringColumn "Type" (.project_type)
-            , domainColumn
-            ]
-        , customizations =
-            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
-        }
-
-
-toTableAttrs : List (Attribute Msg)
-toTableAttrs =
-    [ attribute "class" "table table-hover"
-    ]
-
-
-toRowAttrs : Int -> Project -> List (Attribute Msg)
-toRowAttrs selectedRowId data =
-    onClick (SelectRow data.project_id)
-    :: (if (data.project_id == selectedRowId) then
-            [ attribute "class" "active" ]
-         else
-            []
-        )
-
-
-domainColumn : Table.Column Project Msg
-domainColumn =
-    Table.customColumn
-        { name = "Domains"
-        , viewData = domainsToString << .domains
-        , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
-        }
-
-
-domainsToString : List Domain -> String
-domainsToString domains =
-    join ", " (List.map .domain_name domains)
-
-
-nameColumn : Table.Column Project Msg
-nameColumn =
-    Table.veryCustomColumn
-        { name = "Name"
-        , viewData = nameLink
-        , sorter = Table.unsortable
-        }
-
-
-nameLink : Project -> Table.HtmlDetails Msg
-nameLink project =
-    Table.HtmlDetails []
-        [ a [ Route.href (Route.Project project.project_id) ]
-            [ text project.project_name ]
-        ]
-
+        CloseInfoDialog ->
+            { model | showInfoDialog = False } => Cmd.none => NoOp
 
 
 -- VIEW --
@@ -231,14 +196,6 @@ view model =
                 span [ class "badge" ]
                     [ text numStr ]
 
-        (infoPanel, sizeClass) =
-            case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
-                [] ->
-                    (text "", "")
-
-                project :: _ ->
-                    (View.Project.viewInfo project, "col-md-9")
-
         noProjects =
             if model.user_id /= Nothing then
                 div [ class "well" ]
@@ -275,19 +232,22 @@ view model =
                     ]
                 , div [ class "container" ]
                     [ div [ class "row" ]
-                        [ div [ class sizeClass ]
-                            [ if model.projects == [] then
-                                text "None"
-                              else if acceptableProjects == [] then
-                                noProjects
-                              else
-                                Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects
-                            ]
-                        , infoPanel
+                        [ if model.projects == [] then
+                            text "None"
+                          else if acceptableProjects == [] then
+                            noProjects
+                          else
+                            Table.view (tableConfig model.cart model.selectedRowId) model.tableState acceptableProjects
                         ]
                     ]
                 ]
            ]
+           , Dialog.view
+               (if model.showInfoDialog then
+                   Just (infoDialogConfig model)
+                else
+                    Nothing
+               )
         ]
 
 
@@ -329,3 +289,103 @@ viewAccessFilter permFilterType =
 permissionFilterConfig : View.FilterButtonGroup.Config Msg
 permissionFilterConfig =
     View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
+
+
+tableConfig : Cart.Model -> Int -> Table.Config Project Msg
+tableConfig cart selectedRowId =
+    Table.customConfig
+        { toId = .project_name
+        , toMsg = SetTableState
+        , columns =
+            [ nameColumn
+            , Table.stringColumn "Type" (.project_type)
+            , domainColumn
+            , addToCartColumn cart
+            ]
+        , customizations =
+            { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
+        }
+
+
+toTableAttrs : List (Attribute Msg)
+toTableAttrs =
+    [ attribute "class" "table table-hover" ]
+
+
+toRowAttrs : Int -> Project -> List (Attribute Msg)
+toRowAttrs selectedRowId data =
+    [ onDoubleClick (OpenInfoDialog data.project_id) ]
+
+
+domainColumn : Table.Column Project Msg
+domainColumn =
+    Table.customColumn
+        { name = "Domains"
+        , viewData = domainsToString << .domains
+        , sorter = Table.increasingOrDecreasingBy (domainsToString << .domains)
+        }
+
+
+domainsToString : List Domain -> String
+domainsToString domains =
+    join ", " (List.map .domain_name domains)
+
+
+nameColumn : Table.Column Project Msg
+nameColumn =
+    Table.veryCustomColumn
+        { name = "Name"
+        , viewData = nameLink
+        , sorter = Table.unsortable
+        }
+
+
+nameLink : Project -> Table.HtmlDetails Msg
+nameLink project =
+    Table.HtmlDetails []
+        [ a [ Route.href (Route.Project project.project_id) ]
+            [ text project.project_name ]
+        ]
+
+
+addToCartColumn : Cart.Model -> Table.Column Project Msg
+addToCartColumn cart =
+    Table.veryCustomColumn
+        { name = "Cart"
+        , viewData = (\project -> addToCartButton cart project)
+        , sorter = Table.unsortable
+        }
+
+
+addToCartButton : Cart.Model -> Project -> Table.HtmlDetails Msg
+addToCartButton cart project =
+    let
+        sampleIds =
+            List.map .sample_id project.samples
+    in
+    Table.HtmlDetails []
+        [ Cart.addAllToCartButton cart (Just ("Add Samples", "Remove Samples")) sampleIds |> Html.map CartMsg
+        ]
+
+
+infoDialogConfig : Model -> Dialog.Config Msg
+infoDialogConfig model =
+    let
+        content =
+            case List.filter (\p -> p.project_id == model.selectedRowId) model.projects of
+                [] ->
+                    text ""
+
+                project :: _ ->
+                    div [ style [ ("margin-left","2em"), ("margin-right","2em") ] ]
+                        [ View.Project.viewInfo project ]
+
+        footer =
+            button [ class "btn btn-default", onClick CloseInfoDialog ] [ text "Close" ]
+    in
+    { closeMessage = Just CloseInfoDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Project Info" ])
+    , body = Just content
+    , footer = Just footer
+    }

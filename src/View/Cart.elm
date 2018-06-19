@@ -277,18 +277,26 @@ addToCartButton2 model id =
             button [ class "btn btn-default", onClick (AddToCart id) ] [ icon, text " Add to Cart" ]
 
 
-addAllToCartButton : Model -> List Int -> Html Msg
-addAllToCartButton model ids =
+addAllToCartButton : Model -> Maybe (String, String) -> List Int -> Html Msg
+addAllToCartButton model optionalLabels ids =
     let
+        (addLbl, removeLbl) =
+            case optionalLabels of
+                Just labels ->
+                    labels
+
+                Nothing ->
+                    ( "Add All", "Remove All" )
+
         intersection =
             Set.intersect (Set.fromList ids) model.cart.contents |> Set.toList
     in
     case intersection of
         [] ->
-            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text "Add All" ]
+            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text addLbl ]
 
         _ ->
-            button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text "Remove all" ]
+            button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text removeLbl ]
 
 
 samplesInCart : Cart -> List Sample -> List Sample

@@ -7,7 +7,8 @@ import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onCheck, onInput, onClick)
+import Html.Events exposing (onCheck, onInput, onClick, onDoubleClick)
+import Dialog
 import MultiSelect as Multi
 import Http
 import List exposing (map)
@@ -52,6 +53,7 @@ type alias Model =
     , attrDropdownState : View.SearchableDropdown2.State
     , selectedRowId : Int
     , permFilterType : String
+    , showInfoDialog : Bool
     }
 
 
@@ -91,6 +93,7 @@ init session =
                     , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
                     , selectedRowId = 0
                     , permFilterType = "All"
+                    , showInfoDialog = False
                     }
                 )
             )
@@ -119,8 +122,9 @@ type Msg
     | SetAttrName String
     | SelectAttr String String
     | ToggleAttr
-    | SelectRow Int
     | FilterPermType String
+    | OpenInfoDialog Int
+    | CloseInfoDialog
 
 
 type ExternalMsg
@@ -137,8 +141,6 @@ update session msg model =
     case msg of
         CartMsg subMsg ->
             let
-                _ = Debug.log "Samples.CartMsg" (toString subMsg)
-
                 ( ( newCart, subCmd ), msgFromPage ) =
                     Cart.update session subMsg model.cart
             in
@@ -167,8 +169,6 @@ update session msg model =
 
         SetSession newSession ->
             let
-                _ = Debug.log "Page.Samples.SetSession" (toString newSession)
-
                 newCart =
                     Cart.init newSession.cart Cart.Editable
 
@@ -283,21 +283,18 @@ update session msg model =
         ToggleAttr ->
             { model | attrDropdownState = { dropdownState | show = not dropdownState.show } } => Cmd.none => NoOp
 
-        SelectRow id ->
-            let
-                selectedRowId =
-                    if model.selectedRowId == id then
-                        0 -- unselect
-                    else
-                         id
-            in
-            { model | selectedRowId = selectedRowId } => Cmd.none => NoOp
-
         FilterPermType filterType ->
             let
                 _ = Debug.log "filter" filterType
             in
             { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
+
+
+        OpenInfoDialog id ->
+            { model | showInfoDialog = True, selectedRowId = id } => Cmd.none => NoOp
+
+        CloseInfoDialog ->
+            { model | showInfoDialog = False } => Cmd.none => NoOp
 
 
 config : Cart.Model -> Int -> Table.Config Sample Msg
@@ -318,18 +315,12 @@ config cart selectedRowId =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table table-hover"
-    ]
+    [ attribute "class" "table table-hover" ]
 
 
 toRowAttrs : Int -> Sample -> List (Attribute Msg)
 toRowAttrs selectedRowId data =
-    onClick (SelectRow data.sample_id)
-    :: (if (data.sample_id == selectedRowId) then
-            [ attribute "class" "active" ]
-         else
-            []
-        )
+    [ onDoubleClick (OpenInfoDialog data.sample_id) ]
 
 
 
@@ -338,22 +329,32 @@ toRowAttrs selectedRowId data =
 
 view : Model -> Html Msg
 view model =
-    case model.searchResults of
-        NotAsked -> showAll model
+    div []
+        ((case model.searchResults of
+            NotAsked ->
+                showAll model
 
-        Loading ->
-            text "Loading ..."
+            Loading ->
+                text "Loading ..."
 
-        Failure e ->
-            text (toString e)
+            Failure e ->
+                text (toString e)
 
-        Success data ->
-            case model.selectedParams of
-                [] ->
-                    showAll model
+            Success data ->
+                case model.selectedParams of
+                    [] ->
+                        showAll model
 
-                _ ->
-                    showSearchResults model data
+                    _ ->
+                        showSearchResults model data
+        ) ::
+        [ Dialog.view
+           (if model.showInfoDialog then
+               Just (infoDialogConfig model)
+            else
+                Nothing
+           )
+        ])
 
 
 showSearchResults : Model -> List SearchResult -> Html Msg
@@ -433,7 +434,7 @@ showSearchResults model results =
             acceptableSamples
                 |> List.map (.attributes >> sampleIdFromResult)
                 |> List.filter (\id -> id /= 0)
-                |> Cart.addAllToCartButton model.cart
+                |> Cart.addAllToCartButton model.cart Nothing
                 |> Html.map CartMsg
 
         cartTh =
@@ -442,14 +443,6 @@ showSearchResults model results =
                 , br [] []
                 , addAllBtn
                 ]
-
-        (infoPanel, sizeClass) =
-            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
-                [] ->
-                    (text "", "")
-
-                sample :: _ ->
-                    (View.Sample.viewInfo sample, "col-md-8")
 
         body =
             if results == [] then
@@ -461,11 +454,8 @@ showSearchResults model results =
             else
                div [ class "container" ]
                    [ div [ class "row" ]
-                       [ div [ class sizeClass, style [("overflow-x", "auto")] ]
-                           [ table [ class "table table-hover" ]
-                               [ tbody [] (headerRow ++ resultRows) ]
-                           ]
-                       , infoPanel
+                       [ table [ class "table table-hover" ]
+                           [ tbody [] (headerRow ++ resultRows) ]
                        ]
                    ]
     in
@@ -562,14 +552,6 @@ showAll model =
                     span [ class "badge" ]
                         [ text numStr ]
 
-        (infoPanel, sizeClass) =
-            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
-                [] ->
-                    (text "", "")
-
-                sample :: _ ->
-                    (View.Sample.viewInfo sample, "col-md-9")
-
         body =
             if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                 noResults
@@ -577,12 +559,9 @@ showAll model =
                 noResultsLoggedIn model.user_id
             else
                div [ class "container" ]
-                [ div [ class "row" ]
-                    [ div [ class sizeClass, style [("overflow-x", "auto")] ]
-                        [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
-                    , infoPanel
-                    ]
-                ]
+                   [ div [ class "row" ]
+                       [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
+                   ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -1082,7 +1061,7 @@ mkResultRow selectedRowId cart fieldList result =
         isSelected =
             (sample_id == selectedRowId)
     in
-    tr [ onClick (SelectRow sample_id), classList [("active", isSelected)] ] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
+    tr [ onDoubleClick (OpenInfoDialog sample_id), classList [("active", isSelected)] ] (projectCol :: nameCol :: typeCol :: otherCols ++ [cartCol])
 
 
 getVal : String -> Dict String JsonType -> String
@@ -1102,3 +1081,26 @@ getVal fldName result =
 
         _ ->
             "NA"
+
+
+infoDialogConfig : Model -> Dialog.Config Msg
+infoDialogConfig model =
+    let
+        content =
+            case List.filter (\s -> s.sample_id == model.selectedRowId) model.samples of
+                [] ->
+                    text ""
+
+                sample :: _ ->
+                    div [ style [ ("margin-left","2em"), ("margin-right","2em") ] ]
+                        [ View.Sample.viewInfo sample ]
+
+        footer =
+            button [ class "btn btn-default", onClick CloseInfoDialog ] [ text "Close" ]
+    in
+    { closeMessage = Just CloseInfoDialog
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Sample Info" ])
+    , body = Just content
+    , footer = Just footer
+    }

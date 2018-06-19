@@ -1014,7 +1014,7 @@ viewSamples cart samples isEditable =
                     ::
                     (if numSamples > 1 then
                         [ br [] []
-                        , Cart.addAllToCartButton cart (List.map .sample_id samples) |> Html.map CartMsg
+                        , Cart.addAllToCartButton cart Nothing (List.map .sample_id samples) |> Html.map CartMsg
                         ]
                     else
                         []
