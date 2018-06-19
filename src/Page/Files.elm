@@ -46,7 +46,10 @@ init session =
             session.cart.contents |> Set.toList
 
         loadSampleFiles =
-            Request.Sample.files session.token id_list |> Http.toTask
+            if id_list == [] then
+                Task.succeed []
+            else
+                Request.Sample.files session.token id_list |> Http.toTask
     in
     Task.map4 Model title tableState filterType loadSampleFiles
         |> Task.mapError Error.handleLoadError
@@ -96,8 +99,7 @@ config =
 
 toTableAttrs : List (Attribute Msg)
 toTableAttrs =
-    [ attribute "class" "table"
-    ]
+    [ attribute "class" "table" ]
 
 
 sampleColumn : Table.Column SampleFile Msg

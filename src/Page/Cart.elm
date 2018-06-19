@@ -42,7 +42,10 @@ init session =
             session.cart.contents |> Set.toList
 
         loadSamples =
-            Request.Sample.getSome session.token id_list |> Http.toTask
+            if id_list == [] then
+                Task.succeed []
+            else
+                Request.Sample.getSome session.token id_list |> Http.toTask
     in
     Task.map3 Model title cart loadSamples
         |> Task.mapError Error.handleLoadError
