@@ -3,8 +3,6 @@ module Page.Samples exposing (Model, Msg(..), ExternalMsg(..), init, update, vie
 import Data.Sample as Sample exposing (Sample, Investigator, JsonType(..), SearchResult)
 import Data.Session as Session exposing (Session)
 import Data.Cart
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onInput, onClick, onDoubleClick)
@@ -29,6 +27,7 @@ import View.Cart as Cart
 import View.Sample
 import View.FilterButtonGroup
 import View.SearchableDropdown2
+import View.Widgets
 
 
 
@@ -363,24 +362,6 @@ showSearchResults model results =
         lowerQuery =
             String.toLower model.query
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length resultRows
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
-
         mkTh fld =
             th [] [ text (prettyName fld) ]
 
@@ -464,7 +445,7 @@ showSearchResults model results =
             [ div [ class "page-header" ]
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
-                    , numShowing
+                    , View.Widgets.counter (List.length acceptableSamples)
                     , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
                 ]
@@ -533,25 +514,6 @@ showAll model =
                         )
                         filteredSamples
 
-        count =
-            List.length acceptableSamples
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-
         body =
             if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                 noResults
@@ -568,7 +530,7 @@ showAll model =
             [ div [ class "page-header" ]
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
-                    , numShowing
+                    , View.Widgets.counter (List.length acceptableSamples)
                     , small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
                 ]

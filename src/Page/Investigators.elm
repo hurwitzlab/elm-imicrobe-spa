@@ -4,14 +4,13 @@ import Data.Investigator
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Investigator
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -113,39 +112,17 @@ nameLink inv =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         acceptablePeople =
             List.filter (String.contains lowerQuery << String.toLower << .investigator_name) model.investigators
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptablePeople
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptablePeople)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

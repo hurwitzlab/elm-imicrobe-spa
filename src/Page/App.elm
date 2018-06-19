@@ -330,12 +330,6 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        showCartDialog =
-            case model.cartDialogInputId of
-                Nothing -> False
-                _ -> True
-    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -354,7 +348,7 @@ view model =
             , Dialog.view
                 (if model.showRunDialog then
                     Just (runDialogConfig model)
-                 else if showCartDialog then
+                 else if model.cartDialogInputId /= Nothing then
                     Just (cartDialogConfig model)
                  else
                     Nothing

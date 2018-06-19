@@ -10,13 +10,12 @@ import Html.Events exposing (onClick, onInput)
 import Page.Error as Error exposing (PageLoadError)
 import Route
 import Request.Sample
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
+import View.Widgets
 import Events exposing (onKeyDown)
 
 
@@ -59,12 +58,10 @@ init session searchTerm =
 
 doSearch : String -> String -> Task Http.Error (List Centrifuge2)
 doSearch token searchTerm =
-    case searchTerm of
-        "" ->
-            Task.succeed []
-
-        _ ->
-            Request.Sample.taxonomy_search token searchTerm |> Http.toTask
+    if searchTerm == "" then
+        Task.succeed []
+    else
+        Request.Sample.taxonomy_search token searchTerm |> Http.toTask
 
 
 
@@ -164,66 +161,40 @@ view model =
         acceptableSamples =
             List.filter filter samples
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableSamples
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-
         searchBar =
-            case model.searchTerm of
-                "" -> text ""
-
-                _ ->
-                    small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+            if model.searchTerm == "" then
+                text ""
+            else
+                small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
 
         filters =
-            case model.searchTerm of
-                "" -> text ""
-
-                _ ->
-                    div [ style [("padding-bottom", "0.5em")] ]
-                        [ text "Filter: Abundance >= "
-                        , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
-                        , text " (value between 0 and 1)"
-                        ]
+            if model.searchTerm == "" then
+                text ""
+            else
+                div [ style [("padding-bottom", "0.5em")] ]
+                    [ text "Filter: Abundance >= "
+                    , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
+                    , text " (value between 0 and 1)"
+                    ]
 
         display =
-            case model.isSearching of
-                True ->
-                    spinner
-
-                False ->
-                    case model.searchTerm of
-                        "" -> text ""
-
-                        _ ->
-                            case acceptableSamples of
-                                [] ->
-                                    text "No results"
-
-                                _ ->
-                                    Table.view (tableConfig model.cart) model.tableState acceptableSamples
+            if model.isSearching then
+                spinner
+            else
+                if model.searchTerm == "" then
+                    text ""
+                else
+                    if acceptableSamples == [] then
+                        text "No results"
+                    else
+                        Table.view (tableConfig model.cart) model.tableState acceptableSamples
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text model.pageTitle
                 , text " "
-                , numShowing
+                , View.Widgets.counter (List.length acceptableSamples)
                 , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]

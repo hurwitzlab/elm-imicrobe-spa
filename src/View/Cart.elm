@@ -98,12 +98,10 @@ update session msg model =
         ToggleSelectInCart id ->
             let
                 selected =
-                    case Cart.contains model.selected id of
-                        True ->
-                            Cart.remove model.selected id
-
-                        False ->
-                            Cart.add model.selected id
+                    if Cart.contains model.selected id then
+                        Cart.remove model.selected id
+                    else
+                        Cart.add model.selected id
             in
             { model | selected = selected } => Cmd.none => NoOp
 
@@ -254,12 +252,10 @@ removeFromCartButton id =
 
 addToCartButton : Model -> Int -> Html Msg
 addToCartButton model id =
-    case (Set.member id model.cart.contents) of
-        True ->
-            button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
-
-        False ->
-            button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
+    if Set.member id model.cart.contents then
+        button [ class "btn btn-default btn-xs", onClick (RemoveFromCart id) ] [ text "Remove" ]
+    else
+        button [ class "btn btn-default btn-xs", onClick (AddToCart id) ] [ text "Add" ]
 
 
 -- Kludge
@@ -269,12 +265,10 @@ addToCartButton2 model id =
         icon =
             span [ class "glyphicon glyphicon-shopping-cart" ] []
     in
-    case (Set.member id model.cart.contents) of
-        True ->
-            button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ icon, text " Remove from Cart" ]
-
-        False ->
-            button [ class "btn btn-default", onClick (AddToCart id) ] [ icon, text " Add to Cart" ]
+    if Set.member id model.cart.contents then
+        button [ class "btn btn-default", onClick (RemoveFromCart id) ] [ icon, text " Remove from Cart" ]
+    else
+        button [ class "btn btn-default", onClick (AddToCart id) ] [ icon, text " Add to Cart" ]
 
 
 addAllToCartButton : Model -> Maybe (String, String) -> List Int -> Html Msg
@@ -291,12 +285,10 @@ addAllToCartButton model optionalLabels ids =
         intersection =
             Set.intersect (Set.fromList ids) model.cart.contents |> Set.toList
     in
-    case intersection of
-        [] ->
-            button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text addLbl ]
-
-        _ ->
-            button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text removeLbl ]
+    if intersection == [] then
+        button [ class "btn btn-default btn-xs", onClick (AddAllToCart ids) ] [ text addLbl ]
+    else
+        button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text removeLbl ]
 
 
 samplesInCart : Cart -> List Sample -> List Sample

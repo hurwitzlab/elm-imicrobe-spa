@@ -4,8 +4,6 @@ import Data.Session as Session exposing (Session)
 import Data.Cart
 import Dict exposing (Dict)
 import Exts.Dict as EDict
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput, onSubmit)
@@ -23,6 +21,7 @@ import String.Extra as SE
 import Task exposing (Task)
 import Config exposing (apiBaseUrl)
 import View.Cart as Cart
+import View.Widgets
 import Util exposing ((=>))
 
 
@@ -214,12 +213,10 @@ mkParamsSelect model =
             Html.option [] [ text "-- Select --" ]
 
         paramList =
-            case Dict.isEmpty model.restrictedParams of
-                True ->
-                    model.params
-
-                _ ->
-                    model.restrictedParams
+            if Dict.isEmpty model.restrictedParams then
+                model.params
+            else
+                model.restrictedParams
 
         alreadySelected =
             List.map Tuple.first model.selectedParams |> Set.fromList
@@ -290,12 +287,10 @@ mkOptionTable model =
 --                ]
 --            ]
     in
-    case rows of
-        [] ->
-            text ""
-
-        _ ->
-            table [ style [ ( "width", "100%" ) ] ] rows
+    if rows == [] then
+        text ""
+    else
+        table [ style [ ( "width", "100%" ) ] ] rows
 
 
 unpackJsonType : JsonType -> String
@@ -336,17 +331,15 @@ mkOptionRow possibleOptionValues ( optionName, dataType ) =
                 mkOption s =
                     Html.option [ value s ] [ text s ]
             in
-            case List.length vals > 1000 of
-                True ->
-                    input
-                        [ onInput (UpdateOptionValue optionName)
-                        , type_ "text"
-                        , placeholder dataType
-                        ]
-                        []
-
-                False ->
-                    mkMultiSelect optionName vals
+            if List.length vals > 1000 then
+                input
+                    [ onInput (UpdateOptionValue optionName)
+                    , type_ "text"
+                    , placeholder dataType
+                    ]
+                    []
+            else
+                mkMultiSelect optionName vals
 
         minName =
             "min__" ++ optionName
@@ -473,15 +466,10 @@ serializeForm optionValues possibleOptionValues paramTypes =
         encodeVals param vals =
             let
                 paramName =
-                    case
-                        String.startsWith "min__" param
-                            || String.startsWith "max__" param
-                    of
-                        True ->
-                            String.dropLeft 5 param
-
-                        False ->
-                            param
+                    if String.startsWith "min__" param || String.startsWith "max__" param then
+                        String.dropLeft 5 param
+                    else
+                        param
 
                 dataType =
                     EDict.getWithDefault "string" paramName paramTypes
@@ -570,12 +558,10 @@ showResults model =
             text (toString e)
 
         Success data ->
-            case List.length data of
-                0 ->
-                    text "No results"
-
-                _ ->
-                    resultsTable model.cart model.selectedParams model.query data
+            if List.length data == 0 then
+                text "No results"
+            else
+                resultsTable model.cart model.selectedParams model.query data
 
 
 resultsTable : Cart.Model -> List ( String, String ) -> String -> List (Dict String JsonType) -> Html Msg
@@ -598,24 +584,6 @@ resultsTable cart fieldList query results =
                 |> List.filter (\result -> String.contains (String.toLower query) (String.toLower (getVal "specimen__sample_name" result)))
                 |> List.map (mkResultRow cart fieldList)
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length resultRows
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
-
         sampleIdFromResult result =
             case String.toInt (getVal "specimen__sample_id" result) of
                 Ok sampleId ->
@@ -630,7 +598,7 @@ resultsTable cart fieldList query results =
     div [ style [("padding-top", "1em")] ]
         [ h2 []
             [ text "Results "
-            , numShowing
+            , View.Widgets.counter (List.length resultRows)
             , small [ class "pull-right" ] [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
             ]
         , table [ class "table" ] [ tbody [] (headerRow ++ resultRows) ]

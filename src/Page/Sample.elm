@@ -7,8 +7,6 @@ import Json.Encode as Encode exposing (Value)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
@@ -27,6 +25,7 @@ import View.Spinner exposing (spinner)
 import View.GMap as GMap exposing (LatLng, MapState, gmap, loadMap, setCenter)
 import View.FileBrowser as FileBrowser
 import View.Investigator
+import View.Widgets
 
 
 
@@ -1053,22 +1052,6 @@ viewAttributes model isEditable =
         acceptableAttributes =
             List.filter attrFilter model.sample.sample_attrs
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableAttributes
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            if count == 0 then
-                text ""
-            else
-                span [ class "badge" ] [ text numStr ]
-
         searchBar =
             if model.sample.sample_attrs == [] then
                 text ""
@@ -1091,7 +1074,7 @@ viewAttributes model isEditable =
         [ div [ class "row" ]
             [ h2 []
                 [ text "Attributes "
-                , numShowing
+                , View.Widgets.counter (List.length acceptableAttributes)
                 , div [ class "pull-right" ]
                     [ searchBar, text " ", addButton ]
                 ]
@@ -1349,34 +1332,20 @@ viewProteins model =
                     else
                         table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetProteins ] [ text "Show Proteins" ] ] ] ] ]
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    if proteinCount == 0 then
-                        if model.proteinQuery == "" then
-                            model.sample.protein_count
-                        else
-                            0
-                    else
-                        proteinCount
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            if count == 0 then
-                text ""
+        count =
+            if proteinCount == 0 then
+                if model.proteinQuery == "" then
+                    model.sample.protein_count
+                else
+                    0
             else
-                span [ class "badge" ]
-                    [ text numStr ]
+                proteinCount
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text "Proteins "
-                , numShowing
+                , View.Widgets.counter count
                 , searchBar
                 ]
             , body
@@ -1481,28 +1450,14 @@ viewCentrifugeResults model =
         acceptableResults =
             List.filter centrifugeFilter model.centrifugeResults
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    if acceptableResults == [] then
-                        if model.centrifugeQuery == "" then
-                            model.sample.centrifuge_count
-                        else
-                            0
-                    else
-                        List.length acceptableResults
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            if count == 0 then
-                text ""
+        count =
+            if acceptableResults == [] then
+                if model.centrifugeQuery == "" then
+                    model.sample.centrifuge_count
+                else
+                    0
             else
-                span [ class "badge" ]
-                    [ text numStr ]
+                List.length acceptableResults
 
         searchBar =
             if model.centrifugeResults == [] then
@@ -1530,7 +1485,7 @@ viewCentrifugeResults model =
         [ div [ class "row" ]
             [ h2 []
                 [ text "Taxonomic Classification "
-                , numShowing
+                , View.Widgets.counter count
                 , searchBar
                 ]
             , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml", target "_blank" ] [ text "Centrifuge"] ]

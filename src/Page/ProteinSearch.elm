@@ -10,13 +10,12 @@ import Html.Events exposing (onClick, onInput)
 import Page.Error as Error exposing (PageLoadError)
 import Route
 import Request.Sample
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing ((=>))
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
+import View.Widgets
 import Events exposing (onKeyDown)
 
 
@@ -243,39 +242,21 @@ view model =
 
                 _ -> (text "", 0)
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                numStr =
-                    resultCount |> toFloat |> format myLocale
-            in
-            case resultCount of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-
         body =
-            case model.isSearching of
-                True ->
-                    spinner
-
-                False ->
-                    case resultCount of
-                        0 -> div [] [ text "No results" ]
-
-                        _ -> resultTable
+            if model.isSearching then
+                spinner
+            else
+                if resultCount == 0 then
+                    div [] [ text "No results" ]
+                else
+                    resultTable
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text model.pageTitle
                 , text " "
-                , numShowing
+                , View.Widgets.counter resultCount
                 , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]

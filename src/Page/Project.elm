@@ -13,8 +13,6 @@ import Html.Events exposing (onInput, onClick)
 import Json.Encode
 import Dialog
 import Http
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Project
 import Request.ProjectGroup
@@ -32,6 +30,7 @@ import View.SearchableDropdown
 import View.TagsDropdown
 import View.Tags
 import View.Investigator
+import View.Widgets
 import Util exposing ((=>), capitalize, pluralize)
 
 
@@ -902,12 +901,10 @@ viewProject project isEditable =
 
 viewDomains : List Domain -> List (Html msg)
 viewDomains domains =
-    case List.length domains of
-        0 ->
-            [ text "None" ]
-
-        _ ->
-            List.sortBy .domain_name domains |> List.map viewDomain |> List.intersperse (text ", ")
+    if List.length domains == 0 then
+        [ text "None" ]
+    else
+        List.sortBy .domain_name domains |> List.map viewDomain |> List.intersperse (text ", ")
 
 
 viewDomain : Domain -> Html msg
@@ -917,12 +914,10 @@ viewDomain domain =
 
 viewProjectGroups : List ProjectGroup -> List (Html msg)
 viewProjectGroups groups =
-    case List.length groups of
-        0 ->
-            [ text "None" ]
-
-        _ ->
-            List.sortBy .group_name groups |> List.map viewProjectGroup |> List.intersperse (text ", ")
+    if List.length groups == 0 then
+        [ text "None" ]
+    else
+        List.sortBy .group_name groups |> List.map viewProjectGroup |> List.intersperse (text ", ")
 
 
 viewProjectGroup : ProjectGroup -> Html msg
@@ -946,12 +941,10 @@ viewPublications pubs isEditable =
                     ]
 
         addButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-sm pull-right", onClick (OpenAddOrEditPublicationDialog Nothing) ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Publication" ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-sm pull-right", onClick (OpenAddOrEditPublicationDialog Nothing) ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Publication" ]
+            else
+                text ""
     in
     div []
         [ h2 []
@@ -999,14 +992,12 @@ viewSamples cart samples isEditable =
             List.length samples
 
         label =
-            case numSamples of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numSamples)
-                        ]
+            if numSamples == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text (toString numSamples)
+                    ]
 
         cartTh =
             th [ class "nowrap" ]
@@ -1039,20 +1030,16 @@ viewSamples cart samples isEditable =
             in
             if numSamples == 0 then
                 text "None"
-
             else if numSamples < 50 then
                 tbl
-
             else
                 div [ class "scrollable" ] [ tbl ]
 
         addButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-sm pull-right", onClick OpenNewSampleDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Sample" ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-sm pull-right", onClick OpenNewSampleDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Sample" ]
+            else
+                text ""
     in
     div []
         [ h2 []
@@ -1068,12 +1055,10 @@ viewSample : Cart.Model -> Bool -> Sample -> Html Msg
 viewSample cart isEditable sample =
     let
         removeButton =
-            case isEditable of
-                True ->
-                    button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Remove the sample (this cannot be undone)?" (RemoveSample sample.sample_id)) ] [ span [ class "glyphicon glyphicon-trash" ] [] ]
-
-                False ->
-                    text ""
+            if isEditable then
+                button [ class "btn btn-default btn-xs", onClick (OpenConfirmationDialog "Remove the sample (this cannot be undone)?" (RemoveSample sample.sample_id)) ] [ span [ class "glyphicon glyphicon-trash" ] [] ]
+            else
+                text ""
     in
     tr []
         [ td []
@@ -1130,72 +1115,58 @@ viewAssemblies model =
         acceptableResults =
             List.filter (\item -> String.contains lowerQuery (String.toLower item.assembly_name)) model.assemblies
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    case acceptableResults of
-                        [] ->
-                            case model.assemblyQuery of
-                                 "" ->
-                                    model.project.assembly_count
-
-                                 _ ->
-                                    0
-
-                        _ ->
-                            List.length acceptableResults
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+        count =
+            if acceptableResults == [] then
+                if model.assemblyQuery == "" then
+                    model.project.assembly_count
+                else
+                    0
+            else
+                List.length acceptableResults
 
         searchBar =
-            case model.assemblies of
-                [] ->
-                    text ""
-
-                _ ->
-                    small [ class "right" ]
-                        [ input [ placeholder "Search", onInput SetAssemblyQuery ] [] ]
+            if model.assemblies == [] then
+                text ""
+            else
+                small [ class "right" ]
+                    [ input [ placeholder "Search", onInput SetAssemblyQuery ] [] ]
 
         body =
-            case model.project.assembly_count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    case model.loadedAssemblies of
-                        True ->
-                            case acceptableResults of
-                                [] ->
-                                    text "None"
-
-                                _ ->
-                                    Table.view assemblyTableConfig model.assemblyTableState acceptableResults
-
-                        False ->
-                            case model.loadingAssemblies of
-                                True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
-
-                                False ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetAssemblies ] [ text "Show Results" ] ] ] ] ]
+            if model.project.assembly_count == 0 then
+                text "None"
+            else
+                if model.loadedAssemblies then
+                    if acceptableResults == [] then
+                        text "None"
+                    else
+                        Table.view assemblyTableConfig model.assemblyTableState acceptableResults
+                else
+                    if model.loadingAssemblies then
+                        table [ class "table" ]
+                            [ tbody []
+                                [ tr []
+                                    [ td []
+                                        [ spinner ]
+                                    ]
+                                ]
+                            ]
+                    else
+                        table [ class "table" ]
+                            [ tbody []
+                                [ tr []
+                                    [ td []
+                                        [ button [ class "btn btn-default", onClick GetAssemblies ]
+                                            [ text "Show Results" ]
+                                        ]
+                                    ]
+                                ]
+                            ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text "Assemblies "
-                , numShowing
+                , View.Widgets.counter count
                 , searchBar
                 ]
             , div [ class "scrollable" ] [ body ]
@@ -1242,72 +1213,56 @@ viewCombinedAssemblies model =
         acceptableResults =
             List.filter (\item -> String.contains lowerQuery (String.toLower item.assembly_name)) model.combined_assemblies
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    case acceptableResults of
-                        [] ->
-                            case model.combinedAssemblyQuery of
-                                 "" ->
-                                    model.project.combined_assembly_count
-
-                                 _ ->
-                                    0
-
-                        _ ->
-                            List.length acceptableResults
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
+        count =
+            if acceptableResults == [] then
+                if model.combinedAssemblyQuery == "" then
+                    model.project.combined_assembly_count
+                else
+                    0
+            else
+                List.length acceptableResults
 
         searchBar =
-            case model.combined_assemblies of
-                [] ->
-                    text ""
-
-                _ ->
-                    small [ class "right" ]
-                        [ input [ placeholder "Search", onInput SetCombinedAssemblyQuery ] [] ]
+            if model.combined_assemblies == [] then
+                text ""
+            else
+                small [ class "right" ]
+                    [ input [ placeholder "Search", onInput SetCombinedAssemblyQuery ] [] ]
 
         body =
-            case model.project.combined_assembly_count of
-                0 ->
-                    text "None"
-
-                _ ->
-                    case model.loadedCombinedAssemblies of
-                        True ->
-                            case acceptableResults of
-                                [] ->
-                                    text "None"
-
-                                _ ->
-                                    Table.view combinedAssemblyTableConfig model.combinedAssemblyTableState acceptableResults
-
-                        False ->
-                            case model.loadingCombinedAssemblies of
-                                True ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ spinner ] ] ] ]
-
-                                False ->
-                                    table [ class "table" ] [ tbody [] [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetCombinedAssemblies ] [ text "Show Results" ] ] ] ] ]
+            if model.project.combined_assembly_count == 0 then
+                text "None"
+            else
+                if model.loadedCombinedAssemblies then
+                    if acceptableResults == [] then
+                        text "None"
+                    else
+                        Table.view combinedAssemblyTableConfig model.combinedAssemblyTableState acceptableResults
+                else
+                    if model.loadingCombinedAssemblies then
+                        table [ class "table" ]
+                            [ tbody []
+                                [ tr []
+                                    [ td []
+                                        [ spinner ]
+                                    ]
+                                ]
+                            ]
+                    else
+                        table [ class "table" ]
+                            [ tbody []
+                                [ tr []
+                                    [ td []
+                                        [ button [ class "btn btn-default", onClick GetCombinedAssemblies ] [ text "Show Results" ] ]
+                                    ]
+                                ]
+                            ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text "Combined Assemblies "
-                , numShowing
+                , View.Widgets.counter count
                 , searchBar
                 ]
             , div [ class "scrollable" ] [ body ]

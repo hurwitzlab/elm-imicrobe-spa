@@ -1,8 +1,6 @@
 module Page.Search exposing (Model, Msg, init, update, view)
 
 import Data.Search
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import List.Extra
 import Http
 import Html exposing (..)
@@ -13,6 +11,7 @@ import Request.Search
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -119,55 +118,33 @@ resultsTable : Model -> Html Msg
 resultsTable model =
     let
         filtered =
-            case List.length model.searchRestrictions of
-                0 ->
+            if List.length model.searchRestrictions == 0 then
+                model.searchResults
+            else
+                List.filter
+                    (\v -> List.member v.table_name model.searchRestrictions)
                     model.searchResults
 
-                _ ->
-                    List.filter
-                        (\v -> List.member v.table_name model.searchRestrictions)
-                        model.searchResults
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length filtered
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
-
-        types = List.map .table_name model.searchResults
-                    |> List.sort
-                    |> List.Extra.unique
-
+        types =
+            List.map .table_name model.searchResults
+                |> List.sort
+                |> List.Extra.unique
 
         restrict =
-            case List.length types of
-                0 ->
-                    text ""
-
-                _ ->
-                    fieldset []
-                        (text "Types: "
-                            :: List.map mkCheckbox types
-                        )
+            if List.length types == 0 then
+                text ""
+            else
+                fieldset []
+                    (text "Types: "
+                        :: List.map mkCheckbox types
+                    )
     in
     if List.length filtered > 0 then
         div []
             [ div [ class "page-header" ]
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
-                    , numShowing
+                    , View.Widgets.counter (List.length filtered)
                     ]
                 ]
             , div [ class "panel panel-default" ]
@@ -241,10 +218,10 @@ nameLink result =
                     Route.Home
 
         name =
-            case result.object_name of
-                "" -> (Route.routeToString route)
-
-                _ -> result.object_name
+            if result.object_name == "" then
+                Route.routeToString route
+            else
+                result.object_name
     in
     Table.HtmlDetails []
         [ a [ Route.href route ] [ text name ] ]

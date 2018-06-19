@@ -5,14 +5,13 @@ import Data.Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.ProjectGroup
 import Route
 import Table
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -105,41 +104,19 @@ nameLink group =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         acceptableGroups =
             List.filter
                 (String.contains lowerQuery << String.toLower << .group_name)
                 model.projectGroups
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableGroups
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptableGroups)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

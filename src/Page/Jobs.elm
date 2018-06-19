@@ -5,8 +5,6 @@ import Data.Agave as Agave exposing (Job)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
@@ -14,6 +12,7 @@ import Request.PlanB
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -167,30 +166,12 @@ view model =
 
         acceptableJobs =
             List.filter jobFilter model.jobs
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableJobs
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptableJobs)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

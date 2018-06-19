@@ -1351,11 +1351,10 @@ viewHeader page isLoading session =
         cartButton =
             let
                 label =
-                    case numItemsInCart of
-                        0 -> []
-
-                        _ ->
-                            [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
+                    if numItemsInCart == 0 then
+                        []
+                    else
+                        [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
             in
             div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Cart" ]
                 [ a [ Route.href Route.Cart ]
@@ -1363,23 +1362,19 @@ viewHeader page isLoading session =
                 ]
 
         cartLabel =
-            case numItemsInCart of
-                0 ->
-                    "(Empty)"
-
-                _ ->
-                    "(" ++ (toString numItemsInCart) ++ ")"
+            if numItemsInCart == 0 then
+                "(Empty)"
+            else
+                "(" ++ (toString numItemsInCart) ++ ")"
 
         dashboardButton =
-            case profile of
-                Nothing ->
-                    text ""
-
-                _ ->
-                    div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
-                        [ a [ Route.href Route.Dashboard ]
-                            [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
-                        ]
+            if profile == Nothing then
+                text ""
+            else
+                div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
+                    [ a [ Route.href Route.Dashboard ]
+                        [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
+                    ]
 
         helpButton =
             div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Contact Us" ]
@@ -1513,10 +1508,10 @@ init flags location =
         _ = Debug.log "location" (toString location)
 
         session = --TODO use Maybe Session instead
-            case flags.session of
-                "" -> Session.empty
-
-                _ -> decodeSessionFromJson flags.session
+            if flags.session == "" then
+                Session.empty
+            else
+                decodeSessionFromJson flags.session
 
         model =
             { oauth =

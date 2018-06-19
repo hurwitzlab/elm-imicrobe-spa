@@ -10,8 +10,7 @@ import Request.Pubchase
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import Util exposing (truncate)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
+import View.Widgets
 
 
 
@@ -157,31 +156,12 @@ view model =
             List.filter
                 (\article -> String.contains lowerQuery (catter article))
                 model.articles
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableArticles
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptableArticles)
                 , small [ class "right" ]
                     [ input [ placeholder "Search", onInput SetQuery ] [] ]
                 ]

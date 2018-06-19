@@ -5,13 +5,12 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Page.Error as Error exposing (PageLoadError)
 import Request.Publication
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -162,11 +161,8 @@ projectLink pub =
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         catter pub =
             String.concat
@@ -182,31 +178,12 @@ view model =
             List.filter
                 (\pub -> String.contains lowerQuery (catter pub))
                 model.publications
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptablePubs
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptablePubs)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

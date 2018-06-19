@@ -90,12 +90,10 @@ view model =
             model.profile
 
         orcid =
-            case model.user.orcid of
-                "" ->
-                    button [ class "btn btn-default btn-xs", onClick ORCIDLogin ] [ text "Create or connect an ORCID" ]
-
-                _ ->
-                    text model.user.orcid
+            if model.user.orcid == "" then
+                button [ class "btn btn-default btn-xs", onClick ORCIDLogin ] [ text "Create or connect an ORCID" ]
+            else
+                text model.user.orcid
     in
     div [ class "container" ]
         [ div [ class "page-header" ]

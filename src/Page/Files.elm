@@ -2,8 +2,6 @@ module Page.Files exposing (Model, Msg, init, update, view)
 
 import Data.Session as Session exposing (Session)
 import Data.Sample as Sample exposing (Sample, SampleFile)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -14,9 +12,9 @@ import Task exposing (Task)
 import Route
 import Table exposing (defaultCustomizations)
 import Set
-import Debug
 import Util exposing ((=>))
 import Config exposing (dataCommonsUrl)
+import View.Widgets
 
 
 
@@ -75,6 +73,7 @@ update msg model =
             ( { model | filterType = newType }
             , Cmd.none
             )
+
 
 
 -- VIEW --
@@ -137,31 +136,11 @@ fileLink file =
 
 view : Model -> Html Msg
 view model =
-    let
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length model.files
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length model.files)
                 ]
             , div []
                 [ viewFiles model
@@ -173,19 +152,16 @@ view model =
 viewFiles : Model -> Html Msg
 viewFiles model =
     let
-        _ = Debug.log "filterType" model.filterType
-
         filteredFiles =
             List.filter (\f -> (model.filterType == "All" || f.sample_file_type.file_type == model.filterType)) model.files
     in
-    case filteredFiles of
-        [] -> text "No files to show"
-
-        _ ->
-            div []
-                [ viewToolbar model
-                , Table.view config model.tableState filteredFiles
-                ]
+    if filteredFiles == [] then
+        text "No files to show"
+    else
+        div []
+            [ viewToolbar model
+            , Table.view config model.tableState filteredFiles
+            ]
 
 
 viewToolbar : Model -> Html Msg
@@ -205,11 +181,9 @@ viewToolbar model =
     in
     if (numTypes < 2) then
         text ""
-
     else if (numTypes < 10) then
         div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
            (btn "All" :: List.map (\t -> btn t) types)
-
     else
         div [ class "dropdown" ]
             [ button [ class "btn btn-default dropdown-toggle margin-top-bottom", attribute "type" "button", id "dropdownMenu1", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true" ]

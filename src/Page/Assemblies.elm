@@ -4,8 +4,6 @@ import Data.Assembly
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError)
@@ -14,6 +12,7 @@ import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -148,10 +147,10 @@ nameLink assembly =
 
 cdsText : Data.Assembly.Assembly -> String
 cdsText assembly =
-    case assembly.cds_file of
-        "" -> "No"
-
-        _ -> "Yes"
+    if assembly.cds_file == "" then
+        "No"
+    else
+        "Yes"
 
 
 cdsColumn : Table.Column Data.Assembly.Assembly Msg
@@ -171,10 +170,10 @@ cdsLink assembly =
 
 ntText : Data.Assembly.Assembly -> String
 ntText assembly =
-    case assembly.nt_file of
-        "" -> "No"
-
-        _ -> "Yes"
+    if assembly.nt_file == "" then
+        "No"
+    else
+        "Yes"
 
 
 ntColumn : Table.Column Data.Assembly.Assembly Msg
@@ -194,10 +193,10 @@ ntLink assembly =
 
 pepText : Data.Assembly.Assembly -> String
 pepText assembly =
-    case assembly.pep_file of
-        "" -> "No"
-
-        _ -> "Yes"
+    if assembly.pep_file == "" then
+        "No"
+    else
+        "Yes"
 
 
 pepColumn : Table.Column Data.Assembly.Assembly Msg
@@ -215,45 +214,24 @@ pepLink assembly =
         [ text (pepText assembly) ]
 
 
+
 -- VIEW --
 
 
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         acceptableAssemblies =
             List.filter (String.contains lowerQuery << String.toLower << .assembly_name) model.assemblies
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableAssemblies
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptableAssemblies)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

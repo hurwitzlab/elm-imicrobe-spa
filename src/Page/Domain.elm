@@ -10,6 +10,7 @@ import Request.Domain
 import Route
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -136,37 +137,22 @@ view model =
 viewProjects : List Data.Domain.Project -> Html Msg
 viewProjects projects =
     let
-        numProjects =
-            List.length projects
-
-        label =
-            case numProjects of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text (toString numProjects)
-                        ]
-
         searchInput =
             small [ style [ ("float", "right") ] ] [
                 input [ placeholder "Search by Name", onInput SetQuery ] []
             ]
 
         body =
-            case numProjects of
-                0 ->
-                    text "None"
-
-                _ ->
-                    table [ class "table table-condensed" ]
-                        [ tbody [] (List.map viewProject projects) ]
+            if projects == [] then
+                text "None"
+            else
+                table [ class "table table-condensed" ]
+                    [ tbody [] (List.map viewProject projects) ]
     in
     div []
         [ h2 []
             [ text "Projects "
-            , label
+            , View.Widgets.counter (List.length projects)
             , text " "
             , searchInput
             ]

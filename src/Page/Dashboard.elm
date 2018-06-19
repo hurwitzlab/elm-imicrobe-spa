@@ -28,6 +28,7 @@ import View.Project
 import View.ProjectGroup
 import View.Sample
 import View.Dialog exposing (confirmationDialogConfig)
+import View.Widgets
 import Ports
 
 
@@ -508,23 +509,12 @@ viewContent model =
                     in
                     ( "Activity", view, List.length model.user.log, text "")
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    text ""
-
-                _ ->
-                    span [ class "badge" ] [ text numStr ]
-
         viewHeader =
-            div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ] [ text title, text " ", numShowing, buttonPanel ]
+            div [ style [("color","dimgray"), ("font-weight","bold"), ("font-size","1.75em")] ]
+                [ text title, text " "
+                , View.Widgets.counter count
+                , buttonPanel
+                ]
     in
     [ div []
         [ div [ class "col-sm-9", style [("margin-bottom","1em")] ] [ viewHeader ]
@@ -1001,12 +991,10 @@ newProjectDialogConfig : Model -> Dialog.Config Msg
 newProjectDialogConfig model =
     let
         content =
-            case model.showNewProjectBusy of
-                False ->
-                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project", onInput SetNewProjectName ] []
-
-                True ->
-                    spinner
+            if model.showNewProjectBusy then
+                spinner
+            else
+                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project", onInput SetNewProjectName ] []
 
         footer =
             let
@@ -1030,12 +1018,10 @@ newProjectGroupDialogConfig : Model -> Dialog.Config Msg
 newProjectGroupDialogConfig model =
     let
         content =
-            case model.showNewProjectGroupBusy of
-                False ->
-                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project group", onInput SetNewProjectGroupName ] []
-
-                True ->
-                    spinner
+            if model.showNewProjectGroupBusy then
+                spinner
+            else
+                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project group", onInput SetNewProjectGroupName ] []
 
         footer =
             let

@@ -4,8 +4,6 @@ import Data.CombinedAssembly
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import List exposing (map)
 import Page.Error as Error exposing (PageLoadError)
@@ -14,6 +12,7 @@ import Route
 import String exposing (join)
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import View.Widgets
 
 
 
@@ -268,45 +267,24 @@ pepLink assembly =
         [ text (pepText assembly) ]
 
 
+
 -- VIEW --
 
 
 view : Model -> Html Msg
 view model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         acceptableAssemblies =
             List.filter (String.contains lowerQuery << String.toLower << .assembly_name) model.combinedAssemblies
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableAssemblies
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter (List.length acceptableAssemblies)
                 , small [ class "right" ]
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]

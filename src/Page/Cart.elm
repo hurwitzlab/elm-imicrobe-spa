@@ -3,8 +3,6 @@ module Page.Cart exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 import Data.Session as Session exposing (Session)
 import Data.Sample as Sample exposing (Sample)
 import Data.Cart
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -14,6 +12,7 @@ import Page.Error as Error exposing (PageLoadError)
 import Route
 import Task exposing (Task)
 import View.Cart as Cart
+import View.Widgets
 import Set
 import Util exposing ((=>))
 
@@ -137,41 +136,20 @@ update session msg model =
 view : Model -> Html Msg
 view model =
     let
-        count = Cart.size model.cart
-
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            case count of
-                0 ->
-                    span [] []
-
-                _ ->
-                    span [ class "badge" ]
-                        [ text numStr ]
-
-        isEmpty =
-            case count of
-                0 -> True
-
-                _ -> False
+        count =
+            Cart.size model.cart
 
         buttonAttr =
-            case isEmpty of
-                True -> [ attribute "disabled" "" ]
-
-                False -> []
+            if count == 0 then
+                [ attribute "disabled" "" ]
+            else
+                []
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h1 []
                 [ text (model.pageTitle ++ " ")
-                , numShowing
+                , View.Widgets.counter count
                 , div [ class "right" ]
                     [ button ([ class "margin-right btn btn-primary btn-sm", onClick Files ] ++ buttonAttr) [ span [ class "glyphicon glyphicon-file"] [], text " Files" ]
 --                    , button [ class "margin-right btn btn-primary btn-sm", attribute "type" "submit" ] [ text "Download" ]
@@ -190,8 +168,7 @@ view model =
 
 viewCart : Model -> Html Msg
 viewCart model =
-    case (Cart.size model.cart) of
-        0 -> text "The cart is empty"
-
-        _ ->
-            div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+    if (Cart.size model.cart) == 0 then
+        text "The cart is empty"
+    else
+        div [] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]

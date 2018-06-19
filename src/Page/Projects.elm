@@ -7,8 +7,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick, onDoubleClick, onCheck)
 import Dialog
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (usLocale)
 import Http
 import List.Extra
 import Page.Error as Error exposing (PageLoadError)
@@ -20,6 +18,7 @@ import Task exposing (Task)
 import View.Project
 import View.FilterButtonGroup
 import View.Cart as Cart
+import View.Widgets
 import Util exposing ((=>), capitalize)
 
 
@@ -179,23 +178,6 @@ view model =
             |> List.filter filterOnType
             |> List.filter checkPerms
 
-        numShowing =
-            let
-                myLocale =
-                    { usLocale | decimals = 0 }
-
-                count =
-                    List.length acceptableProjects
-
-                numStr =
-                    count |> toFloat |> format myLocale
-            in
-            if count == 0 then
-                text ""
-            else
-                span [ class "badge" ]
-                    [ text numStr ]
-
         noProjects =
             if model.user_id /= Nothing then
                 div [ class "well" ]
@@ -220,7 +202,7 @@ view model =
             [ div []
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
-                    , numShowing
+                    , View.Widgets.counter (List.length acceptableProjects)
                     , small [ class "pull-right" ]
                         [ input [ placeholder "Search", onInput SetQuery ] [] ]
                     ]
