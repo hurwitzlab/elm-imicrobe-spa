@@ -283,11 +283,7 @@ update session msg model =
             { model | attrDropdownState = { dropdownState | show = not dropdownState.show } } => Cmd.none => NoOp
 
         FilterPermType filterType ->
-            let
-                _ = Debug.log "filter" filterType
-            in
             { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
-
 
         OpenInfoDialog id ->
             { model | showInfoDialog = True, selectedRowId = id } => Cmd.none => NoOp
@@ -372,17 +368,15 @@ showSearchResults model results =
             [ tr [] ((List.map mkTh ("specimen__project_name" :: "specimen__sample_name" :: "specimen__sample_type" :: fieldNames)) ++ [cartTh]) ]
 
         checkPerms permFilterType userId users =
-            case permFilterType of
-                "All" ->
-                    True
+            if permFilterType == "All" then
+                True
+            else -- Mine
+                case userId of
+                    Nothing ->
+                        False
 
-                _ -> -- Mine
-                    case userId of
-                        Nothing ->
-                            False
-
-                        Just id ->
-                            List.map .user_id users |> List.member id
+                    Just id ->
+                        List.map .user_id users |> List.member id
 
         filteredSamples =
             results
@@ -464,11 +458,8 @@ showSearchResults model results =
 showAll : Model -> Html Msg
 showAll model =
     let
-        query =
-            model.query
-
         lowerQuery =
-            String.toLower query
+            String.toLower model.query
 
         catter sample =
             String.concat
@@ -515,7 +506,7 @@ showAll model =
                         filteredSamples
 
         body =
-            if query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+            if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                 noResults
             else if acceptableSamples == [] then
                 noResultsLoggedIn model.user_id
@@ -736,8 +727,6 @@ attrDropdownInit params =
 prettyName : String -> String
 prettyName s =
     let
-
-
         parts =
             String.split "__" s
 
@@ -771,12 +760,10 @@ mkOptionTable model =
         rows =
             List.map (mkOptionRow model.optionValues model.possibleOptionValues) model.selectedParams
     in
-    case rows of
-        [] ->
-            text ""
-
-        _ ->
-            table [ style [ ("width", "95%"), ("margin-left", "2em"), ("padding", "4px"), ("background-color", "#f0f0f0") ] ] rows
+    if rows == [] then
+        text ""
+    else
+        table [ style [ ("width", "95%"), ("margin-left", "2em"), ("padding", "4px"), ("background-color", "#f0f0f0") ] ] rows
 
 
 unpackJsonType : JsonType -> String
