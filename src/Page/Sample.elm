@@ -674,8 +674,12 @@ viewSample sample isEditable =
             , td [] [ text sample.sample_acc ]
             ]
         , tr []
-            [ th [] [ text "Sample Type" ]
+            [ th [] [ text "Type" ]
             , td [] [ text sample.sample_type ]
+            ]
+        , tr []
+            [ th [] [ text "Description" ]
+            , td [] [ text sample.sample_description ]
             ]
         , tr []
             [ th [] [ text "Investigators" ]
@@ -1005,11 +1009,24 @@ aliasesToString aliases =
 
 attrValueColumn : Table.Column Sample.Attribute Msg
 attrValueColumn =
-    Table.customColumn
+    Table.veryCustomColumn
         { name = "Value"
-        , viewData = .attr_value
+        , viewData = attrValueView
         , sorter = Table.increasingOrDecreasingBy .attr_value
         }
+
+
+attrValueView : Sample.Attribute -> Table.HtmlDetails Msg
+attrValueView attr =
+    Table.HtmlDetails []
+        [ if String.startsWith "http://" attr.attr_value
+            || String.startsWith "https://" attr.attr_value
+            || String.startsWith "ftp://" attr.attr_value
+        then
+            a [ href attr.attr_value, target "_blank" ] [ text attr.attr_value ]
+        else
+            text attr.attr_value
+        ]
 
 
 attrUnitColumn : Table.Column Sample.Attribute Msg
@@ -1093,7 +1110,7 @@ newAttributeDialogConfig isBusy =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Name" ]
-                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", onInput SetAttributeType ] []
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", onInput SetAttributeType ] []
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Aliases" ]
