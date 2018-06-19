@@ -56,7 +56,7 @@ getSome token id_list =
             Encode.object
                 [ "ids" => Encode.string (id_list |> List.map toString |> String.join ",") ]
     in
-    HttpBuilder.get url
+    HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list Sample.decoder))
@@ -131,15 +131,11 @@ serializeForm optionValues possibleOptionValues paramTypes =
         encodeVals param vals =
             let
                 paramName =
-                    case
-                        String.startsWith "min__" param
-                            || String.startsWith "max__" param
-                    of
-                        True ->
-                            String.dropLeft 5 param
-
-                        False ->
-                            param
+                    if String.startsWith "min__" param || String.startsWith "max__" param
+                    then
+                        String.dropLeft 5 param
+                    else
+                        param
 
                 dataType =
                     EDict.getWithDefault "string" paramName paramTypes
@@ -180,7 +176,7 @@ files token id_list =
             Encode.object
                 [ "ids" => Encode.string (id_list |> List.map toString |> String.join ",") ]
     in
-    HttpBuilder.get url
+    HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleFile))
