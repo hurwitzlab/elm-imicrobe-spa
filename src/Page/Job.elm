@@ -6,6 +6,7 @@ import Data.App as App
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
+import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
 import Request.Agave
@@ -43,6 +44,8 @@ type alias Model =
     , results : Maybe (List (String, String))
     , startTime : Maybe Time
     , lastPollTime : Maybe Time
+    , showCancelDialog : Bool
+    , cancelDialogMessage : Maybe String
     }
 
 
@@ -93,6 +96,8 @@ init session id =
                                 , results = Nothing
                                 , startTime = Nothing
                                 , lastPollTime = Nothing
+                                , showCancelDialog = False
+                                , cancelDialogMessage = Nothing
                                 }
                         )
                 )
@@ -113,6 +118,9 @@ type Msg
     | SetResults (Result Http.Error (List (String, String)))
     | SetJob Agave.Job
     | PollJob Time
+    | CancelJob
+    | CancelJobCompleted (Result Http.Error String)
+    | CloseCancelDialog
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -307,6 +315,25 @@ update session msg model =
             else
                 model => Cmd.none
 
+        CancelJob ->
+            let
+                stopJob =
+                    Request.Agave.stopJob session.token model.job_id |> Http.toTask
+            in
+            { model | showCancelDialog = True, cancelDialogMessage = Nothing } => Task.attempt CancelJobCompleted stopJob
+
+        CancelJobCompleted (Ok response) ->
+            let
+                msg =
+                    "A cancellation request was sent.  This may or may not result in the cancellation of the job depending the job status."
+            in
+            { model | cancelDialogMessage = Just msg } => Cmd.none
+
+        CancelJobCompleted (Err error) ->
+            { model | cancelDialogMessage = Just (toString error) }  => Cmd.none
+
+        CloseCancelDialog ->
+            { model | showCancelDialog = False } => Cmd.none
 
 
 -- VIEW --
@@ -332,15 +359,21 @@ view model =
             , viewOutputs model
             , viewResults model
             ]
+        , Dialog.view
+            (if model.showCancelDialog then
+                Just (cancelDialogConfig model)
+            else
+                Nothing
+            )
         ]
 
 
-viewJob : Model -> Html msg
+viewJob : Model -> Html Msg
 viewJob model =
     table [ class "table" ]
         [ colgroup []
             [ col [ class "col-md-1" ] []
-            , col [ class "col-md-3" ] []
+            , col [ class "col-md-4" ] []
             ]
         , tr []
             [ th [] [ text "ID" ]
@@ -368,7 +401,13 @@ viewJob model =
             ]
         , tr []
             [ th [ class "top" ] [ text "Status" ]
-            , td [] [ viewStatus model.job.status ]
+            , td []
+                [ viewStatus model.job.status
+                , if model.job.status /= "finished" then
+                    button [ class "btn btn-default btn-xs", style [("float","left")], onClick CancelJob ] [ text "Cancel" ]
+                else
+                    text ""
+                ]
             , td [] []
             ]
         ]
@@ -381,7 +420,7 @@ viewStatus status =
             let
                 label = String.Extra.replace "_" " " status -- replace _ with space
             in
-            div [ class "progress" ]
+            div [ class "progress", style [("float","left"), ("width","20em")] ]
                 [ div [ class "progress-bar progress-bar-striped active", style [("width", ((toString pct) ++ "%"))],
                         attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
                     [ text label ]
@@ -582,3 +621,30 @@ viewResults model =
                 ]
             ]
         ]
+
+
+cancelDialogConfig : Model -> Dialog.Config Msg
+cancelDialogConfig model =
+    let
+        content =
+            case model.cancelDialogMessage of
+                Nothing ->
+                    spinner
+
+                Just message ->
+                    div [ class "alert alert-info" ]
+                        [ p [] [ text message ]
+                        ]
+
+        footer =
+            if model.cancelDialogMessage == Nothing then
+                div [] [ text " " ]
+            else
+                button [ class "btn btn-default", onClick CloseCancelDialog ] [ text "OK" ]
+    in
+    { closeMessage = Nothing
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Cancel Job" ])
+    , body = Just content
+    , footer = Just footer
+    }

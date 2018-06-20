@@ -227,6 +227,25 @@ shareJob token id username permission =
         |> HttpBuilder.toRequest
 
 
+stopJob : String -> String -> Http.Request String
+stopJob token id =
+    let
+        url =
+            agaveBaseUrl ++ "/jobs/v2/" ++ id
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            "action=stop"
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withStringBody "" body
+        |> HttpBuilder.withExpect Http.expectString
+        |> HttpBuilder.toRequest
+
+
 mkdir : String -> String -> String -> Http.Request EmptyResponse
 mkdir token path dirname =
     let
