@@ -271,7 +271,7 @@ decoderJob =
     decode Job
         |> required "id" Decode.string
         |> required "name" Decode.string
-        |> required "owner" Decode.string
+        |> optional "owner" Decode.string ""
         |> required "appId" Decode.string
         |> optional "startTime" Decode.string ""
         |> optional "endTime" Decode.string ""
