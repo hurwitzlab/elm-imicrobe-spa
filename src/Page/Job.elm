@@ -249,7 +249,7 @@ update session msg model =
             { model | job = job, loadingJob = False } => Cmd.none
 
         PollJob time ->
-            if model.loadingJob == False && model.job.status /= "FINISHED" && model.job.status /= "FAILED" && model.job.status /= "STOPPED" then
+            if model.loadingJob == False && isActive model.job then
                 let
                     _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
 
@@ -403,7 +403,7 @@ viewJob model =
             [ th [ class "top" ] [ text "Status" ]
             , td []
                 [ viewStatus model.job.status
-                , if model.job.status /= "finished" then
+                , if isActive model.job then
                     button [ class "btn btn-default btn-xs", style [("float","left")], onClick CancelJob ] [ text "Cancel" ]
                 else
                     text ""
@@ -411,6 +411,11 @@ viewJob model =
             , td [] []
             ]
         ]
+
+
+isActive : Agave.Job -> Bool
+isActive job =
+    job.status /= "FINISHED" && job.status /= "FAILED" && job.status /= "STOPPED"
 
 
 viewStatus : String -> Html msg
