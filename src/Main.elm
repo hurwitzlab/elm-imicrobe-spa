@@ -767,25 +767,28 @@ updatePage page msg model =
         ProjectsMsg subMsg ->
             case page of
                 Projects subModel ->
-                    let
-                        ( ( pageModel, cmd ), msgFromPage ) =
-                            Projects.update model.session subMsg subModel
+                    toPage Projects ProjectsMsg (Projects.update session) subMsg subModel
 
-                        newModel =
-                            case msgFromPage of
-                                Projects.NoOp ->
-                                    model
-
-                                Projects.SetCart newCart ->
-                                    let
-                                        newSession =
-                                            { session | cart = newCart }
-                                    in
-                                    { model | session = newSession }
-
-                    in
-                    { newModel | pageState = Loaded (Projects pageModel) }
-                        => Cmd.map ProjectsMsg cmd
+--                Projects subModel ->
+--                    let
+--                        ( ( pageModel, cmd ), msgFromPage ) =
+--                            Projects.update model.session subMsg subModel
+--
+--                        newModel =
+--                            case msgFromPage of
+--                                Projects.NoOp ->
+--                                    model
+--
+--                                Projects.SetCart newCart ->
+--                                    let
+--                                        newSession =
+--                                            { session | cart = newCart }
+--                                    in
+--                                    { model | session = newSession }
+--
+--                    in
+--                    { newModel | pageState = Loaded (Projects pageModel) }
+--                        => Cmd.map ProjectsMsg cmd
 
                 _ ->
                     model => Cmd.none

@@ -1,8 +1,8 @@
-module Page.Projects exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
+module Page.Projects exposing (Model, Msg(..), init, update, view)
 
 import Data.Project exposing (Project, Domain, Investigator)
 import Data.Session exposing (Session)
-import Data.Cart
+--import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick, onDoubleClick, onCheck)
@@ -17,7 +17,7 @@ import Table exposing (defaultCustomizations)
 import Task exposing (Task)
 import View.Project
 import View.FilterButtonGroup
-import View.Cart as Cart
+--import View.Cart as Cart
 import View.Widgets
 import Util exposing ((=>), capitalize)
 
@@ -29,7 +29,7 @@ import Util exposing ((=>), capitalize)
 type alias Model =
     { pageTitle : String
     , user_id : Maybe Int
-    , cart : Cart.Model
+--    , cart : Cart.Model
     , projects : List Project
     , tableState : Table.State
     , query : String
@@ -55,7 +55,7 @@ init session =
                 Task.succeed
                     { pageTitle = "Projects"
                     , user_id = user_id
-                    , cart = (Cart.init session.cart Cart.Editable)
+--                    , cart = (Cart.init session.cart Cart.Editable)
                     , projects = projects
                     , tableState = Table.initialSort "Name"
                     , query = ""
@@ -73,49 +73,49 @@ init session =
 
 
 type Msg
-    = CartMsg Cart.Msg
-    | SetSession Session
-    | SetQuery String
+    = SetQuery String
     | SetTableState Table.State
     | FilterPermType String
     | SelectType String Bool
     | OpenInfoDialog Int
     | CloseInfoDialog
+--    | CartMsg Cart.Msg
+--    | SetSession Session
 
 
-type ExternalMsg
-    = NoOp
-    | SetCart Data.Cart.Cart
+--type ExternalMsg
+--    = NoOp
+--    | SetCart Data.Cart.Cart
 
 
-update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
-        CartMsg subMsg ->
-            let
-                ( ( newCart, subCmd ), msgFromPage ) =
-                    Cart.update session subMsg model.cart
-            in
-            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
-
-        SetSession newSession ->
-            let
-                newCart =
-                    Cart.init newSession.cart Cart.Editable
-
-                (subModel, cmd) =
-                    Cart.update newSession (Cart.SetSession newSession) model.cart
-            in
-            { model | cart = newCart } => Cmd.none => NoOp
+--        CartMsg subMsg ->
+--            let
+--                ( ( newCart, subCmd ), msgFromPage ) =
+--                    Cart.update session subMsg model.cart
+--            in
+--            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+--
+--        SetSession newSession ->
+--            let
+--                newCart =
+--                    Cart.init newSession.cart Cart.Editable
+--
+--                (subModel, cmd) =
+--                    Cart.update newSession (Cart.SetSession newSession) model.cart
+--            in
+--            { model | cart = newCart } => Cmd.none => NoOp
 
         SetQuery newQuery ->
-            { model | query = newQuery } => Cmd.none => NoOp
+            { model | query = newQuery } => Cmd.none
 
         SetTableState newState ->
-            { model | tableState = newState } => Cmd.none => NoOp
+            { model | tableState = newState } => Cmd.none
 
         FilterPermType filterType ->
-            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none
 
         SelectType value bool ->
             let
@@ -130,13 +130,14 @@ update session msg model =
                         False ->
                             List.filter ((/=) value) curOptions
             in
-            { model | typeRestriction = newOpts } => Cmd.none => NoOp
+            { model | typeRestriction = newOpts } => Cmd.none
 
         OpenInfoDialog id ->
-            { model | showInfoDialog = True, selectedRowId = id } => Cmd.none => NoOp
+            { model | showInfoDialog = True, selectedRowId = id } => Cmd.none
 
         CloseInfoDialog ->
-            { model | showInfoDialog = False } => Cmd.none => NoOp
+            { model | showInfoDialog = False } => Cmd.none
+
 
 
 -- VIEW --
@@ -219,7 +220,7 @@ view model =
                           else if acceptableProjects == [] then
                             noProjects
                           else
-                            Table.view (tableConfig model.cart model.selectedRowId) model.tableState acceptableProjects
+                            Table.view (tableConfig model.selectedRowId) model.tableState acceptableProjects
                         ]
                     ]
                 ]
@@ -273,8 +274,8 @@ permissionFilterConfig =
     View.FilterButtonGroup.Config [ "All", "Mine" ] FilterPermType
 
 
-tableConfig : Cart.Model -> Int -> Table.Config Project Msg
-tableConfig cart selectedRowId =
+tableConfig : Int -> Table.Config Project Msg
+tableConfig selectedRowId =
     Table.customConfig
         { toId = .project_name
         , toMsg = SetTableState
@@ -282,7 +283,7 @@ tableConfig cart selectedRowId =
             [ nameColumn
             , Table.stringColumn "Type" (.project_type)
             , domainColumn
-            , addToCartColumn cart
+--            , addToCartColumn cart
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs, rowAttrs = toRowAttrs selectedRowId }
@@ -330,24 +331,24 @@ nameLink project =
         ]
 
 
-addToCartColumn : Cart.Model -> Table.Column Project Msg
-addToCartColumn cart =
-    Table.veryCustomColumn
-        { name = "Cart"
-        , viewData = (\project -> addToCartButton cart project)
-        , sorter = Table.unsortable
-        }
-
-
-addToCartButton : Cart.Model -> Project -> Table.HtmlDetails Msg
-addToCartButton cart project =
-    let
-        sampleIds =
-            List.map .sample_id project.samples
-    in
-    Table.HtmlDetails []
-        [ Cart.addAllToCartButton cart (Just ("Add Samples", "Remove Samples")) sampleIds |> Html.map CartMsg
-        ]
+--addToCartColumn : Cart.Model -> Table.Column Project Msg
+--addToCartColumn cart =
+--    Table.veryCustomColumn
+--        { name = "Cart"
+--        , viewData = (\project -> addToCartButton cart project)
+--        , sorter = Table.unsortable
+--        }
+--
+--
+--addToCartButton : Cart.Model -> Project -> Table.HtmlDetails Msg
+--addToCartButton cart project =
+--    let
+--        sampleIds =
+--            List.map .sample_id project.samples
+--    in
+--    Table.HtmlDetails []
+--        [ Cart.addAllToCartButton cart (Just ("Add Samples", "Remove Samples")) sampleIds |> Html.map CartMsg
+--        ]
 
 
 infoDialogConfig : Model -> Dialog.Config Msg
