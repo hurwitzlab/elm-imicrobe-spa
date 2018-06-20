@@ -207,6 +207,26 @@ launchJob token request =
         |> HttpBuilder.toRequest
 
 
+shareJob : String -> String -> String -> String -> Http.Request (Response JobStatus)
+shareJob token id username permission =
+    let
+        url =
+            agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/pems/" ++ username
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "permission" => Encode.string permission ]
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobStatus))
+        |> HttpBuilder.toRequest
+
+
 mkdir : String -> String -> String -> Http.Request EmptyResponse
 mkdir token path dirname =
     let

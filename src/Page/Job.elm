@@ -162,7 +162,7 @@ update session msg model =
         GetOutputs ->
             let
                 loadOutputs =
-                    Request.Agave.getJobOutputs username session.token model.job_id Nothing |> Http.toTask |> Task.map .result
+                    Request.Agave.getJobOutputs model.job.owner session.token model.job_id Nothing |> Http.toTask |> Task.map .result
 
                 handleOutputs outputs =
                     case outputs of
@@ -187,14 +187,14 @@ update session msg model =
         GetResults -> -- this code is a little complicated
             let
                 loadOutputs path =
-                    Request.Agave.getJobOutputs username session.token model.job_id (Just path)
+                    Request.Agave.getJobOutputs model.job.owner session.token model.job_id (Just path)
                         |> Http.toTask
                         |> Task.map .result
                         |> Task.map (List.filter (\r -> r.name /= "." && String.endsWith ".tab" r.name) >> List.map .path) -- filter out current path "." #FIXME hardcoded for .tab files (for ohana-blast) 
 
                 -- Expects relative path
                 loadOutput path =
-                    Request.Agave.getJobOutput username session.token model.job_id path
+                    Request.Agave.getJobOutput model.job.owner session.token model.job_id path
                         |> Http.toTask |> Task.map (\data -> List.singleton (path, data))
 
                 -- Expects full path
@@ -353,6 +353,10 @@ viewJob model =
         , tr []
             [ th [] [ text "App" ]
             , td [] [ a [ Route.href (Route.App model.app.app_id) ] [ text model.job.app_id ] ]
+            ]
+        , tr []
+            [ th [] [ text "Owner" ]
+            , td [] [ text model.job.owner ]
             ]
         , tr []
             [ th [] [ text "Start Time" ]

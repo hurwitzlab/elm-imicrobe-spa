@@ -112,6 +112,7 @@ type alias Notification =
 type alias Job =
     { id : String
     , name : String
+    , owner : String
     , app_id : String
     , startTime : String
     , endTime : String
@@ -270,6 +271,7 @@ decoderJob =
     decode Job
         |> required "id" Decode.string
         |> required "name" Decode.string
+        |> required "owner" Decode.string
         |> required "appId" Decode.string
         |> optional "startTime" Decode.string ""
         |> optional "endTime" Decode.string ""

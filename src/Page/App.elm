@@ -124,6 +124,7 @@ type Msg
     | SetParameter String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
+    | ShareJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
     | AppRunCompleted (Result Http.Error AppRun)
     | CloseRunDialog
     | OpenFileBrowser String String
@@ -190,31 +191,35 @@ update session msg model =
                 jobParameters =
                     DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
 
-                jobName = "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
+                jobName =
+                    "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
 
                 jobRequest =
                     Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
 
-                launchAgave = Request.Agave.launchJob session.token jobRequest
-                    |> Http.send RunJobCompleted
+                launchAgave =
+                    Request.Agave.launchJob session.token jobRequest |> Http.send RunJobCompleted
 
-                launchPlanB = Request.PlanB.launchJob session.token jobRequest
-                    |> Http.send RunJobCompleted
+                launchPlanB =
+                    Request.PlanB.launchJob session.token jobRequest |> Http.send RunJobCompleted
 
-                sendAppRun = Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString)
-                    |> Http.send AppRunCompleted
+                sendAppRun =
+                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString) |> Http.send AppRunCompleted
 
                 launchApp =
-                    case model.app.provider_name of
-                        "plan-b" -> launchPlanB
-
-                        _ -> launchAgave
+                    if model.app.provider_name == "plan-b" then
+                        launchPlanB
+                    else
+                        launchAgave
             in
             { model | showRunDialog = True } => Cmd.batch [ launchApp, sendAppRun ]
 
         RunJobCompleted (Ok response) ->
-            --TODO add job to app_run table
-            model => Route.modifyUrl (Route.Job response.result.id)
+            let
+                shareJob = Request.Agave.shareJob session.token response.result.id "imicrobe" "READ"
+                    |> Http.send ShareJobCompleted
+            in
+            model => Cmd.batch [ shareJob, Route.modifyUrl (Route.Job response.result.id) ]
 
         RunJobCompleted (Err error) ->
             let
@@ -238,6 +243,9 @@ update session msg model =
                         _ -> Just (toString error)
             in
             { model | dialogError = errorMsg } => Cmd.none
+
+        ShareJobCompleted _ ->
+            model => Cmd.none
 
         AppRunCompleted (Ok response) ->
             model => Cmd.none
