@@ -138,6 +138,10 @@ type Msg
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
+    let
+        isPlanB =
+            model.app.provider_name == "plan-b"
+    in
     case msg of
         SetInput source id value ->
             let
@@ -207,7 +211,7 @@ update session msg model =
                     Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString) |> Http.send AppRunCompleted
 
                 launchApp =
-                    if model.app.provider_name == "plan-b" then
+                    if isPlanB then
                         launchPlanB
                     else
                         launchAgave
@@ -216,10 +220,13 @@ update session msg model =
 
         RunJobCompleted (Ok response) ->
             let
-                shareJob = Request.Agave.shareJob session.token response.result.id "imicrobe" "READ"
-                    |> Http.send ShareJobCompleted
+                shareJob =
+                    Request.Agave.shareJob session.token response.result.id "imicrobe" "READ" |> Http.send ShareJobCompleted
             in
-            model => Cmd.batch [ shareJob, Route.modifyUrl (Route.Job response.result.id) ]
+            model =>
+                ((Route.modifyUrl (Route.Job response.result.id)
+                    :: (if not isPlanB then [ shareJob ] else [])
+                ) |> Cmd.batch)
 
         RunJobCompleted (Err error) ->
             let

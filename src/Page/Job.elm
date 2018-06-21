@@ -119,7 +119,7 @@ type Msg
     | SetJob Agave.Job
     | PollJob Time
     | CancelJob
-    | CancelJobCompleted (Result Http.Error String)
+    | CancelJobCompleted (Result Http.Error Agave.Job)
     | CloseCancelDialog
 
 
@@ -131,6 +131,18 @@ update session msg model =
                 Nothing -> ""
 
                 Just profile -> profile.username
+
+        loadJobFromAgave =
+            Request.Agave.getJob session.token model.job.id |> Http.toTask |> Task.map .result
+
+        loadJobFromPlanB =
+            Request.PlanB.getJob session.token model.job.id |> Http.toTask |> Task.map .result
+
+        loadJob =
+            if String.startsWith "planb" model.job_id then
+                loadJobFromPlanB
+            else
+                loadJobFromAgave
     in
     case msg of
         GetHistory ->
@@ -249,7 +261,7 @@ update session msg model =
             { model | job = job, loadingJob = False } => Cmd.none
 
         PollJob time ->
-            if model.loadingJob == False && isActive model.job then
+            if model.loadingJob == False && isRunning model.job then
                 let
                     _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
 
@@ -270,18 +282,6 @@ update session msg model =
 
                     timeSinceLastPoll =
                         time - lastPollTime
-
-                    loadJobFromAgave =
-                        Request.Agave.getJob session.token model.job.id |> Http.toTask |> Task.map .result
-
-                    loadJobFromPlanB =
-                        Request.PlanB.getJob session.token model.job.id |> Http.toTask |> Task.map .result
-
-                    loadJob =
-                        if String.startsWith "planb" model.job_id then
-                            loadJobFromPlanB
-                        else
-                            loadJobFromAgave
 
                     handleJob job =
                         case job of
@@ -318,16 +318,18 @@ update session msg model =
         CancelJob ->
             let
                 stopJob =
-                    Request.Agave.stopJob session.token model.job_id |> Http.toTask
+                    Request.Agave.stopJob session.token model.job_id
+                        |> Http.toTask
+                        |> Task.andThen (\_ -> loadJob)
             in
             { model | showCancelDialog = True, cancelDialogMessage = Nothing } => Task.attempt CancelJobCompleted stopJob
 
-        CancelJobCompleted (Ok response) ->
+        CancelJobCompleted (Ok job) ->
             let
                 msg =
-                    "A cancellation request was sent.  This may or may not result in the cancellation of the job depending the job status."
+                    "A cancellation request was sent.  This may or may not result in the termination of the job depending on its state."
             in
-            { model | cancelDialogMessage = Just msg } => Cmd.none
+            { model | cancelDialogMessage = Just msg, job = job } => Cmd.none
 
         CancelJobCompleted (Err error) ->
             { model | cancelDialogMessage = Just (toString error) }  => Cmd.none
@@ -403,7 +405,7 @@ viewJob model =
             [ th [ class "top" ] [ text "Status" ]
             , td []
                 [ viewStatus model.job.status
-                , if isActive model.job then
+                , if isRunning model.job then
                     button [ class "btn btn-default btn-xs", style [("float","left")], onClick CancelJob ] [ text "Cancel" ]
                 else
                     text ""
@@ -413,8 +415,8 @@ viewJob model =
         ]
 
 
-isActive : Agave.Job -> Bool
-isActive job =
+isRunning : Agave.Job -> Bool
+isRunning job =
     job.status /= "FINISHED" && job.status /= "FAILED" && job.status /= "STOPPED"
 
 
