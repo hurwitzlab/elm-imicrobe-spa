@@ -362,6 +362,17 @@ showSearchResults model results =
 
         fieldNames =
             List.map Tuple.first model.selectedParams
+                |> List.map addUnits
+
+        addUnits param =
+            let
+                units =
+                    Dict.get param model.optionUnits |> Maybe.withDefault ""
+            in
+            if units == "" then
+                param
+            else
+                param ++ " (" ++ units  ++ ")"
 
         headerRow =
             [ tr [] ((List.map mkTh ("specimen__project_name" :: "specimen__sample_name" :: "specimen__sample_type" :: fieldNames)) ++ [cartTh]) ]
