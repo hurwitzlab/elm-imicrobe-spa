@@ -82,14 +82,11 @@ getParamValues :
     -> Dict String (List String)
     -> Dict String (List Sample.JsonType)
     -> Dict String String
-    -> Http.Request (Dict String (List Sample.JsonType))
+    -> Http.Request SearchParamsResult
 getParamValues optionName optionValues possibleOptionValues params =
     let
         url =
             apiBaseUrl ++ "/samples/search_param_values"
-
-        decoder =
-            Decode.dict (Decode.list Sample.oneOfJsonType)
 
         body =
             Encode.object
@@ -98,7 +95,7 @@ getParamValues optionName optionValues possibleOptionValues params =
                 ]
                 |> Http.jsonBody
     in
-    Http.post url body decoder
+    Http.post url body decoderSearchParamsResult
 
 
 search : Dict String (List String) -> Dict String (List Sample.JsonType) -> Dict String String -> Cmd (WebData (List SearchResult))--Cmd (WebData (List (Dict String JsonType)))
@@ -318,8 +315,8 @@ remove token sample_id =
         |> HttpBuilder.toRequest
 
 
-addAttribute : String -> Int -> String -> String -> String -> Http.Request Sample
-addAttribute token sample_id attr_type attr_aliases attr_value =
+addAttribute : String -> Int -> String -> String -> String -> String -> Http.Request Sample
+addAttribute token sample_id attr_type attr_aliases attr_value attr_units =
     let
         url =
             apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/attributes"
@@ -332,6 +329,7 @@ addAttribute token sample_id attr_type attr_aliases attr_value =
                 [ "attr_type" => Encode.string attr_type
                 , "attr_aliases" => Encode.string attr_aliases
                 , "attr_value" => Encode.string attr_value
+                , "attr_units" => Encode.string attr_units
                 ]
     in
     HttpBuilder.put url
@@ -341,8 +339,8 @@ addAttribute token sample_id attr_type attr_aliases attr_value =
         |> HttpBuilder.toRequest
 
 
-updateAttribute : String -> Int -> Int -> String -> String -> String -> Http.Request Sample
-updateAttribute token sample_id attr_id attr_type attr_aliases attr_value =
+updateAttribute : String -> Int -> Int -> String -> Http.Request Sample
+updateAttribute token sample_id attr_id attr_value =
     let
         url =
             apiBaseUrl ++ "/samples/" ++ (toString sample_id) ++ "/attributes/" ++ (toString attr_id)
@@ -352,9 +350,7 @@ updateAttribute token sample_id attr_id attr_type attr_aliases attr_value =
 
         body =
             Encode.object
-                [ "attr_type" => Encode.string attr_type
-                , "attr_aliases" => Encode.string attr_aliases
-                , "attr_value" => Encode.string attr_value
+                [ "attr_value" => Encode.string attr_value
                 ]
     in
     HttpBuilder.post url

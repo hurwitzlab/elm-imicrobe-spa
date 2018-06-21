@@ -60,6 +60,7 @@ type alias Model =
     , attributeType : String
     , attributeAliases : String
     , attributeValue : String
+    , attributeUnits : String
     , showModifyAttributeDialog : Bool
     , showModifyAttributeBusy : Bool
     , attributeToModify : Maybe Sample.Attribute
@@ -155,6 +156,7 @@ init session id =
                     , attributeType = ""
                     , attributeAliases = ""
                     , attributeValue = ""
+                    , attributeUnits = ""
                     , showModifyAttributeDialog = False
                     , showModifyAttributeBusy = False
                     , attributeToModify = Nothing
@@ -199,6 +201,7 @@ type Msg
     | SetAttributeType String
     | SetAttributeAliases String
     | SetAttributeValue String
+    | SetAttributeUnits String
     | RemoveAttribute Int
     | RemoveAttributeCompleted (Result Http.Error Sample)
     | OpenModifyAttributeDialog Sample.Attribute
@@ -310,7 +313,7 @@ update session msg model =
             { model | loadedCentrifugeResults = True, centrifugeResults = results } => Cmd.none => NoOp
 
         OpenNewAttributeDialog ->
-            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, attributeType = "", attributeAliases = "", attributeValue = "" } => Cmd.none => NoOp
+            { model | showNewAttributeDialog = True, showNewAttributeBusy = False, attributeType = "", attributeAliases = "", attributeValue = "", attributeUnits = "" } => Cmd.none => NoOp
 
         CloseNewAttributeDialog ->
             { model | showNewAttributeDialog = False } => Cmd.none => NoOp
@@ -318,7 +321,7 @@ update session msg model =
         CreateNewAttribute ->
             let
                 createAttribute =
-                    Request.Sample.addAttribute session.token model.sample_id model.attributeType model.attributeAliases model.attributeValue |> Http.toTask
+                    Request.Sample.addAttribute session.token model.sample_id model.attributeType model.attributeAliases model.attributeValue model.attributeUnits |> Http.toTask
             in
             { model | showNewAttributeBusy = True } => Task.attempt CreateNewAttributeCompleted createAttribute => NoOp
 
@@ -341,6 +344,9 @@ update session msg model =
         SetAttributeValue val ->
             { model | attributeValue = val } => Cmd.none => NoOp
 
+        SetAttributeUnits val ->
+            { model | attributeUnits = val } => Cmd.none => NoOp
+
         OpenModifyAttributeDialog attr ->
             { model
                 | attributeToModify = Just attr
@@ -348,6 +354,7 @@ update session msg model =
                 , attributeType = attr.sample_attr_type.type_
                 , attributeAliases = aliasesToString attr.sample_attr_type.sample_attr_type_aliases
                 , attributeValue = attr.attr_value
+                , attributeUnits = attr.sample_attr_type.units
             } => Cmd.none => NoOp
 
         CloseModifyAttributeDialog ->
@@ -356,7 +363,7 @@ update session msg model =
         UpdateAttribute attr_id ->
             let
                 updateAttribute =
-                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.attributeType model.attributeAliases model.attributeValue |> Http.toTask
+                    Request.Sample.updateAttribute session.token model.sample_id attr_id model.attributeValue |> Http.toTask
             in
             { model | showModifyAttributeBusy = True } => Task.attempt UpdateAttributeCompleted updateAttribute => NoOp
 
@@ -1034,8 +1041,8 @@ attrUnitColumn : Table.Column Sample.Attribute Msg
 attrUnitColumn =
     Table.customColumn
         { name = "Unit"
-        , viewData = .unit
-        , sorter = Table.increasingOrDecreasingBy .unit
+        , viewData = .sample_attr_type >> .units
+        , sorter = Table.increasingOrDecreasingBy (.sample_attr_type >> .units)
         }
 
 
@@ -1064,7 +1071,7 @@ viewAttributes model isEditable =
 
         attrFilter attr =
             ( (String.contains lowerQuery (String.toLower attr.attr_value))
-                || (String.contains lowerQuery (aliasesToString attr.sample_attr_type.sample_attr_type_aliases |> String.toLower))
+--                || (String.contains lowerQuery (aliasesToString attr.sample_attr_type.sample_attr_type_aliases |> String.toLower))
                 || (String.contains lowerQuery (String.toLower attr.sample_attr_type.type_)) )
 
         acceptableAttributes =
@@ -1121,6 +1128,10 @@ newAttributeDialogConfig isBusy =
                         [ label [] [ text "Value" ]
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetAttributeValue ] []
                         ]
+                    , div [ class "form-group" ]
+                        [ label [] [ text "Units" ]
+                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the units (required)", onInput SetAttributeUnits] []
+                        ]
                     ]
 
         footer =
@@ -1150,16 +1161,8 @@ editAttributeDialogConfig model attr_id isBusy =
             else
                 Html.form []
                     [ div [ class "form-group" ]
-                        [ label [] [ text "Name" ]
-                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", value model.attributeType, onInput SetAttributeType ] []
-                        ]
---                    , div [ class "form-group" ]
---                        [ label [] [ text "Aliases" ]
---                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.attributeAliases, onInput SetAttributeAliases ] []
---                        ]
-                    , div [ class "form-group" ]
                         [ label [] [ text "Value" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.attributeValue, onInput SetAttributeValue ] []
+                        , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the value (required)", value model.attributeValue, onInput SetAttributeValue ] []
                         ]
                     ]
 

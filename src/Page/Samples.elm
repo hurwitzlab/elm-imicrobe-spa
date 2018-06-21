@@ -1,6 +1,6 @@
 module Page.Samples exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
-import Data.Sample as Sample exposing (Sample, Investigator, JsonType(..), SearchResult)
+import Data.Sample as Sample exposing (Sample, Investigator, JsonType(..), SearchResult, SearchParamsResult)
 import Data.Session as Session exposing (Session)
 import Data.Cart
 import Html exposing (..)
@@ -43,11 +43,12 @@ type alias Model =
     , sampleTypeRestriction : List String
     , cart : Cart.Model
     , params : Dict String String
-    , selectedParams : List ( String, String )
-    , optionValues : Dict String (List String)
-    , searchResults : WebData (List SearchResult)
-    , possibleOptionValues : Dict String (List JsonType)
     , restrictedParams : Dict String String
+    , selectedParams : List ( String, String )
+    , possibleOptionValues : Dict String (List JsonType)
+    , optionValues : Dict String (List String)
+    , optionUnits : Dict String String
+    , searchResults : WebData (List SearchResult)
     , doSearch : Bool
     , attrDropdownState : View.SearchableDropdown2.State
     , selectedRowId : Int
@@ -83,11 +84,12 @@ init session =
                     , sampleTypeRestriction = []
                     , cart = (Cart.init session.cart Cart.Editable)
                     , params = params
-                    , selectedParams = []
-                    , optionValues = Dict.empty
-                    , searchResults = NotAsked
-                    , possibleOptionValues = Dict.empty
                     , restrictedParams = Dict.empty
+                    , selectedParams = []
+                    , possibleOptionValues = Dict.empty
+                    , optionValues = Dict.empty
+                    , optionUnits = Dict.empty
+                    , searchResults = NotAsked
                     , doSearch = False
                     , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
                     , selectedRowId = 0
@@ -114,7 +116,7 @@ type Msg
     | RemoveOption String
     | UpdateOptionValue String String
     | UpdateMultiOptionValue String (List String)
-    | UpdatePossibleOptionValues (Result Http.Error (Dict String (List JsonType)))
+    | UpdatePossibleOptionValues (Result Http.Error SearchParamsResult)
 --    | Search
     | DelayedSearch Time
     | UpdateSearchResults (WebData (List SearchResult))
@@ -233,20 +235,13 @@ update session msg model =
             => Cmd.none
             => NoOp
 
-        UpdatePossibleOptionValues (Err err) ->
-            model => Cmd.none => NoOp
-
         UpdatePossibleOptionValues (Ok response) ->
             let
                 opt =
-                    case Dict.toList response |> List.head of
-                        Nothing -> ""
-
-                        Just opt ->
-                            Tuple.first opt
+                    response.param
 
                 (minVal, maxVal) =
-                    maxMinForOpt opt response
+                    maxMinForOpt response.values
 
                 dataType =
                     case Dict.get opt (Dict.fromList model.selectedParams) of
@@ -262,12 +257,16 @@ update session msg model =
                         _ -> Dict.fromList []
 
                 newModel = { model
-                                | possibleOptionValues = Dict.union response model.possibleOptionValues
+                                | possibleOptionValues = Dict.insert opt response.values model.possibleOptionValues
                                 , optionValues = Dict.union optionValues model.optionValues
+                                , optionUnits = Dict.insert opt response.units model.optionUnits
                                 , doSearch = True
                             }
             in
             newModel => Cmd.none => NoOp
+
+        UpdatePossibleOptionValues (Err err) ->
+            model => Cmd.none => NoOp
 
         SetAttrName name ->
             { model | attrDropdownState = { dropdownState | value = name } } => Cmd.none => NoOp
@@ -758,7 +757,7 @@ mkOptionTable : Model -> Html Msg
 mkOptionTable model =
     let
         rows =
-            List.map (mkOptionRow model.optionValues model.possibleOptionValues) model.selectedParams
+            List.map (mkOptionRow model.optionValues model.optionUnits model.possibleOptionValues) model.selectedParams
     in
     if rows == [] then
         text ""
@@ -782,17 +781,26 @@ unpackJsonType v =
             toString x
 
 
-mkOptionRow : Dict String (List String) -> Dict String (List JsonType) -> ( String, String ) -> Html Msg
-mkOptionRow optionValues possibleOptionValues ( optionName, dataType ) =
+mkOptionRow : Dict String (List String) -> Dict String String -> Dict String (List JsonType) -> ( String, String ) -> Html Msg
+mkOptionRow optionValues optionUnits possibleOptionValues ( optionName, dataType ) =
     let
+        units =
+            Dict.get optionName optionUnits |> Maybe.withDefault ""
+
+        unitsStr =
+            if units == "" then
+                ""
+            else
+                " (" ++ units ++ ")"
+
         title =
-            [ th [] [ text (prettyName optionName) ] ]
+            [ th [] [ (prettyName optionName) ++ unitsStr |> text ] ]
 
         vals =
             Dict.get optionName possibleOptionValues |> Maybe.withDefault []
 
         (minVal, maxVal) =
-            maxMinForOpt optionName possibleOptionValues
+            maxMinForOpt (Dict.get optionName possibleOptionValues |> Maybe.withDefault [])
 
         strVals =
             let
@@ -846,12 +854,9 @@ mkOptionRow optionValues possibleOptionValues ( optionName, dataType ) =
     tr [ class "padded" ] (title ++ el ++ buttons)
 
 
-maxMinForOpt : String -> Dict String (List JsonType) -> (String, String)
-maxMinForOpt optionName possibleOptionValues =
+maxMinForOpt : List JsonType -> (String, String)
+maxMinForOpt vals =
     let
-        vals =
-            Dict.get optionName possibleOptionValues |> Maybe.withDefault []
-
         minVal =
             case List.take 1 vals of
                 x :: [] ->

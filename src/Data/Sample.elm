@@ -8,6 +8,29 @@ import Util exposing ((=>))
 
 
 
+type alias Sample =
+    { sample_id : Int
+    , project_id : Int
+    , combined_assembly_id : Int
+    , sample_acc : String
+    , sample_name : String
+    , sample_type : String
+    , sample_description : String
+    , url : String
+    , project : Project
+    , investigators : List Investigator
+    , sample_files : List SampleFile2
+    , sample_file_count : Int
+    , assemblies : List Assembly
+    , combined_assemblies : List CombinedAssembly
+    , ontologies : List Ontology
+    , sample_attrs : List Attribute
+    , protein_count : Int
+    , centrifuge_count : Int
+    , available_types : List String
+    }
+
+
 type JsonType
     = StrType String
     | IntType Int
@@ -20,6 +43,12 @@ type alias SearchResult =
     , users: List User
     }
 
+
+type alias SearchParamsResult =
+    { param : String
+    , values : List JsonType
+    , units : String
+    }
 
 type alias Investigator =
     { investigator_id : Int
@@ -41,18 +70,25 @@ type alias Attribute =
     , sample_attr_type_id : Int
     , sample_id : Int
     , attr_value : String
-    , unit : String
     , sample_attr_type : AttributeType
     }
 
 
 type alias AttributeType =
     { sample_attr_type_id : Int
+    , sample_attr_type_category_id : Int
     , type_ : String
     , url_template : Maybe String
     , description : Maybe String
-    , category : Maybe String
+    , units : String
+    , category : AttributeTypeCategory
     , sample_attr_type_aliases : List AttributeTypeAlias
+    }
+
+
+type alias AttributeTypeCategory =
+    { sample_attr_type_category_id : Int
+    , category : String
     }
 
 
@@ -119,29 +155,6 @@ type alias Assembly =
 type alias CombinedAssembly =
     { combined_assembly_id : Int
     , assembly_name : String
-    }
-
-
-type alias Sample =
-    { sample_id : Int
-    , project_id : Int
-    , combined_assembly_id : Int
-    , sample_acc : String
-    , sample_name : String
-    , sample_type : String
-    , sample_description : String
-    , url : String
-    , project : Project
-    , investigators : List Investigator
-    , sample_files : List SampleFile2
-    , sample_file_count : Int
-    , assemblies : List Assembly
-    , combined_assemblies : List CombinedAssembly
-    , ontologies : List Ontology
-    , sample_attrs : List Attribute
-    , protein_count : Int
-    , centrifuge_count : Int
-    , available_types : List String
     }
 
 
@@ -296,6 +309,30 @@ type alias CentrifugeSample =
 -- SERIALIZATION --
 
 
+decoder : Decoder Sample
+decoder =
+    decode Sample
+        |> required "sample_id" Decode.int
+        |> required "project_id" Decode.int
+        |> optional "combined_assembly_id" Decode.int 0
+        |> optional "sample_acc" Decode.string "NA"
+        |> required "sample_name" Decode.string
+        |> optional "sample_type" Decode.string "NA"
+        |> optional "sample_description" Decode.string ""
+        |> optional "url" Decode.string "NA"
+        |> required "project" decoderProject
+        |> optional "investigators" (Decode.list decoderInv) []
+        |> optional "sample_files" (Decode.list decoderSampleFile2) []
+        |> optional "sample_file_count" Decode.int 0
+        |> optional "assemblies" (Decode.list decoderAssembly) []
+        |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
+        |> optional "ontologies" (Decode.list decoderOnt) []
+        |> optional "sample_attrs" (Decode.list decoderAttribute) []
+        |> optional "protein_count" Decode.int 0
+        |> optional "centrifuge_count" Decode.int 0
+        |> optional "available_types" (Decode.list Decode.string) []
+
+
 oneOfJsonType : Decoder JsonType
 oneOfJsonType =
     [ Decode.string
@@ -315,6 +352,14 @@ decoderSearchResult =
     decode SearchResult
         |> required "attributes" (Decode.dict oneOfJsonType)
         |> optional "users" (Decode.list decoderUser) []
+
+
+decoderSearchParamsResult : Decoder SearchParamsResult
+decoderSearchParamsResult =
+    decode SearchParamsResult
+        |> required "param" Decode.string
+        |> required "values" (Decode.list oneOfJsonType)
+        |> required "units" Decode.string
 
 
 decoderInv : Decoder Investigator
@@ -341,7 +386,6 @@ decoderAttribute =
         |> required "sample_attr_type_id" Decode.int
         |> required "sample_id" Decode.int
         |> required "attr_value" Decode.string
-        |> optional "unit" Decode.string ""
         |> required "sample_attr_type" decoderAttributeType
 
 
@@ -349,11 +393,20 @@ decoderAttributeType : Decoder AttributeType
 decoderAttributeType =
     decode AttributeType
         |> required "sample_attr_type_id" Decode.int
+        |> optional "sample_attr_type_category_id" Decode.int 0
         |> required "type" Decode.string
         |> optional "url_template" (Decode.nullable Decode.string) Nothing
         |> optional "description" (Decode.nullable Decode.string) Nothing
-        |> optional "category" (Decode.nullable Decode.string) Nothing
+        |> optional "units" Decode.string ""
+        |> optional "category" decoderAttributeTypeCategory (AttributeTypeCategory 0 "")
         |> optional "sample_attr_type_aliases" (Decode.list decoderAttributeTypeAlias) []
+
+
+decoderAttributeTypeCategory : Decoder AttributeTypeCategory
+decoderAttributeTypeCategory =
+    decode AttributeTypeCategory
+        |> required "sample_attr_type_category_id" Decode.int
+        |> required "category" Decode.string
 
 
 decoderAttributeTypeAlias : Decoder AttributeTypeAlias
@@ -397,30 +450,6 @@ decoderCombinedAssembly =
     decode CombinedAssembly
         |> required "combined_assembly_id" Decode.int
         |> optional "assembly_name" Decode.string ""
-
-
-decoder : Decoder Sample
-decoder =
-    decode Sample
-        |> required "sample_id" Decode.int
-        |> required "project_id" Decode.int
-        |> optional "combined_assembly_id" Decode.int 0
-        |> optional "sample_acc" Decode.string "NA"
-        |> required "sample_name" Decode.string
-        |> optional "sample_type" Decode.string "NA"
-        |> optional "sample_description" Decode.string ""
-        |> optional "url" Decode.string "NA"
-        |> required "project" decoderProject
-        |> optional "investigators" (Decode.list decoderInv) []
-        |> optional "sample_files" (Decode.list decoderSampleFile2) []
-        |> optional "sample_file_count" Decode.int 0
-        |> optional "assemblies" (Decode.list decoderAssembly) []
-        |> optional "combined_assemblies" (Decode.list decoderCombinedAssembly) []
-        |> optional "ontologies" (Decode.list decoderOnt) []
-        |> optional "sample_attrs" (Decode.list decoderAttribute) []
-        |> optional "protein_count" Decode.int 0
-        |> optional "centrifuge_count" Decode.int 0
-        |> optional "available_types" (Decode.list Decode.string) []
 
 
 decoderSampleFile : Decoder SampleFile
