@@ -969,7 +969,7 @@ attrTableConfig isEditable =
             [ attrTypeColumn
 --            , attrAliasColumn
             , attrValueColumn
-            , attrUnitColumn
+--            , attrUnitColumn
             ]
 
         columns =
@@ -1032,18 +1032,20 @@ attrValueView attr =
             || String.startsWith "ftp://" attr.attr_value
         then
             a [ href attr.attr_value, target "_blank" ] [ text attr.attr_value ]
+        else if attr.sample_attr_type.units /= "" then
+            text (attr.attr_value ++ " " ++ attr.sample_attr_type.units)
         else
             text attr.attr_value
         ]
 
 
-attrUnitColumn : Table.Column Sample.Attribute Msg
-attrUnitColumn =
-    Table.customColumn
-        { name = "Unit"
-        , viewData = .sample_attr_type >> .units
-        , sorter = Table.increasingOrDecreasingBy (.sample_attr_type >> .units)
-        }
+--attrUnitColumn : Table.Column Sample.Attribute Msg
+--attrUnitColumn =
+--    Table.customColumn
+--        { name = "Unit"
+--        , viewData = .sample_attr_type >> .units
+--        , sorter = Table.increasingOrDecreasingBy (.sample_attr_type >> .units)
+--        }
 
 
 attrEditColumn : Table.Column Sample.Attribute Msg
