@@ -541,6 +541,7 @@ update session msg model =
             { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd => NoOp
 
 
+
 -- VIEW --
 
 
@@ -959,7 +960,7 @@ attrTableConfig isEditable =
     let
         defaultColumns =
             [ attrTypeColumn
-            , attrAliasColumn
+--            , attrAliasColumn
             , attrValueColumn
             , attrUnitColumn
             ]
@@ -993,13 +994,13 @@ attrTypeColumn =
         }
 
 
-attrAliasColumn : Table.Column Sample.Attribute Msg
-attrAliasColumn =
-    Table.customColumn
-        { name = "Aliases"
-        , viewData = aliasesToString << .sample_attr_type_aliases << .sample_attr_type
-        , sorter = Table.increasingOrDecreasingBy (.type_ << .sample_attr_type)
-        }
+--attrAliasColumn : Table.Column Sample.Attribute Msg
+--attrAliasColumn =
+--    Table.customColumn
+--        { name = "Aliases"
+--        , viewData = aliasesToString << .sample_attr_type_aliases << .sample_attr_type
+--        , sorter = Table.increasingOrDecreasingBy (.type_ << .sample_attr_type)
+--        }
 
 
 aliasesToString : List Sample.AttributeTypeAlias -> String
@@ -1112,10 +1113,10 @@ newAttributeDialogConfig isBusy =
                         [ label [] [ text "Name" ]
                         , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", onInput SetAttributeType ] []
                         ]
-                    , div [ class "form-group" ]
-                        [ label [] [ text "Aliases" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetAttributeAliases ] []
-                        ]
+--                    , div [ class "form-group" ]
+--                        [ label [] [ text "Aliases" ]
+--                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", onInput SetAttributeAliases ] []
+--                        ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Value" ]
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", onInput SetAttributeValue ] []
@@ -1152,10 +1153,10 @@ editAttributeDialogConfig model attr_id isBusy =
                         [ label [] [ text "Name" ]
                         , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the type (required)", value model.attributeType, onInput SetAttributeType ] []
                         ]
-                    , div [ class "form-group" ]
-                        [ label [] [ text "Aliases" ]
-                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.attributeAliases, onInput SetAttributeAliases ] []
-                        ]
+--                    , div [ class "form-group" ]
+--                        [ label [] [ text "Aliases" ]
+--                        , input [ class "form-control", type_ "text", size 20, placeholder "Enter aliases as a comma-separated list (optional)", value model.attributeAliases, onInput SetAttributeAliases ] []
+--                        ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Value" ]
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the value (required)", value model.attributeValue, onInput SetAttributeValue ] []
