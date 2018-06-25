@@ -28,6 +28,7 @@ import View.Sample
 import View.FilterButtonGroup
 import View.SearchableDropdown2
 import View.Widgets
+import View.Spinner exposing (spinner)
 
 
 
@@ -50,6 +51,8 @@ type alias Model =
     , optionUnits : Dict String String
     , searchResults : WebData (List SearchResult)
     , doSearch : Bool
+    , searchStartTime : Time
+    , isSearching : Bool
     , attrDropdownState : View.SearchableDropdown2.State
     , selectedRowId : Int
     , permFilterType : String
@@ -91,6 +94,8 @@ init session =
                     , optionUnits = Dict.empty
                     , searchResults = NotAsked
                     , doSearch = False
+                    , searchStartTime = 0
+                    , isSearching = False
                     , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
                     , selectedRowId = 0
                     , permFilterType = "All"
@@ -117,7 +122,7 @@ type Msg
     | UpdateOptionValue String String
     | UpdateMultiOptionValue String (List String)
     | UpdatePossibleOptionValues (Result Http.Error SearchParamsResult)
---    | Search
+    | SetStartTime Time
     | DelayedSearch Time
     | UpdateSearchResults (WebData (List SearchResult))
     | SetAttrName String
@@ -138,6 +143,9 @@ update session msg model =
     let
         dropdownState =
             model.attrDropdownState
+
+        setStartTime =
+            Task.perform SetStartTime Time.now
     in
     case msg of
         CartMsg subMsg ->
@@ -183,7 +191,7 @@ update session msg model =
                 req =
                     Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.params |> Http.toTask
             in
-            { model | selectedParams = addSelectedParam model opt }
+            { model | selectedParams = addSelectedParam model opt, isSearching = True }
             => Task.attempt UpdatePossibleOptionValues req
             => NoOp
 
@@ -191,22 +199,24 @@ update session msg model =
             { model
                 | selectedParams = rmParam model.selectedParams opt
                 , optionValues = rmOptionValue model.optionValues opt
-                , doSearch = True
+                , doSearch = True, isSearching = True
             } => Cmd.none => NoOp
 
---        Search ->
---            { model | doSearch = False } => doSearch model => NoOp
+        SetStartTime time ->
+            { model | searchStartTime = time } => Cmd.none => NoOp
 
         DelayedSearch time ->
             if model.doSearch then
                 if model.selectedParams == [] then
-                    { model | doSearch = False, searchResults = NotAsked } => Cmd.none => NoOp
-                else
+                    { model | doSearch = False, isSearching = False, searchResults = NotAsked } => Cmd.none => NoOp
+                else if time - model.searchStartTime >= 500 * Time.millisecond then
                     let
                         cmd =
                             Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
                     in
-                    { model | doSearch = False } => cmd => NoOp
+                    { model | doSearch = False, isSearching = True } => cmd => NoOp
+                else
+                    model => Cmd.none => NoOp
             else
                 model => Cmd.none => NoOp
 
@@ -215,7 +225,7 @@ update session msg model =
                 | optionValues = Dict.insert opt [ val ] model.optionValues
                 , doSearch = True
             }
-            => Cmd.none
+            => setStartTime
             => NoOp
 
         UpdateMultiOptionValue opt vals ->
@@ -223,7 +233,7 @@ update session msg model =
                 | optionValues = Dict.insert opt vals model.optionValues
                 , doSearch = True
             }
-            => Cmd.none
+            => setStartTime
             => NoOp
 
         UpdateSearchResults response ->
@@ -231,6 +241,7 @@ update session msg model =
                 | searchResults = response
                 , restrictedParams = mkRestrictedParams model.params response
                 -- , restrictedOptionValues = mkRestrictedOptionValues response
+                , isSearching = False
             }
             => Cmd.none
             => NoOp
@@ -430,19 +441,22 @@ showSearchResults model results =
                 ]
 
         body =
-            if results == [] then
-                noResults
-            else if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
-                noResults
-            else if acceptableSamples == [] then
-                noResults --noResultsLoggedIn model.user_id
+            if model.isSearching then
+                spinner
             else
-               div [ class "container" ]
-                   [ div [ class "row" ]
-                       [ table [ class "table table-hover" ]
-                           [ tbody [] (headerRow ++ resultRows) ]
+                if results == [] then
+                    noResults
+                else if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+                    noResults
+                else if acceptableSamples == [] then
+                    noResults --noResultsLoggedIn model.user_id
+                else
+                   div [ class "container" ]
+                       [ div [ class "row" ]
+                           [ table [ class "table table-hover" ]
+                               [ tbody [] (headerRow ++ resultRows) ]
+                           ]
                        ]
-                   ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -516,15 +530,18 @@ showAll model =
                         filteredSamples
 
         body =
-            if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
-                noResults
-            else if acceptableSamples == [] then
-                noResultsLoggedIn model.user_id
+            if model.isSearching then
+                spinner
             else
-               div [ class "container" ]
-                   [ div [ class "row" ]
-                       [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
-                   ]
+                if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
+                    noResults
+                else if acceptableSamples == [] then
+                    noResultsLoggedIn model.user_id
+                else
+                   div [ class "container" ]
+                       [ div [ class "row" ]
+                           [ Table.view (config model.cart model.selectedRowId) model.tableState acceptableSamples ]
+                       ]
     in
     div [ class "container" ]
         [ div [ class "row" ]
