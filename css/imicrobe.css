@@ -33,6 +33,10 @@ h1, h2, h3 {
     height: 480px;
 }
 
+.hidden { 
+    display: none;
+}
+
 .small-text {
     font-size: 0.75em;
 }
@@ -127,6 +131,13 @@ tr.padded > td {
 
 div.search-dropdown {
     max-width: 30em;
+}
+
+div.message-banner {
+    text-align: center;
+    border-bottom: 1pt solid lightgray;
+    background-color: #ffb84d;
+    color: white; 
 }
 
 
