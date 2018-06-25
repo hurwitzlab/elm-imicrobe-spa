@@ -63,49 +63,39 @@ type alias Model =
 init : Session -> Task PageLoadError Model
 init session =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        loadSamples =
-            Request.Sample.list session.token |> Http.toTask
-
         loadSearchParams =
             Request.Sample.getParams |> Http.toTask
 
         user_id =
             Maybe.map .user_id session.user
     in
-    -- FIXME load samples and search params in parallel
-    loadSamples |> Task.andThen
-        (\samples ->
-            (loadSearchParams |> Task.andThen
-                (\params ->
-                    Task.succeed
-                    { pageTitle = "Samples"
-                    , samples = samples
-                    , user_id = user_id
-                    , tableState = Table.initialSort "Name"
-                    , query = ""
-                    , sampleTypeRestriction = []
-                    , cart = (Cart.init session.cart Cart.Editable)
-                    , params = params
-                    , restrictedParams = Dict.empty
-                    , selectedParams = []
-                    , possibleOptionValues = Dict.empty
-                    , optionValues = Dict.empty
-                    , optionUnits = Dict.empty
-                    , searchResults = NotAsked
-                    , doSearch = False
-                    , searchStartTime = 0
-                    , isSearching = False
-                    , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
-                    , selectedRowId = 0
-                    , permFilterType = "All"
-                    , showInfoDialog = False
-                    }
-                )
-            )
+    loadSearchParams |> Task.andThen
+        (\params ->
+            Task.succeed
+            { pageTitle = "Samples"
+            , samples = []
+            , user_id = user_id
+            , tableState = Table.initialSort "Name"
+            , query = ""
+            , sampleTypeRestriction = []
+            , cart = (Cart.init session.cart Cart.Editable)
+            , params = params
+            , restrictedParams = Dict.empty
+            , selectedParams = []
+            , possibleOptionValues = Dict.empty
+            , optionValues = Dict.empty
+            , optionUnits = Dict.empty
+            , searchResults = NotAsked
+            , doSearch = True
+            , searchStartTime = 0
+            , isSearching = True
+            , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
+            , selectedRowId = 0
+            , permFilterType = "All"
+            , showInfoDialog = False
+            }
         )
         |> Task.mapError Error.handleLoadError
-
 
 
 -- UPDATE --
@@ -125,6 +115,7 @@ type Msg
     | SetStartTime Time
     | DelayedSearch Time
     | UpdateSearchResults (WebData (List SearchResult))
+    | UpdateSamples (Result Http.Error (List Sample))
     | SetAttrName String
     | SelectAttr String String
     | ToggleAttr
@@ -208,7 +199,10 @@ update session msg model =
         DelayedSearch time ->
             if model.doSearch then
                 if model.selectedParams == [] then
-                    { model | doSearch = False, isSearching = False, searchResults = NotAsked } => Cmd.none => NoOp
+                    if model.samples == [] then
+                        { model | doSearch = False } => Task.attempt UpdateSamples (Request.Sample.list session.token |> Http.toTask) => NoOp
+                    else
+                        { model | doSearch = False, isSearching = False, searchResults = NotAsked } => Cmd.none => NoOp
                 else if time - model.searchStartTime >= 500 * Time.millisecond then
                     let
                         cmd =
@@ -245,6 +239,12 @@ update session msg model =
             }
             => Cmd.none
             => NoOp
+
+        UpdateSamples (Ok samples) ->
+            { model | samples = samples, isSearching = False } => Cmd.none => NoOp
+
+        UpdateSamples (Err error) ->
+            model => Cmd.none => NoOp
 
         UpdatePossibleOptionValues (Ok response) ->
             let
