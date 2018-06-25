@@ -280,7 +280,36 @@ update session msg model =
             model => Cmd.none => NoOp
 
         SetAttrName name ->
-            { model | attrDropdownState = { dropdownState | value = name } } => Cmd.none => NoOp
+            let
+                params =
+                    if Dict.isEmpty model.restrictedParams || model.selectedParams == [] then
+                        model.params
+                    else
+                        model.restrictedParams
+
+                alreadySelected =
+                    List.map Tuple.first model.selectedParams |> Set.fromList
+
+                -- mdb added 2/14/18 - list of curated metadata terms from Alise
+--              curated =
+--                  Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
+
+                attrValue =
+                    String.toLower dropdownState.value
+
+                filteredParams =
+                    if attrValue == "" then
+                        params
+                    else
+                        params
+                            |> Dict.filter (\k v -> String.contains attrValue (String.toLower k)) -- filter on search string
+                            |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
+--                          |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
+
+                results =
+                    filteredParams |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+            in
+            { model | attrDropdownState = { dropdownState | value = name, results = results } } => Cmd.none => NoOp
 
         SelectAttr id name ->
             let
@@ -705,34 +734,8 @@ addSelectedParam model optionName =
 
 mkParamsSelect : Model -> Html Msg
 mkParamsSelect model =
-    let
-        attrDropdownState =
-            model.attrDropdownState
-
-        params =
-            if Dict.isEmpty model.restrictedParams || model.selectedParams == [] then
-                model.params
-            else
-                model.restrictedParams
-
-        alreadySelected =
-            List.map Tuple.first model.selectedParams |> Set.fromList
-
-     -- mdb added 2/14/18 - list of curated metadata terms from Alise
---        curated =
---            Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
-
-        filteredParams =
-            if attrDropdownState.value == "" then
-                params
-            else
-                params
-                    |> Dict.filter (\k v -> String.contains (String.toLower attrDropdownState.value) (String.toLower k)) -- filter on search string
-                    |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
---                  |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
-    in
     div [ class "padded", style [("padding-left","1em")] ]
-        [ View.SearchableDropdown2.view attrDropdownConfig { attrDropdownState | results = attrDropdownInit filteredParams } ]
+        [ View.SearchableDropdown2.view attrDropdownConfig model.attrDropdownState ]
 
 
 attrDropdownConfig : View.SearchableDropdown2.Config Msg Msg Msg
