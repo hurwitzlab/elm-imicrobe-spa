@@ -17,6 +17,7 @@ import Task exposing (Task)
 import Config exposing (dataCommonsUrl)
 import Table exposing (defaultCustomizations)
 import List.Extra
+import String.Extra exposing (replace)
 import Maybe.Extra
 import Util exposing ((=>))
 import View.Cart as Cart
@@ -1026,16 +1027,32 @@ attrValueColumn =
 
 attrValueView : Sample.Attribute -> Table.HtmlDetails Msg
 attrValueView attr =
+    let
+        value =
+            attr.attr_value
+
+        units =
+            attr.sample_attr_type.units
+
+        urlTemplate =
+            attr.sample_attr_type.url_template |> Maybe.withDefault ""
+    in
     Table.HtmlDetails []
-        [ if String.startsWith "http://" attr.attr_value
-            || String.startsWith "https://" attr.attr_value
-            || String.startsWith "ftp://" attr.attr_value
+        [ if String.startsWith "http://" value
+            || String.startsWith "https://" value
+            || String.startsWith "ftp://" value
         then
-            a [ href attr.attr_value, target "_blank" ] [ text attr.attr_value ]
-        else if attr.sample_attr_type.units /= "" then
-            text (attr.attr_value ++ " " ++ attr.sample_attr_type.units)
+            a [ href value, target "_blank" ] [ text value ]
+        else if urlTemplate /= "" then
+            let
+                url =
+                    replace "%s" value urlTemplate
+            in
+            a [ href url, target "_blank" ] [ text value ]
+        else if units /= "" then
+            text (value ++ " " ++ units)
         else
-            text attr.attr_value
+            text value
         ]
 
 
