@@ -3,7 +3,6 @@ module Request.Sample exposing (..)
 import Data.Sample as Sample exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
-import RemoteData exposing (WebData, sendRequest)
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import Dict exposing (Dict)
@@ -98,7 +97,7 @@ getParamValues optionName optionValues possibleOptionValues params =
     Http.post url body decoderSearchParamsResult
 
 
-search : Dict String (List String) -> Dict String (List Sample.JsonType) -> Dict String String -> Cmd (WebData (List SearchResult))--Cmd (WebData (List (Dict String JsonType)))
+search : Dict String (List String) -> Dict String (List Sample.JsonType) -> Dict String String -> Http.Request (List SearchResult)
 search optionValues possibleOptionValues params =
     let
         url =
@@ -109,10 +108,9 @@ search optionValues possibleOptionValues params =
                 |> Http.jsonBody
 
         decoder =
-            Decode.list decoderSearchResult--(Decode.dict Sample.oneOfJsonType)
+            Decode.list decoderSearchResult
     in
     Http.post url body decoder
-        |> RemoteData.sendRequest
 
 
 serializeForm :

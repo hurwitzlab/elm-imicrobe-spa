@@ -15,7 +15,6 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import String.Extra as SE
 import Page.Error as Error exposing (PageLoadError)
-import RemoteData exposing (RemoteData(..), WebData)
 import Request.Sample
 import Route
 import String exposing (join)
@@ -49,10 +48,11 @@ type alias Model =
     , possibleOptionValues : Dict String (List JsonType)
     , optionValues : Dict String (List String)
     , optionUnits : Dict String String
-    , searchResults : WebData (List SearchResult)
     , doSearch : Bool
     , searchStartTime : Time
     , isSearching : Bool
+    , searchResults : List SearchResult
+    , error : Maybe Http.Error
     , attrDropdownState : View.SearchableDropdown2.State
     , selectedRowId : Int
     , permFilterType : String
@@ -89,10 +89,11 @@ init session =
             , possibleOptionValues = Dict.empty
             , optionValues = Dict.empty
             , optionUnits = Dict.empty
-            , searchResults = NotAsked
             , doSearch = True
             , searchStartTime = 0
             , isSearching = True
+            , searchResults = [] --NotAsked
+            , error = Nothing
             , attrDropdownState = View.SearchableDropdown2.State False "" dropdownResults Nothing
             , selectedRowId = 0
             , permFilterType = "All"
@@ -118,7 +119,7 @@ type Msg
     | UpdatePossibleOptionValues (Result Http.Error SearchParamsResult)
     | SetStartTime Time
     | DelayedSearch Time
-    | UpdateSearchResults (WebData (List SearchResult))
+    | UpdateSearchResults (Result Http.Error (List SearchResult))
     | UpdateSamples (Result Http.Error (List Sample))
     | SetAttrName String
     | SelectAttr String String
@@ -203,16 +204,17 @@ update session msg model =
         DelayedSearch time ->
             if model.doSearch then
                 if model.selectedParams == [] then
-                    if model.samples == [] then
+                    if model.samples == [] then -- initial load of all samples
                         { model | doSearch = False } => Task.attempt UpdateSamples (Request.Sample.list session.token |> Http.toTask) => NoOp
                     else
-                        { model | doSearch = False, isSearching = False, searchResults = NotAsked } => Cmd.none => NoOp
+                        { model | doSearch = False, isSearching = False, searchResults = [] } => Cmd.none => NoOp
                 else if time - model.searchStartTime >= 500 * Time.millisecond then
                     let
-                        cmd =
-                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
+                        search =
+--                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
+                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Http.toTask
                     in
-                    { model | doSearch = False, isSearching = True } => cmd => NoOp
+                    { model | doSearch = False, isSearching = True } => Task.attempt UpdateSearchResults search => NoOp
                 else
                     model => Cmd.none => NoOp
             else
@@ -234,7 +236,7 @@ update session msg model =
             => setStartTime
             => NoOp
 
-        UpdateSearchResults response ->
+        UpdateSearchResults (Ok response) ->
             { model
                 | searchResults = response
                 , restrictedParams = mkRestrictedParams model.params response
@@ -243,6 +245,13 @@ update session msg model =
             }
             => Cmd.none
             => NoOp
+
+        UpdateSearchResults (Err error) ->
+            let
+                msg =
+                    "An error occurred: " ++ (toString error)
+            in
+            { model | error = Just error } => Cmd.none => NoOp
 
         UpdateSamples (Ok samples) ->
             { model | samples = samples, isSearching = False } => Cmd.none => NoOp
@@ -280,8 +289,12 @@ update session msg model =
             in
             newModel => Cmd.none => NoOp
 
-        UpdatePossibleOptionValues (Err err) ->
-            model => Cmd.none => NoOp
+        UpdatePossibleOptionValues (Err error) ->
+            let
+                msg =
+                    "An error occurred: " ++ (toString error)
+            in
+            { model | error = Just error } => Cmd.none => NoOp
 
         SetAttrName name ->
             let
@@ -367,36 +380,26 @@ toRowAttrs selectedRowId data =
 
 view : Model -> Html Msg
 view model =
-    div []
-        ((case model.searchResults of
-            NotAsked ->
+    let
+        body =
+            if model.selectedParams == [] then
                 showAll model
-
-            Loading ->
-                text "Loading ..."
-
-            Failure e ->
-                text (toString e)
-
-            Success data ->
-                case model.selectedParams of
-                    [] ->
-                        showAll model
-
-                    _ ->
-                        showSearchResults model data
-        ) ::
-        [ Dialog.view
+            else
+                showSearchResults model
+    in
+    div []
+        [ body
+        , Dialog.view
            (if model.showInfoDialog then
                Just (infoDialogConfig model)
             else
                 Nothing
            )
-        ])
+        ]
 
 
-showSearchResults : Model -> List SearchResult -> Html Msg
-showSearchResults model results =
+showSearchResults : Model -> Html Msg
+showSearchResults model =
     let
         lowerQuery =
             String.toLower model.query
@@ -444,7 +447,7 @@ showSearchResults model results =
             String.contains lowerQuery (catFields result)
 
         filteredSamples =
-            results
+            model.searchResults
                 |> List.filter filterOnQuery
                 |> List.filter filterOnType
 
@@ -485,10 +488,12 @@ showSearchResults model results =
                 ]
 
         body =
-            if model.isSearching then
+            if model.error /= Nothing then
+                viewError model.error
+            else if model.isSearching then
                 spinner
             else
-                if results == [] then
+                if model.searchResults == [] then
                     noResults
                 else if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
                     noResults
@@ -573,7 +578,9 @@ showAll model =
                         filteredSamples
 
         body =
-            if model.isSearching then
+            if model.error /= Nothing then
+                viewError model.error
+            else if model.isSearching then
                 spinner
             else
                 if model.query /= "" && (filteredSamples == [] || acceptableSamples == []) then
@@ -634,6 +641,23 @@ noResultsLoggedIn userId =
                 , text " to see your samples."
                 ]
             ]
+
+
+viewError : Maybe Http.Error -> Html Msg
+viewError error =
+    let
+        body =
+            case error of
+                Nothing ->
+                    text "An error occurred"
+
+                Just error ->
+                    div []
+                        [ p [] [ text "An error occurred:" ]
+                        , p [] [ toString error |> text ]
+                        ]
+    in
+    div [ class "alert alert-danger" ] [ body ]
 
 
 viewTypes : List Sample -> Html Msg
@@ -930,12 +954,14 @@ mkMultiSelect optionName vals =
         items =
             List.map (\s -> { value = s, text = s, enabled = True }) strings
     in
-    Multi.multiSelect
-        { onChange = UpdateMultiOptionValue optionName
-        , items = items
-        }
-        []
-        []
+    span [ style [ ("display","block") ] ] -- span needed for select to fill width of table
+        [ Multi.multiSelect
+            { onChange = UpdateMultiOptionValue optionName
+            , items = items
+            }
+            [ style [ ("width","100%"), ("overflow-x", "auto") ] ]
+            []
+        ]
 
 
 rmParam : List ( String, String ) -> String -> List ( String, String )
@@ -960,25 +986,20 @@ rmOptionValue optionValues optToRemove =
 
 mkRestrictedParams :
     Dict String String
-    -> WebData (List SearchResult)
+    -> List SearchResult
     -> Dict String String
-mkRestrictedParams curParams searchResults =
-    case searchResults of
-        Success results ->
-            let
-                keys =
-                    List.map (.attributes >> Dict.keys) results
-                        |> List.concat
-                        |> List.filter (\v -> v /= "_id")
-                        |> List.Extra.unique
+mkRestrictedParams curParams results =
+        let
+            keys =
+                List.map (.attributes >> Dict.keys) results
+                    |> List.concat
+                    |> List.filter (\v -> v /= "_id")
+                    |> List.Extra.unique
 
-                types =
-                    List.filterMap (\k -> Dict.get k curParams) keys
-            in
-            Dict.fromList (List.map2 (,) keys types)
-
-        _ ->
-            Dict.empty
+            types =
+                List.filterMap (\k -> Dict.get k curParams) keys
+        in
+        Dict.fromList (List.map2 (,) keys types)
 
 
 mkResultRow : Int -> Cart.Model -> List ( String, String ) -> Dict String JsonType -> Html Msg
