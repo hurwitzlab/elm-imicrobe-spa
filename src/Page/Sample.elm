@@ -585,10 +585,10 @@ view model =
                 viewMap model.showMap
               else
                 text ""
+            , viewAttributes model model.isEditable
             , viewFiles model.sample.sample_files model.isEditable model.filesBusy
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
-            , viewAttributes model model.isEditable
             , if not model.isEditable then
                 viewProteins model
               else
@@ -813,7 +813,7 @@ viewFiles files isEditable isBusy =
             , label
             , addButton
             ]
-        , body
+        , div [ class "scrollable" ] [ body ]
         ]
 
 
