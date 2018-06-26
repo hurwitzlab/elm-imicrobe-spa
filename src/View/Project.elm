@@ -16,19 +16,16 @@ viewInfo
     , url : String
     , investigators : List Investigator
     , publications : List Publication
-    , samples : List { b | sample_id : Int }
+    , sample_count : Int
     }
   -> Html msg
-viewInfo { project_id, project_name, project_code, project_type, url, investigators, publications, samples } =
+viewInfo { project_id, project_name, project_code, project_type, url, investigators, publications, sample_count } =
     let
-        numSamples =
-            List.length samples
-
         numSamplesText =
-            if numSamples == 0 then
+            if sample_count == 0 then
                 "None"
             else
-                toString numSamples
+                toString sample_count
     in
     div [ class "row" ]
         [ div [ class "table-responsive" ]

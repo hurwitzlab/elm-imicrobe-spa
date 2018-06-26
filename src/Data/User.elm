@@ -40,6 +40,7 @@ type alias Project =
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
+    , sample_count : Int
     , users : List User2
     }
 
@@ -215,6 +216,7 @@ decoderProject =
         |> optional "investigators" (Decode.list decoderInvestigator) []
         |> optional "publications" (Decode.list decoderPublication) []
         |> optional "samples" (Decode.list decoderSample) []
+        |> optional "sample_count" Decode.int 0
         |> optional "users" (Decode.list decoderUser2) []
 
 
