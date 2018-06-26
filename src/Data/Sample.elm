@@ -11,7 +11,6 @@ import Util exposing ((=>))
 type alias Sample =
     { sample_id : Int
     , project_id : Int
-    , combined_assembly_id : Int
     , sample_acc : String
     , sample_name : String
     , sample_type : String
@@ -314,7 +313,6 @@ decoder =
     decode Sample
         |> required "sample_id" Decode.int
         |> required "project_id" Decode.int
-        |> optional "combined_assembly_id" Decode.int 0
         |> optional "sample_acc" Decode.string "NA"
         |> required "sample_name" Decode.string
         |> optional "sample_type" Decode.string "NA"
@@ -653,7 +651,6 @@ encode sample =
     Encode.object
         [ "sample_id" => Encode.int sample.sample_id
         , "project_id" => Encode.int sample.project_id
-        , "combined_assembly_id" => Encode.int sample.combined_assembly_id
         , "sample_acc" => Encode.string sample.sample_acc
         , "sample_name" => Encode.string sample.sample_name
         , "sample_type" => Encode.string sample.sample_type
