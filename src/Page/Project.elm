@@ -1016,6 +1016,7 @@ viewSamples cart samples isEditable =
             tr []
                 [ th [] [ text "Name" ]
                 , th [] [ text "Type" ]
+                , th [] [ text "Investigators" ]
                 , cartTh
                 , th [ class "nowrap" ] []
                 ]
@@ -1066,6 +1067,7 @@ viewSample cart isEditable sample =
                 [ text sample.sample_name ]
             ]
         , td [] [ text sample.sample_type ]
+        , td [] (View.Investigator.viewList sample.investigators)
         , td [ class "col-md-1" ] [ Cart.addToCartButton cart sample.sample_id |> Html.map CartMsg ]
         , td [ class "col-md-1" ] [ removeButton ]
         ]

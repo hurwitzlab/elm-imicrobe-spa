@@ -79,7 +79,7 @@ type alias Sample =
     , url : String
     , latitude : String
     , longitude : String
-    , sample_files : List SampleFile
+    , investigators : List Investigator
     }
 
 
@@ -214,7 +214,7 @@ decoderSample =
         |> optional "url" Decode.string "NA"
         |> optional "latitude" Decode.string ""
         |> optional "longitude" Decode.string ""
-        |> optional "sample_files" (Decode.list decoderSampleFile) []
+        |> optional "investigators" (Decode.list decoderInv) []
 
 
 decoderSampleFile : Decoder SampleFile
