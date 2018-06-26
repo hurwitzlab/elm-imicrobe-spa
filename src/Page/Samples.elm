@@ -954,7 +954,7 @@ mkMultiSelect optionName vals =
         items =
             List.map (\s -> { value = s, text = s, enabled = True }) strings
     in
-    span [ style [ ("display","block") ] ] -- span needed for select to fill width of table
+    span [ class "pull-left", style [ ("display","block") ] ] -- span needed for select to fill width of table
         [ Multi.multiSelect
             { onChange = UpdateMultiOptionValue optionName
             , items = items
