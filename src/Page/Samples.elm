@@ -71,6 +71,10 @@ init session =
     in
     loadSearchParams |> Task.andThen
         (\params ->
+            let
+                dropdownResults =
+                    params |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+            in
             Task.succeed
             { pageTitle = "Samples"
             , samples = []
@@ -89,7 +93,7 @@ init session =
             , doSearch = True
             , searchStartTime = 0
             , isSearching = True
-            , attrDropdownState = View.SearchableDropdown2.State False "" [] Nothing
+            , attrDropdownState = View.SearchableDropdown2.State False "" dropdownResults Nothing
             , selectedRowId = 0
             , permFilterType = "All"
             , showInfoDialog = False
