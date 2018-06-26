@@ -598,7 +598,7 @@ showAll model =
             ]
         , div [ class "row" ]
             [ div [ class "panel panel-default" ]
-                [ div [ class "panel-body" ]
+                [ div [ class "panel-body", classList [("disabled", model.isSearching)] ]
                     [ viewTypes model.samples
                     , viewAccessFilter model.permFilterType
                     , searchView model

@@ -37,6 +37,11 @@ h1, h2, h3 {
     display: none;
 }
 
+.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
 .small-text {
     font-size: 0.75em;
 }
