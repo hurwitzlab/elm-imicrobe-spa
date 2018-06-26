@@ -10,7 +10,8 @@ import Util exposing ((=>))
 type alias App =
     { app_id : Int
     , app_name : String
-    , is_active : Int
+    , is_active : Bool
+    , is_maintenance : Bool
     , provider_name : String
     , app_tags : List AppTag
     , app_data_types : List AppDataType
@@ -65,7 +66,8 @@ decoder =
     decode App
         |> required "app_id" Decode.int
         |> required "app_name" Decode.string
-        |> optional "is_active" Decode.int 1
+        |> required "is_active" Decode.bool
+        |> required "is_maintenance" Decode.bool
         |> optional "provider_name" Decode.string ""
         |> optional "app_tags" (Decode.list decoderAppTag) []
         |> optional "app_data_types" (Decode.list decoderAppDataType) []

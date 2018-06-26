@@ -345,6 +345,23 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        body =
+            if not model.app.is_active then
+                div [ class "alert alert-info" ]
+                    [ text "This app is no longer available." ]
+            else if model.app.is_maintenance then
+                div [ class "alert alert-info" ]
+                    [ text "This app is currently unavailable due to maintenance." ]
+            else
+                div []
+                    [ viewApp model
+                    , div [ class "center" ]
+                        [ hr [] []
+                        , button [ class "btn btn-primary btn-lg", onClick RunJob ] [ text "Run" ]
+                        ]
+                    ]
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -355,11 +372,7 @@ view model =
                     ]
                 ]
             ]
-            , viewApp model
-            , div [ class "center" ]
-                [ hr [] []
-                , button [ class "btn btn-primary btn-lg", onClick RunJob ] [ text "Run" ]
-                ]
+            , body
             , Dialog.view
                 (if model.showRunDialog then
                     Just (runDialogConfig model)
