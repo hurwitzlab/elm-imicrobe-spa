@@ -428,9 +428,20 @@ showSearchResults model results =
                     Just id ->
                         List.map .user_id users |> List.member id
 
+        catFields result =
+            List.intersperse " "
+                [ getVal "specimen__sample_name" result.attributes
+                , getVal "specimen__project_name" result.attributes
+                ]
+            |> String.concat
+            |> String.toLower
+
+        filterOnQuery result =
+            String.contains lowerQuery (catFields result)
+
         filteredSamples =
             results
-                |> List.filter (\result -> String.contains (String.toLower model.query) (String.toLower (getVal "specimen__sample_name" result.attributes)))
+                |> List.filter filterOnQuery
                 |> List.filter filterOnType
 
         acceptableSamples =
@@ -514,12 +525,11 @@ showAll model =
         lowerQuery =
             String.toLower model.query
 
-        catter sample =
+        catFields sample =
             String.concat
                 (List.intersperse " "
                     [ sample.sample_name
                     , sample.project.project_name
-                    , sample.sample_type
                     ]
                 )
                 |> String.toLower
@@ -539,7 +549,7 @@ showAll model =
                             (List.map .users project.project_groups |> List.concat |> List.map .user_id |> List.member id)
 
         filter sample =
-            (String.contains lowerQuery (catter sample))
+            (String.contains lowerQuery (catFields sample))
                 && (checkPerms model.permFilterType model.user_id sample.project)
 
         filteredSamples =
