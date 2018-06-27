@@ -146,16 +146,19 @@ update session msg model =
         SetInput source id value ->
             let
                 newValue =
-                    case source of
-                        "syndicate" ->
-                            "hsyn:///imicrobe/" ++ value
+                    if source == "syndicate" then
+                        if model.app.provider_name == "plan-b" then
+                            String.split ";" value |> List.map (\s -> "hsyn:///refseq/" ++ s) |> String.join ";" --FIXME hardcoded
+                        else
+                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/refseq/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
+                    else --"agave"
+                        if String.startsWith "/iplant/home" value then
+                            String.Extra.replace "/iplant/home" "" value
+                        else
+                            value
 
-                        _ -> -- "agave"
-                            case String.startsWith "/iplant/home" value of
-                                True -> String.Extra.replace "/iplant/home" "" value
-                                False -> value
-
-                newInputs = DictList.insert id newValue model.inputs
+                newInputs =
+                    DictList.insert id newValue model.inputs
 
 --          Verify file types FIXME
 --                exts =
@@ -453,10 +456,10 @@ viewAppInput input =
         id = agaveAppInput.id
 
         label =
-            case agaveAppInput.value.required of
-                True -> agaveAppInput.details.label ++ " *"
-
-                False -> agaveAppInput.details.label
+            if agaveAppInput.value.required then
+                agaveAppInput.details.label ++ " *"
+            else
+                agaveAppInput.details.label
 
         browserButton label msg =
             button [ class "margin-right btn btn-default btn-sm", style [("max-height","2.8em")], onClick msg ]
