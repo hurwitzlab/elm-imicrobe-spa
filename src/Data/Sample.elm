@@ -26,6 +26,7 @@ type alias Sample =
     , sample_attrs : List Attribute
     , protein_count : Int
     , centrifuge_count : Int
+    , available_file_types : List SampleFileType
     , available_types : List String
     }
 
@@ -328,6 +329,7 @@ decoder =
         |> optional "sample_attrs" (Decode.list decoderAttribute) []
         |> optional "protein_count" Decode.int 0
         |> optional "centrifuge_count" Decode.int 0
+        |> optional "available_file_types" (Decode.list decoderSampleFileType) []
         |> optional "available_types" (Decode.list Decode.string) []
 
 

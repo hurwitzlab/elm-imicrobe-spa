@@ -586,7 +586,7 @@ view model =
               else
                 text ""
             , viewAttributes model model.isEditable
-            , viewFiles model.sample.sample_files model.isEditable model.filesBusy
+            , viewFiles model.sample.available_file_types model.sample.sample_files model.isEditable model.filesBusy
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
             , if not model.isEditable then
@@ -769,8 +769,8 @@ editInfoDialogConfig model isBusy =
     }
 
 
-viewFiles : List SampleFile2 -> Bool -> Bool -> Html Msg
-viewFiles files isEditable isBusy =
+viewFiles : List SampleFileType -> List SampleFile2 -> Bool -> Bool -> Html Msg
+viewFiles availableFileTypes files isEditable isBusy =
     let
         numFiles =
             List.length files
@@ -797,7 +797,7 @@ viewFiles files isEditable isBusy =
                 spinner
             else
                 table [ class "table table-condensed" ]
-                    [ tbody [] (cols :: (List.sortBy .file files |> List.map (viewFile isEditable))) ]
+                    [ tbody [] (cols :: (List.sortBy .file files |> List.map (viewFile isEditable availableFileTypes))) ]
 
         addButton =
             if isEditable then
@@ -817,14 +817,14 @@ viewFiles files isEditable isBusy =
         ]
 
 
-viewFile : Bool -> SampleFile2 -> Html Msg
-viewFile isEditable file =
+viewFile : Bool -> List SampleFileType -> SampleFile2 -> Html Msg
+viewFile isEditable availableFileTypes file =
     let
-        availableTypes =
-            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
+--        availableTypes =
+--            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
 
-        makeOption (id, name) =
-            option [ value (toString id), selected (name == file.sample_file_type.file_type) ] [ text name ]
+        makeOption { sample_file_type_id, file_type } =
+            option [ value (toString sample_file_type_id), selected (file_type == file.sample_file_type.file_type) ] [ text file_type ]
     in
     tr []
         [ td []
@@ -838,7 +838,7 @@ viewFile isEditable file =
 --                        (List.map (\s -> li [ onClick (SetFileType file.sample_file_id s) ] [ a [] [ text s ]]) availableTypes)
 --                    ]
                 select [ onInput (SetFileType file.sample_file_id) ]
-                    (List.map makeOption availableTypes)
+                    (List.map makeOption availableFileTypes)
               else
                 text file.sample_file_type.file_type
             ]
