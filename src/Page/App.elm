@@ -465,19 +465,18 @@ viewAppInput input =
                 ]
 
         syndicateButton =
-            case List.member "syndicate" agaveAppInput.semantics.ontology of
-                True ->
-                    browserButton "Syndicate" (OpenFileBrowser "syndicate" id)
-
-                False ->
-                    text ""
+            -- mdb changed 6/27/18 -- show RefSeq button in all apps, not just Libra
+--            if List.member "syndicate" agaveAppInput.semantics.ontology then
+                browserButton "RefSeq" (OpenFileBrowser "syndicate" id)
+--            else
+--                text ""
     in
     tr []
     [ th [ class "col-md-3" ] [ text label ]
     , td []
         [ div [ style [("display","flex")] ]
             [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput "agave" id) ] []
-            , browserButton "CyVerse" (OpenFileBrowser "agave" id)
+            , browserButton "Data Store" (OpenFileBrowser "agave" id)
             , syndicateButton
             , button [ class "btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenCart id) ]
                 [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
