@@ -1,11 +1,12 @@
 module Request.User exposing (..)
 
-import Data.User as User exposing (User, Login)
+import Data.User as User exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Encode as Encode
 import Config exposing (apiBaseUrl)
+import Util exposing ((=>))
 
 
 
@@ -20,7 +21,7 @@ list token =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.list User.decoder))
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
         |> HttpBuilder.toRequest
 
 
@@ -35,7 +36,7 @@ get token id =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
 
@@ -50,7 +51,7 @@ getByUsername token name =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson User.decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoder)
         |> HttpBuilder.toRequest
 
 
@@ -69,7 +70,7 @@ searchByName token term =
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withQueryParams queryParams
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.list User.decoder))
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
         |> HttpBuilder.toRequest
 
 
@@ -84,11 +85,10 @@ recordLogin token username =
 
         body =
             Encode.object
-                [ ("user_name", Encode.string username)
-                ]
+                [ "user_name" => Encode.string username ]
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
-        |> HttpBuilder.withExpect (Http.expectJson User.decoderLogin)
+        |> HttpBuilder.withExpect (Http.expectJson decoderLogin)
         |> HttpBuilder.toRequest
