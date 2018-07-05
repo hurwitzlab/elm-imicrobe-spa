@@ -13,7 +13,7 @@ type Route
     | App Int
     | Assemblies
     | Assembly Int
-    | Cart
+    | Cart (Maybe Int)
     | CombinedAssemblies
     | CombinedAssembly Int
     | Contact
@@ -28,7 +28,6 @@ type Route
     | Login
     | Logout
     | Map String String
---    | MetaSearch
     | Profile
     | Project Int
     | Projects
@@ -51,7 +50,8 @@ routeMather =
         , map App (s "apps" </> int)
         , map Assemblies (s "assemblies")
         , map Assembly (s "assemblies" </> int)
-        , map Cart (s "cart")
+        , map (Cart Nothing) (s "cart") -- Note: tried to use a query param (<?>) but won't work for some reason (Not found error)
+        , map (Cart << Just) (s "cart" </> int)
         , map CombinedAssemblies (s "combined_assemblies")
         , map CombinedAssembly (s "combined_assemblies" </> int)
         , map Contact (s "contact")
@@ -67,12 +67,11 @@ routeMather =
         , map Login (s "login")
         , map Logout (s "logout")
         , map Map (s "map" </> string </> string)
---        , map MetaSearch (s "metasearch")
         , map Pubchase (s "pubchase")
         , map Publication (s "publications" </> int)
         , map Publications (s "publications")
         , map Profile (s "profile")
-        , map Project (s "projects" </> int) -- map Project (s "projects" </> int <?> intParam "edit") -- query param parsing not working
+        , map Project (s "projects" </> int)
         , map Projects (s "projects")
         , map ProjectGroup (s "project_groups" </> int)
         , map ProjectGroups (s "project_groups")
@@ -101,8 +100,11 @@ routeToString page =
                 Assembly id ->
                     [ "assemblies", toString id ]
 
-                Cart ->
+                Cart Nothing ->
                     [ "cart" ]
+
+                Cart (Just id) ->
+                    [ "cart", toString id ]
 
                 CombinedAssemblies ->
                     [ "combined_assemblies" ]

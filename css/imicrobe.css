@@ -74,6 +74,10 @@ h1, h2, h3 {
     white-space: nowrap;
 }
 
+.margin-left {
+    margin-left: 0.5em;
+}
+
 .margin-right {
     margin-right: 0.5em;
 }

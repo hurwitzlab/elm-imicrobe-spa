@@ -86,7 +86,7 @@ type Page
     | App Int App.Model
     | Assemblies Assemblies.Model
     | Assembly Int Assembly.Model
-    | Cart Cart.Model
+    | Cart (Maybe Int) Cart.Model
     | CombinedAssemblies CombinedAssemblies.Model
     | CombinedAssembly Int CombinedAssembly.Model
     | Contact Contact.Model
@@ -138,7 +138,7 @@ type Msg
     | Authorize
     | Deauthorize
     | AuthenticateORCID (Result Http.Error ORCID.TokenResponse)
-    | CartLoaded (Result PageLoadError Cart.Model)
+    | CartLoaded (Maybe Int) (Result PageLoadError Cart.Model)
     | CartMsg Cart.Msg
     | CombinedAssemblyLoaded Int (Result PageLoadError CombinedAssembly.Model)
     | CombinedAssemblyMsg CombinedAssembly.Msg
@@ -254,8 +254,8 @@ setRoute maybeRoute model =
         Just Route.Assemblies ->
             transition AssembliesLoaded Assemblies.init
 
-        Just Route.Cart ->
-            transition CartLoaded (Cart.init model.session)
+        Just (Route.Cart id) ->
+            transition (CartLoaded id) (Cart.init model.session id)
 
         Just (Route.CombinedAssembly id) ->
             transition (CombinedAssemblyLoaded id) (CombinedAssembly.init id)
@@ -478,15 +478,15 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        CartLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Cart subModel) } => scrollToTop
+        CartLoaded id (Ok subModel) ->
+            { model | pageState = Loaded (Cart id subModel) } => scrollToTop
 
-        CartLoaded (Err error) ->
+        CartLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         CartMsg subMsg ->
             case page of
-                Cart subModel ->
+                Cart id subModel ->
                     let
 --                        _ = Debug.log "Main.CartMsg" (toString subMsg)
 
@@ -506,7 +506,7 @@ updatePage page msg model =
                                     { model | session = newSession }
 
                     in
-                    { newModel | pageState = Loaded (Cart pageModel) }
+                    { newModel | pageState = Loaded (Cart id pageModel) }
                         => Cmd.map CartMsg cmd
 
                 _ ->
@@ -1002,12 +1002,12 @@ updatePage page msg model =
             case newSession of
                 Just newSession ->
                     case page of
-                        Cart subModel ->
+                        Cart id subModel ->
                             let
                                 ( ( pageModel, cmd ), msgFromPage ) =
                                     Cart.update model.session (Cart.SetSession newSession) subModel
                             in
-                            { model | pageState = Loaded (Cart pageModel) } => Cmd.map CartMsg cmd
+                            { model | pageState = Loaded (Cart id pageModel) } => Cmd.map CartMsg cmd
 
                         Samples subModel ->
                             let
@@ -1172,7 +1172,7 @@ viewPage session isLoading page =
                 |> Html.map AssembliesMsg
                 |> layout Page.Assemblies
 
-        Cart subModel ->
+        Cart id subModel ->
             Cart.view subModel
                 |> Html.map CartMsg
                 |> layout Page.Cart
@@ -1360,7 +1360,7 @@ viewHeader page isLoading session =
                         [ span [ class "gray absolute" ] [ text (toString numItemsInCart) ] ]
             in
             div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Cart" ]
-                [ a [ Route.href Route.Cart ]
+                [ a [ Route.href (Route.Cart Nothing) ]
                     (span [ class "icon-button glyphicon glyphicon-shopping-cart" ] [] :: label)
                 ]
 

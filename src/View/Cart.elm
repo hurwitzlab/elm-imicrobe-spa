@@ -2,7 +2,6 @@ module View.Cart exposing (Model, Msg(..), init, update, viewCart, addToCartButt
 
 import Data.Session as Session exposing (Session)
 import Data.Cart as Cart exposing (Cart)
-import Data.Sample as Sample exposing (Sample)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -133,7 +132,7 @@ update session msg model =
 -- VIEW --
 
 
-config : Model -> Table.Config Sample Msg
+config : Model -> Table.Config { a | sample_id : Int, sample_name : String, project : { b | project_id : Int, project_name : String } } Msg
 config model =
     let
         columns =
@@ -165,12 +164,12 @@ toTableAttrs =
     ]
 
 
-viewCart : Model -> List Sample -> Html Msg
+viewCart : Model -> List { a | sample_id : Int, sample_name : String, project : { b | project_id : Int, project_name : String } } -> Html Msg
 viewCart model samples =
     Table.view (config model) model.tableState (samplesInCart model.cart samples)
 
 
-selectInCartColumn : Model -> Table.Column Sample Msg
+selectInCartColumn : Model -> Table.Column { a | sample_id : Int, sample_name : String } Msg
 selectInCartColumn model =
     Table.veryCustomColumn
         { name = ""
@@ -179,7 +178,7 @@ selectInCartColumn model =
         }
 
 
-selectInCartLink : Model -> Sample -> Table.HtmlDetails Msg
+selectInCartLink : Model -> { a | sample_id : Int, sample_name : String } -> Table.HtmlDetails Msg
 selectInCartLink model sample =
     let
         isChecked =
@@ -195,7 +194,7 @@ selectInCartCheckbox id isChecked =
     input [ type_ "checkbox", checked isChecked, onClick (ToggleSelectInCart id) ] []
 
 
-projectColumn : Table.Column Sample Msg
+projectColumn : Table.Column { a | sample_id : Int, sample_name : String, project : { b | project_id : Int, project_name : String } } Msg
 projectColumn =
     Table.veryCustomColumn
         { name = "Project"
@@ -204,15 +203,15 @@ projectColumn =
         }
 
 
-projectLink : Sample -> Table.HtmlDetails Msg
+projectLink : { a | sample_id : Int, sample_name : String, project : { b | project_id : Int, project_name : String } } -> Table.HtmlDetails Msg
 projectLink sample =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.Project sample.project_id) ]
+        [ a [ Route.href (Route.Project sample.project.project_id) ]
             [ text <| Util.truncate sample.project.project_name ]
         ]
 
 
-nameColumn : Table.Column Sample Msg
+nameColumn : Table.Column { a | sample_id : Int, sample_name : String } Msg
 nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
@@ -221,7 +220,7 @@ nameColumn =
         }
 
 
-nameLink : Sample -> Table.HtmlDetails Msg
+nameLink : { a | sample_id : Int, sample_name : String } -> Table.HtmlDetails Msg
 nameLink sample =
     Table.HtmlDetails []
         [ a [ Route.href (Route.Sample sample.sample_id) ]
@@ -229,7 +228,7 @@ nameLink sample =
         ]
 
 
-removeFromCartColumn : Table.Column Sample Msg
+removeFromCartColumn : Table.Column { a | sample_id : Int, sample_name : String } Msg
 removeFromCartColumn =
     Table.veryCustomColumn
         { name = ""
@@ -238,7 +237,7 @@ removeFromCartColumn =
         }
 
 
-removeFromCartLink : Sample -> Table.HtmlDetails Msg
+removeFromCartLink : { a | sample_id : Int, sample_name : String } -> Table.HtmlDetails Msg
 removeFromCartLink sample =
     Table.HtmlDetails []
         [ removeFromCartButton sample.sample_id |> Html.map (\_ -> RemoveFromCart sample.sample_id)
@@ -291,7 +290,7 @@ addAllToCartButton model optionalLabels ids =
         button [ class "btn btn-default btn-xs", onClick (RemoveAllFromCart ids) ] [ text removeLbl ]
 
 
-samplesInCart : Cart -> List Sample -> List Sample
+samplesInCart : Cart -> List { a | sample_id : Int, sample_name : String } -> List { a | sample_id : Int, sample_name : String }
 samplesInCart cart samples =
     List.filter (\sample -> Set.member sample.sample_id cart.contents) samples
 
