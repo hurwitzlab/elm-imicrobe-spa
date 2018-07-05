@@ -10,7 +10,6 @@ import Html.Events exposing (onInput, onClick, onCheck)
 import Dialog
 import Http
 import Page.Error as Error exposing (PageLoadError)
-import Request.ProjectGroup
 import Route
 import Task exposing (Task)
 import View.Spinner exposing (spinner)
@@ -18,6 +17,7 @@ import View.SearchableDropdown
 import View.Dialog exposing (confirmationDialogConfig)
 import Request.User
 import Request.Project
+import Request.ProjectGroup
 import Util exposing ((=>), capitalize)
 
 
