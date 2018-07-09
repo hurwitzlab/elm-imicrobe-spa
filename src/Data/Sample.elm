@@ -31,24 +31,15 @@ type alias Sample =
     }
 
 
-type JsonType
-    = StrType String
-    | IntType Int
-    | FloatType Float
-    | ValueType Decode.Value
-
-
-type alias SearchResult =
-    { attributes: Dict String JsonType
-    , users: List User
+type alias SampleGroup =
+    { sample_group_id : Int
+    , group_name : String
+    , description : String
+    , url : String
+    , user_id : Int
+    , samples : List Sample
     }
 
-
-type alias SearchParamsResult =
-    { param : String
-    , values : List JsonType
-    , units : String
-    }
 
 type alias Investigator =
     { investigator_id : Int
@@ -305,6 +296,26 @@ type alias CentrifugeSample =
     }
 
 
+type alias SearchResult =
+    { attributes: Dict String JsonType
+    , users: List User
+    }
+
+
+type alias SearchParamsResult =
+    { param : String
+    , values : List JsonType
+    , units : String
+    }
+
+
+type JsonType
+    = StrType String
+    | IntType Int
+    | FloatType Float
+    | ValueType Decode.Value
+
+
 
 -- SERIALIZATION --
 
@@ -333,33 +344,15 @@ decoder =
         |> optional "available_types" (Decode.list Decode.string) []
 
 
-oneOfJsonType : Decoder JsonType
-oneOfJsonType =
-    [ Decode.string
-        |> Decode.map StrType
-    , Decode.int
-        |> Decode.map IntType
-    , Decode.float
-        |> Decode.map FloatType
-    , Decode.value
-        |> Decode.map ValueType
-    ]
-        |> Decode.oneOf
-
-
-decoderSearchResult : Decoder SearchResult
-decoderSearchResult =
-    decode SearchResult
-        |> required "attributes" (Decode.dict oneOfJsonType)
-        |> optional "users" (Decode.list decoderUser) []
-
-
-decoderSearchParamsResult : Decoder SearchParamsResult
-decoderSearchParamsResult =
-    decode SearchParamsResult
-        |> required "param" Decode.string
-        |> required "values" (Decode.list oneOfJsonType)
-        |> required "units" Decode.string
+decoderSampleGroup : Decoder SampleGroup
+decoderSampleGroup =
+    decode SampleGroup
+        |> required "sample_group_id" Decode.int
+        |> required "group_name" Decode.string
+        |> optional "description" Decode.string "NA"
+        |> optional "url" Decode.string "NA"
+        |> required "user_id" Decode.int
+        |> optional "samples" (Decode.list decoder) []
 
 
 decoderInv : Decoder Investigator
@@ -646,6 +639,35 @@ decoderProjectGroupToUser : Decoder ProjectGroupToUser
 decoderProjectGroupToUser =
     decode ProjectGroupToUser
         |> required "permission" Decode.string
+
+
+oneOfJsonType : Decoder JsonType
+oneOfJsonType =
+    [ Decode.string
+        |> Decode.map StrType
+    , Decode.int
+        |> Decode.map IntType
+    , Decode.float
+        |> Decode.map FloatType
+    , Decode.value
+        |> Decode.map ValueType
+    ]
+    |> Decode.oneOf
+
+
+decoderSearchResult : Decoder SearchResult
+decoderSearchResult =
+    decode SearchResult
+        |> required "attributes" (Decode.dict oneOfJsonType)
+        |> optional "users" (Decode.list decoderUser) []
+
+
+decoderSearchParamsResult : Decoder SearchParamsResult
+decoderSearchParamsResult =
+    decode SearchParamsResult
+        |> required "param" Decode.string
+        |> required "values" (Decode.list oneOfJsonType)
+        |> required "units" Decode.string
 
 
 encode : Sample -> Value

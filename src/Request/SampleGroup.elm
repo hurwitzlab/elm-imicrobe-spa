@@ -1,6 +1,6 @@
 module Request.SampleGroup exposing (..)
 
-import Data.SampleGroup exposing (..)
+import Data.Sample exposing (SampleGroup, decoderSampleGroup)
 import Http
 import HttpBuilder
 import Json.Decode as Decode
@@ -21,7 +21,7 @@ list token =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleGroup))
         |> HttpBuilder.toRequest
 
 
@@ -36,7 +36,7 @@ get token id =
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoderSampleGroup)
         |> HttpBuilder.toRequest
 
 
@@ -58,7 +58,7 @@ create token group_name sample_ids =
     HttpBuilder.put url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoderSampleGroup)
         |> HttpBuilder.toRequest
 
 
@@ -88,7 +88,7 @@ removeSample token sample_group_id sample_id =
     in
     HttpBuilder.delete url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoderSampleGroup)
         |> HttpBuilder.toRequest
 
 
@@ -103,5 +103,5 @@ removeAllSamples token sample_group_id =
     in
     HttpBuilder.delete url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson decoder)
+        |> HttpBuilder.withExpect (Http.expectJson decoderSampleGroup)
         |> HttpBuilder.toRequest

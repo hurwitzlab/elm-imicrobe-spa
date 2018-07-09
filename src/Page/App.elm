@@ -3,7 +3,8 @@ module Page.App exposing (Model, Msg(..), init, update, view)
 import Data.Session as Session exposing (Session)
 import Data.App as App exposing (App, AppRun)
 import Data.Agave as Agave
-import Data.Sample as Sample exposing (Sample, SampleFile)
+import Data.Sample as Sample exposing (Sample, SampleFile, SampleGroup)
+import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onCheck, onInput)
@@ -14,6 +15,7 @@ import Request.App
 import Request.Agave
 import Request.PlanB
 import Request.Sample
+import Request.SampleGroup
 import Route
 import Ports
 import Json.Decode as Decode
@@ -41,8 +43,10 @@ type alias Model =
     , parameters : DictList String String
     , cart : Cart.Model
     , cartLoaded : Bool
+    , selectedCartId : Maybe Int
     , samples : List Sample
     , files : List SampleFile
+    , sampleGroups : List SampleGroup
     , showRunDialog : Bool
     , cartDialogInputId : Maybe String
     , dialogError : Maybe String
@@ -102,8 +106,10 @@ init session id =
                             , parameters = (params agaveApp)
                             , cart = cart
                             , cartLoaded = False
+                            , selectedCartId = Nothing -- Current
                             , samples = []
                             , files = []
+                            , sampleGroups = []
                             , showRunDialog = False
                             , cartDialogInputId = Nothing
                             , dialogError = Nothing
@@ -129,7 +135,8 @@ type Msg
     | CloseRunDialog
     | OpenFileBrowser String String
     | OpenCart String
-    | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile)))
+    | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile), (List SampleGroup)))
+    | SelectCart (Maybe Int)
     | CloseCartDialog
     | CancelCartDialog
     | FilterByFileType String
@@ -274,7 +281,7 @@ update session msg model =
                 sampleIds =
                     Set.toList selected.contents
 
-                match file =
+                filterOnType file =
                     let
                         fileType =
                             String.toLower file.sample_file_type.file_type
@@ -288,7 +295,21 @@ update session msg model =
                         Nothing
 
                 filesStr =
-                    List.filterMap match model.files |> String.join ";"
+                    case model.selectedCartId of
+                        Nothing -> -- Current
+                            List.filterMap filterOnType model.files |> String.join ";"
+
+                        Just id ->
+                            model.sampleGroups
+                                |> List.filter (\g -> g.sample_group_id == id)
+                                |> List.map .samples
+                                |> List.concat
+                                |> List.map .sample_files
+                                |> List.concat
+                                |> List.filterMap filterOnType
+                                |> Set.fromList -- remove duplicates
+                                |> Set.toList
+                                |> String.join ";"
 
                 msg =
                     SetInput "agave" (withDefault "" model.cartDialogInputId) filesStr
@@ -317,17 +338,43 @@ update session msg model =
 
                 cmd =
                     Task.attempt LoadCartCompleted <|
-                        Task.map2 (\samples files -> (samples, files))
-                            (Request.Sample.getSome session.token id_list |> Http.toTask)
-                            (Request.Sample.files session.token id_list |> Http.toTask)
+                        Task.map3 (\samples files sampleGroups -> (samples, files, sampleGroups))
+                            (Request.Sample.getSome session.token id_list |> Http.toTask) -- load samples for current cart
+                            (Request.Sample.files session.token id_list |> Http.toTask) -- load files for current cart
+                            (Request.SampleGroup.list session.token |> Http.toTask) -- load samples & files for saved carts
             in
             { model | cartDialogInputId = Just inputId } => cmd
 
-        LoadCartCompleted (Ok (samples, files)) ->
-            { model | samples = samples, files = files, cartLoaded = True } => Cmd.none
+        LoadCartCompleted (Ok (samples, files, sampleGroups)) ->
+            { model | samples = samples, files = files, sampleGroups = sampleGroups, cartLoaded = True } => Cmd.none
 
-        LoadCartCompleted (Err error) ->
+        LoadCartCompleted (Err error) -> --TODO show error to user
+            let
+                _ = Debug.log "Error" (toString error)
+            in
             model => Cmd.none
+
+        SelectCart maybeId ->
+            let
+                newCart =
+                    case maybeId of
+                        Nothing -> -- Current
+                            Cart.init session.cart Cart.Selectable
+
+                        Just id ->
+                            let
+                                cart =
+                                    model.sampleGroups
+                                        |> List.filter (\g -> g.sample_group_id == id)
+                                        |> List.map .samples
+                                        |> List.concat
+                                        |> List.map .sample_id
+                                        |> Set.fromList
+                                        |> Data.Cart.Cart
+                            in
+                            Cart.init cart Cart.Selectable
+            in
+            { model | selectedCartId = maybeId, cart = newCart } => Cmd.none
 
         FilterByFileType fileType ->
             { model | filterFileType = fileType } => Cmd.none
@@ -589,69 +636,143 @@ cartDialogConfig : Model -> Dialog.Config Msg
 cartDialogConfig model =
     let
         content =
-            case Cart.size model.cart > 0 of
-                True ->
-                    case model.cartLoaded of
-                        True ->
-                            viewCart model
+            if Cart.size model.cart > 0 then
+                if model.cartLoaded then
+                    viewCart model
+                else
+                    div [ class "center" ]
+                        [ div [ class "padded-xl spinner" ] [] ]
+            else
+                text "The cart is empty"
 
-                        False ->
-                            div [ class "center" ]
-                                [ div [ class "padded-xl spinner" ] [] ]
-
-                False ->
-                    text "Your cart is empty"
-
-        count =
-            List.length model.samples
-
-        disable =
-            not (model.cartLoaded && count > 0)
+        header =
+            h3 []
+                [ text "Cart "
+                , if model.sampleGroups /= [] then
+                    viewCartDropdown model.selectedCartId model.sampleGroups
+                  else
+                    text ""
+                ]
 
         closeButton =
-            button [ class "btn btn-default pull-right margin-right", onClick CancelCartDialog ]
-                [ text "Close" ]
+            button [ class "btn btn-default pull-right margin-right", onClick CancelCartDialog ] [ text "Close" ]
 
         footer =
-            case disable of
-                False ->
-                    div [ style [("display","inline")] ]
-                        [ button [ class "btn btn-default pull-left", onClick Cart.SelectAllInCart ]
-                            [ text "Select All" ] |> Html.map CartMsg
-                        , button [ class "btn btn-default pull-left", onClick Cart.UnselectAllInCart ]
-                            [ text "Unselect All" ] |> Html.map CartMsg
-                        , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
-                        , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
-                            [ text "Select" ]
-                        , closeButton
-                        ]
-
-                True ->
-                    closeButton
+            if not (model.cartLoaded && model.samples /= []) then
+                closeButton
+            else
+                div [ style [("display","inline")] ]
+                    [ button [ class "btn btn-default pull-left", onClick Cart.SelectAllInCart ]
+                        [ text "Select All" ] |> Html.map CartMsg
+                    , button [ class "btn btn-default pull-left", onClick Cart.UnselectAllInCart ]
+                        [ text "Unselect All" ] |> Html.map CartMsg
+                    , div [ class "pull-left", style [("margin-left","2em")] ] [ viewFileTypeSelector model ]
+                    , button [ class "btn btn-primary pull-right" , onClick CloseCartDialog ]
+                        [ text "Select" ]
+                    , closeButton
+                    ]
     in
     { closeMessage = Nothing
     , containerClass = Nothing
-    , header = Just (h3 [] [ text "Cart" ])
+    , header = Just header
     , body = Just content
     , footer = Just footer
     }
 
 
+viewCartDropdown : Maybe Int -> List SampleGroup -> Html Msg
+viewCartDropdown selectedCartId sampleGroups =
+    let
+        mkOption (id, label) =
+            li [] [ a [ onClick (SelectCart id) ] [ text label ] ]
+
+        currentOpt =
+            (Nothing, "Current")
+
+        labels =
+            currentOpt :: (sampleGroups |> List.sortBy .group_name |> List.map (\g -> (Just g.sample_group_id, g.group_name)))
+
+        options =
+            labels |> List.map mkOption
+
+        btnLabel =
+            List.Extra.find (\l -> Tuple.first l == selectedCartId) labels |> Maybe.withDefault currentOpt |> Tuple.second
+    in
+    if sampleGroups == [] then
+        text ""
+    else
+        div [ style [ ("display", "inline-block") ] ]
+            [ div [ class "dropdown margin-right", style [ ("display", "inline-block") ] ]
+                [ button [ class "btn btn-default dropdown-toggle margin-top-bottom", attribute "type" "button", id "dropdownMenu1", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true" ]
+                    [ text btnLabel
+                    , text " "
+                    , span [ class "caret" ] []
+                    ]
+                , ul [ class "dropdown-menu", attribute "aria-labelledby" "dropdownMenu1" ]
+                    options
+                ]
+            ]
+
+
+--viewCart : Model -> Html Msg
+--viewCart model =
+--    let
+--        samples =
+--            case model.selectedCartId of
+--                Nothing ->  -- Current
+--                    model.samples
+--
+--                Just id ->
+--                    model.sampleGroups
+--                        |> List.filter (\g -> g.sample_group_id == id)
+--                        |> List.map .samples
+--                        |> List.concat
+--
+--        cart =
+--            samples |> List.map .sample_id |> Set.fromList |> Data.Cart.Cart
+--
+--        cartModel =
+--            Cart.init cart Cart.Selectable
+--    in
+--    div [ class "scrollable-half" ] [ Cart.viewCart cartModel samples |> Html.map CartMsg ]
 viewCart : Model -> Html Msg
 viewCart model =
-    case model.samples of
-        [] -> text "Your cart is empty"
+    let
+        samples =
+            case model.selectedCartId of
+                Nothing -> -- Current
+                    model.samples
 
-        _ ->
-            div [ class "scrollable-half" ] [ Cart.viewCart model.cart model.samples |> Html.map CartMsg ]
+                Just id ->
+                    model.sampleGroups
+                        |> List.filter (\g -> g.sample_group_id == id)
+                        |> List.map .samples
+                        |> List.concat
+    in
+    div [ class "scrollable-half" ] [ Cart.viewCart model.cart samples |> Html.map CartMsg ]
 
 
--- This function was copied from Page.File, find a way to merge into a single copy
 viewFileTypeSelector : Model -> Html Msg
 viewFileTypeSelector model =
     let
         types =
-            Set.toList <| Set.fromList <| List.map (.sample_file_type >> .file_type) model.files
+            case model.selectedCartId of
+                Nothing -> -- Current
+                    model.files
+                        |> List.map (.sample_file_type >> .file_type)
+                        |> Set.fromList
+                        |> Set.toList
+
+                Just id ->
+                    model.sampleGroups
+                        |> List.filter (\g -> g.sample_group_id == id)
+                        |> List.map .samples
+                        |> List.concat
+                        |> List.map .sample_files
+                        |> List.concat
+                        |> List.map (.sample_file_type >> .file_type)
+                        |> Set.fromList
+                        |> Set.toList
 
         numTypes =
             List.length types
@@ -668,20 +789,14 @@ viewFileTypeSelector model =
 
                 _ -> model.filterFileType ++ " "
     in
---    if (numTypes <= 1) then
---        text ""
---    else if (numTypes <= 4) then
---        div [ class "btn-group", attribute "role" "group", attribute "aria-label" "..."]
---           (btn "All" :: List.map (\t -> btn t) types)
---    else
-        div [ class "dropup" ]
-            [ button
-                [ class "btn btn-default dropdown-toggle", id "dropdownMenu1",
-                    attribute "type" "button", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true"
-                ]
-                [ text selectedType
-                , span [ class "caret" ] []
-                ]
-            , ul [ class "dropdown-menu", style [("overflow-y","scroll"),("max-height","200px")], attribute "aria-labelledby" "dropdownMenu1" ]
-                (lia "All Types" :: List.map (\t -> lia t) types)
+    div [ class "dropup" ]
+        [ button
+            [ class "btn btn-default dropdown-toggle", id "dropdownMenu1",
+                attribute "type" "button", attribute "data-toggle" "dropdown", attribute "aria-haspopup" "true", attribute "aria-expanded" "true"
             ]
+            [ text selectedType
+            , span [ class "caret" ] []
+            ]
+        , ul [ class "dropdown-menu", style [("overflow-y","scroll"),("max-height","200px")], attribute "aria-labelledby" "dropdownMenu1" ]
+            (lia "All Types" :: List.map (\t -> lia t) types)
+        ]
