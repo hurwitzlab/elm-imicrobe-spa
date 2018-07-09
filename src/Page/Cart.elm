@@ -1,8 +1,8 @@
 module Page.Cart exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Session as Session exposing (Session)
-import Data.SampleGroup as SampleGroup exposing (SampleGroup, Sample, Project)
 import Data.Cart
+import Data.Sample exposing (Sample, SampleGroup)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -34,7 +34,7 @@ type alias Model =
     , showSaveCartBusy : Bool
     , showShareCartDialog : Bool
     , cartName : String
-    , selectedCartId : Int
+    , selectedCartId : Maybe Int
     , userId : Maybe Int
     }
 
@@ -56,8 +56,8 @@ init session id =
 
         loadSamples =
             case id of
-                Nothing ->
-                    loadSampleList |> Task.map (\samples -> List.map (\s -> Sample s.sample_id s.sample_name (Project s.project_id s.project.project_name)) samples)
+                Nothing -> -- Current
+                    loadSampleList
 
                 Just id ->
                     loadSampleGroup id |> Task.map .samples
@@ -80,7 +80,7 @@ init session id =
                                 , showSaveCartBusy = False
                                 , showShareCartDialog = False
                                 , cartName = ""
-                                , selectedCartId = id |> Maybe.withDefault 0
+                                , selectedCartId = id
                                 , userId = Maybe.map .user_id session.user
                                 }
                         )
@@ -135,14 +135,16 @@ update session msg model =
             in
             case subMsg of
                 Cart.RemoveFromCart sampleId ->
-                    if model.selectedCartId == 0 then -- Current
-                        cartUpdate subMsg
-                    else
-                        let
-                            removeSample =
-                                Request.SampleGroup.removeSample session.token model.selectedCartId sampleId |> Http.toTask
-                        in
-                        model => Task.attempt RemoveSampleCompleted removeSample => NoOp
+                    case model.selectedCartId of
+                        Nothing -> -- Current
+                            cartUpdate subMsg
+
+                        Just id ->
+                            let
+                                removeSample =
+                                    Request.SampleGroup.removeSample session.token id sampleId |> Http.toTask
+                            in
+                            model => Task.attempt RemoveSampleCompleted removeSample => NoOp
 
                 _ ->
                     cartUpdate subMsg
@@ -182,7 +184,7 @@ update session msg model =
             let
                 samples =
                     model.sampleGroups
-                        |> List.filter (\g -> g.sample_group_id == model.selectedCartId)
+                        |> List.filter (\g -> g.sample_group_id == (model.selectedCartId |> Maybe.withDefault 0))
                         |> List.map .samples
                         |> List.concat
 
@@ -195,21 +197,23 @@ update session msg model =
                 newSession =
                     { session | cart = newCart }
             in
-            { model | cart = newCartModel, selectedCartId = 0 } => Session.store newSession => NoOp --FIXME Need (Route.modifyUrl (Route.Cart Nothing)) but doesn't work due to race condition
+            { model | cart = newCartModel, selectedCartId = Nothing } => Session.store newSession => NoOp --FIXME Need (Route.modifyUrl (Route.Cart Nothing)) but doesn't work due to race condition
 
         SaveCart ->
             let
                 sampleIds =
-                    if model.selectedCartId == 0 then -- Current
-                        model.cart.cart.contents |> Set.toList
-                    else
-                        model.sampleGroups
-                            |> List.filter (\g -> g.sample_group_id == model.selectedCartId)
-                            |> List.map .samples
-                            |> List.concat
-                            |> List.map .sample_id
-                            |> Set.fromList -- remove duplicates
-                            |> Set.toList
+                    case model.selectedCartId of
+                        Nothing ->
+                            model.cart.cart.contents |> Set.toList
+
+                        Just id ->
+                            model.sampleGroups
+                                |> List.filter (\g -> g.sample_group_id == id)
+                                |> List.map .samples
+                                |> List.concat
+                                |> List.map .sample_id
+                                |> Set.fromList -- remove duplicates
+                                |> Set.toList
 
                 saveCart =
                     Request.SampleGroup.create session.token model.cartName sampleIds |> Http.toTask
@@ -226,27 +230,29 @@ update session msg model =
             { model | showSaveCartDialog = False } => Cmd.none => NoOp
 
         EmptyCart ->
-            if model.selectedCartId == 0 then -- Current
-                let
-                    newCart =
-                        Data.Cart.Cart Set.empty
+            case model.selectedCartId of
+                Nothing ->
+                    let
+                        newCart =
+                            Data.Cart.Cart Set.empty
 
-                    cartModel =
-                        model.cart
+                        cartModel =
+                            model.cart
 
-                    newCartModel =
-                        { cartModel | cart = newCart }
+                        newCartModel =
+                            { cartModel | cart = newCart }
 
-                    newSession =
-                        { session | cart = newCart }
-                in
-                { model | cart = newCartModel, samples = [] } => Session.store newSession => SetCart newCart
-            else
-                let
-                    removeAllSamples =
-                        Request.SampleGroup.removeAllSamples session.token model.selectedCartId |> Http.toTask
-                in
-                model => Task.attempt RemoveAllSamplesCompleted removeAllSamples => NoOp
+                        newSession =
+                            { session | cart = newCart }
+                    in
+                    { model | cart = newCartModel, samples = [] } => Session.store newSession => SetCart newCart
+
+                Just id ->
+                    let
+                        removeAllSamples =
+                            Request.SampleGroup.removeAllSamples session.token id |> Http.toTask
+                    in
+                    model => Task.attempt RemoveAllSamplesCompleted removeAllSamples => NoOp
 
         RemoveAllSamplesCompleted (Ok sampleGroup) ->
             let
@@ -262,11 +268,16 @@ update session msg model =
             model => Cmd.none => NoOp
 
         RemoveCart ->
-            let
-                removeCart =
-                    Request.SampleGroup.remove session.token model.selectedCartId |> Http.toTask
-            in
-            model => Task.attempt RemoveCartCompleted removeCart => NoOp
+            case model.selectedCartId of
+                Nothing ->
+                    model => Cmd.none => NoOp
+
+                Just id ->
+                    let
+                        removeCart =
+                            Request.SampleGroup.remove session.token id |> Http.toTask
+                    in
+                    model => Task.attempt RemoveCartCompleted removeCart => NoOp
 
         RemoveCartCompleted (Ok _) ->
             model => Route.modifyUrl (Route.Cart Nothing) => NoOp
@@ -302,7 +313,6 @@ update session msg model =
 
                 loadSamples =
                     Request.Sample.getSome session.token id_list |> Http.toTask
-                        |> Task.map (\samples -> List.map (\s -> Sample s.sample_id s.sample_name (Project s.project_id s.project.project_name)) samples)
 
                 handleSamples samples =
                     case samples of
@@ -329,7 +339,7 @@ view : Model -> Html Msg
 view model =
     let
         isCurrent =
-            model.selectedCartId == 0
+            model.selectedCartId == Nothing
 
         isLoggedIn =
             model.userId /= Nothing
@@ -338,7 +348,7 @@ view model =
             if isCurrent || not isLoggedIn then
                 (model.samples, "")
             else
-                case List.Extra.find (\g -> g.sample_group_id == model.selectedCartId) model.sampleGroups of
+                case List.Extra.find (\g -> g.sample_group_id == (model.selectedCartId |> Maybe.withDefault 0)) model.sampleGroups of
                     Nothing ->
                         (model.samples, "")
 
@@ -383,7 +393,7 @@ view model =
         ]
 
 
-viewCartControls : Bool -> Bool -> Int -> List SampleGroup -> Html Msg
+viewCartControls : Bool -> Bool -> Maybe Int -> List SampleGroup -> Html Msg
 viewCartControls isEmpty isLoggedIn selectedCartId sampleGroups =
     let
         mkOption (id, label) =
@@ -399,7 +409,7 @@ viewCartControls isEmpty isLoggedIn selectedCartId sampleGroups =
             labels |> List.map mkOption
 
         btnLabel =
-            List.Extra.find (\l -> Tuple.first l == selectedCartId) labels |> Maybe.withDefault currentOpt |> Tuple.second
+            List.Extra.find (\l -> Tuple.first l == (selectedCartId |> Maybe.withDefault 0)) labels |> Maybe.withDefault currentOpt |> Tuple.second
 
         dropdown =
             if not isLoggedIn then
@@ -421,7 +431,7 @@ viewCartControls isEmpty isLoggedIn selectedCartId sampleGroups =
                     ]
 
         isCurrent =
-            selectedCartId == 0
+            selectedCartId == Nothing
     in
     div [ style [ ("display", "inline-block"), ("margin-left", "3em") ] ]
         [ dropdown
@@ -478,10 +488,10 @@ shareCartDialogConfig : Model -> Dialog.Config Msg
 shareCartDialogConfig model =
     let
         routeUrl =
-            "https://www.imicrobe.us/" ++ (Route.Cart (Just model.selectedCartId) |> Route.routeToString) --FIXME hardcoded base url
+            "https://www.imicrobe.us/" ++ (Route.Cart model.selectedCartId |> Route.routeToString) --FIXME hardcoded base url
 
         content =
-            if model.selectedCartId == 0 then -- Current
+            if model.selectedCartId == Nothing then
                 text "In order to share the current cart you must first save it by clicking 'Save As'"
             else
                 div []
