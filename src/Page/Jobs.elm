@@ -79,23 +79,20 @@ update session msg model =
             { model | tableState = newState } => Cmd.none
 
         DelayedInit ->
-            let
-                loadJobsFromAgave =
-                    Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
+            if model.pageLoaded then
+                model => Cmd.none
+            else
+                let
+                    loadJobsFromAgave =
+                        Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
 
-                loadJobsFromPlanB =
-                    Request.PlanB.getJobs session.token |> Http.toTask |> Task.map .result
+                    loadJobsFromPlanB =
+                        Request.PlanB.getJobs session.token |> Http.toTask |> Task.map .result
 
-                loadAllJobs =
-                    Task.sequence [ loadJobsFromAgave, loadJobsFromPlanB ] |> Task.map List.concat
-
-                cmd =
-                    if model.pageLoaded then
-                        Cmd.none
-                    else
-                        Task.attempt LoadJobsCompleted loadAllJobs
-            in
-            { model | pageLoaded = True } => cmd
+                    loadAllJobs =
+                        Task.sequence [ loadJobsFromAgave, loadJobsFromPlanB ] |> Task.map List.concat
+                in
+                { model | pageLoaded = True } => Task.attempt LoadJobsCompleted loadAllJobs
 
         LoadJobsCompleted (Ok jobs) ->
             { model | jobs = jobs, jobsLoaded = True } => Cmd.none
