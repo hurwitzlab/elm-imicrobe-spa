@@ -10,21 +10,6 @@ import Util exposing ((=>))
 
 
 
---list : String -> Http.Request (List User)
---list token =
---    let
---        url =
---            apiBaseUrl ++ "/users"
---
---        headers =
---            [( "Authorization", token)]
---    in
---    HttpBuilder.get url
---        |> HttpBuilder.withHeaders headers
---        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
---        |> HttpBuilder.toRequest
-
-
 get : String -> Http.Request User
 get token =
     let
@@ -59,7 +44,7 @@ searchByName : String -> String -> Http.Request (List User)
 searchByName token term =
     let
         url =
-            apiBaseUrl ++ "/users/"
+            apiBaseUrl ++ "/users/search"
 
         headers =
             [( "Authorization", token)]
