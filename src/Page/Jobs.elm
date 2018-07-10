@@ -33,29 +33,14 @@ type alias Model =
 
 init : Session -> Task PageLoadError Model
 init session =
---    let
---        loadJobsFromAgave =
---            Request.Agave.getJobs session.token |> Http.toTask |> Task.map .result
---
---        loadJobsFromPlanB =
---            Request.PlanB.getJobs session.token |> Http.toTask |> Task.map .result
---
---        loadAllJobs =
---            Task.sequence [ loadJobsFromAgave, loadJobsFromPlanB ] |> Task.map List.concat
---    in
---    loadAllJobs
---        |> Task.andThen
---            (\jobs ->
-                Task.succeed
-                    { pageTitle = "Jobs"
-                    , jobs = []
-                    , pageLoaded = False
-                    , jobsLoaded = False
-                    , tableState = Table.initialSort "Start"
-                    , query = ""
-                    }
---            )
---            |> Task.mapError Error.handleLoadError
+    Task.succeed
+        { pageTitle = "Jobs"
+        , jobs = []
+        , pageLoaded = False
+        , jobsLoaded = False
+        , tableState = Table.initialSort "Start"
+        , query = ""
+        }
 
 
 
