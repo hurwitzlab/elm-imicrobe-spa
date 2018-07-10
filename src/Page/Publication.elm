@@ -99,6 +99,7 @@ viewPublication pub =
                         [ href <|
                             "https://www.ncbi.nlm.nih.gov/pubmed/?term="
                                 ++ toString pub.pubmed_id
+                        , target "_blank"
                         ]
                         [ text <| toString pub.pubmed_id ]
     in
