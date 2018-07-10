@@ -201,6 +201,7 @@ type Msg
     | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
     | PollTimerTick Time
     | InputTimerTick Time
+    | PageInitTimerTick Time
     | SearchBarInput String
     | SearchBarKeyDown Int
     | SearchBarQuery
@@ -637,7 +638,7 @@ updatePage page msg model =
         JobsMsg subMsg ->
             case page of
                 Jobs subModel ->
-                    toPage Jobs JobsMsg Jobs.update subMsg subModel
+                    toPage Jobs JobsMsg (Jobs.update session) subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -1093,6 +1094,18 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        PageInitTimerTick time ->
+            case page of
+                Jobs subModel ->
+                    let
+                        ( pageModel, cmd ) =
+                            Jobs.update session Jobs.DelayedInit subModel
+                    in
+                    { model | pageState = Loaded (Jobs pageModel) } => Cmd.map JobsMsg cmd
+
+                _ ->
+                    model => Cmd.none
+
         SearchBarInput query ->
             { model | query = query } => Cmd.none
 
@@ -1476,6 +1489,7 @@ subscriptions model =
         , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) PollTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
+        , Time.every (250 * Time.millisecond) PageInitTimerTick
         ]
 
 
