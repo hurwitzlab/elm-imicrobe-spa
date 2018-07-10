@@ -10,26 +10,26 @@ import Util exposing ((=>))
 
 
 
-list : String -> Http.Request (List User)
-list token =
+--list : String -> Http.Request (List User)
+--list token =
+--    let
+--        url =
+--            apiBaseUrl ++ "/users"
+--
+--        headers =
+--            [( "Authorization", token)]
+--    in
+--    HttpBuilder.get url
+--        |> HttpBuilder.withHeaders headers
+--        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
+--        |> HttpBuilder.toRequest
+
+
+get : String -> Http.Request User
+get token =
     let
         url =
             apiBaseUrl ++ "/users"
-
-        headers =
-            [( "Authorization", token)]
-    in
-    HttpBuilder.get url
-        |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoder))
-        |> HttpBuilder.toRequest
-
-
-get : String -> Int -> Http.Request User
-get token id =
-    let
-        url =
-            apiBaseUrl ++ "/users/" ++ toString id
 
         headers =
             [( "Authorization", token)]

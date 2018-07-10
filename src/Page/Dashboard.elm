@@ -72,14 +72,7 @@ type ContentType
 
 init : Session -> Task PageLoadError Model
 init session =
-    let
-        user_id =
-            case session.user of
-                Nothing -> 0
-
-                Just user -> user.user_id
-    in
-    loadUser session.token user_id
+    loadUser session.token
         |> Task.andThen
             (\user ->
                 Task.succeed
@@ -110,9 +103,9 @@ init session =
             |> Task.mapError Error.handleLoadError
 
 
-loadUser : String -> Int -> Task Http.Error User
-loadUser token id =
-    Request.User.get token id |> Http.toTask
+loadUser : String -> Task Http.Error User
+loadUser token =
+    Request.User.get token |> Http.toTask
 
 
 
@@ -228,7 +221,7 @@ update session msg model =
                     { model | fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
 
                 _ ->
-                    model => Task.attempt RefreshContentCompleted (loadUser session.token model.user.user_id)
+                    model => Task.attempt RefreshContentCompleted (loadUser session.token)
 
         RefreshContentCompleted (Ok user) ->
             { model | user = user } => Cmd.none
