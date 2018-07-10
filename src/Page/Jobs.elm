@@ -128,7 +128,10 @@ view model =
                     [ input [ placeholder "Search by Name", onInput SetQuery ] [] ]
                 ]
             , if model.jobsLoaded then
-                Table.view config model.tableState acceptableJobs
+                if model.jobs == [] then
+                    text "None"
+                else
+                    Table.view config model.tableState acceptableJobs
               else
                 spinner
             ]
