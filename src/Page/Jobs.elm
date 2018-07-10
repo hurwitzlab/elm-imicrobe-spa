@@ -6,7 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Http
-import Page.Error as Error exposing (PageLoadError)
+import Page.Error as Error exposing (PageLoadError, redirectLoadError)
 import Request.Agave
 import Request.PlanB
 import Route
@@ -66,7 +66,7 @@ type Msg
     = SetQuery String
     | SetTableState Table.State
     | DelayedInit
-    | LoadJobsCompleted (Result Http.Error (List Job))
+    | LoadJobsCompleted (Result PageLoadError (List Job))
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -92,13 +92,13 @@ update session msg model =
                     loadAllJobs =
                         Task.sequence [ loadJobsFromAgave, loadJobsFromPlanB ] |> Task.map List.concat
                 in
-                { model | pageLoaded = True } => Task.attempt LoadJobsCompleted loadAllJobs
+                { model | pageLoaded = True } => Task.attempt LoadJobsCompleted (loadAllJobs |> Task.mapError Error.handleLoadError)
 
         LoadJobsCompleted (Ok jobs) ->
             { model | jobs = jobs, jobsLoaded = True } => Cmd.none
 
         LoadJobsCompleted (Err error) ->
-            model => Cmd.none
+            model => redirectLoadError error
 
 
 
