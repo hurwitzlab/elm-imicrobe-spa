@@ -485,7 +485,7 @@ viewContent model =
                         newButton =
                             button [ class "btn btn-default pull-right", onClick OpenNewProjectGroupDialog ] [ span [ class "glyphicon glyphicon-plus" ] [], text " New Project Group" ]
                     in
-                    ( "Project Groups", view, List.length model.user.projects, newButton )
+                    ( "Project Groups", view, List.length model.user.project_groups, newButton )
 
                 Storage ->
                     ( "Data Store", FileBrowser.view model.fileBrowser |> Html.map FileBrowserMsg, FileBrowser.numItems model.fileBrowser, text "")
