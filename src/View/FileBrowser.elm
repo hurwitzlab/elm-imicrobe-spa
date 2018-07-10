@@ -21,6 +21,7 @@ import Data.Agave exposing (FileResult)
 import Data.Session exposing (Session)
 import Request.Agave
 import Ports
+import List.Extra
 import Util exposing ((=>))
 
 
@@ -481,7 +482,15 @@ newFolderDialogConfig isBusy =
 
 numItems : Model -> Int
 numItems (Model {contents}) =
-    List.length contents
+    case List.Extra.uncons contents of
+        Nothing ->
+            0
+
+        Just (first, rest) ->
+            if first.name == ".. (previous)" then
+                List.length rest
+            else
+                List.length contents
 
 
 getSelected : Model -> List FileResult
