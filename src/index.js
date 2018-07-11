@@ -74,13 +74,13 @@ app.ports.setCenter.subscribe(function(model) {
 
 app.ports.storeSession.subscribe(function(session) {
     console.log("storeSession: ", session);
-    localStorage.session = session;
+    localStorage[config.cookieName] = session;
 });
 
 // This event is only triggered when localStorage is modifed from another window
 window.addEventListener("storage",
     function(event) {
-        if (event.storageArea === localStorage && event.key === "session") {
+        if (event.storageArea === localStorage && event.key === config.cookieName) {
             console.log("storage listener:", event.newValue);
             app.ports.onSessionChange.send(event.newValue);
         }
