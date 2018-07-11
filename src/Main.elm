@@ -12,6 +12,7 @@ import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
+import Dialog
 import Http
 import Navigation exposing (Location)
 import OAuth
@@ -77,6 +78,7 @@ type alias Model =
         }
     , query : String
     , error : Maybe String
+    , showLoginExpirationDialog : Bool
     }
 
 
@@ -200,6 +202,7 @@ type Msg
     | FileUploadFileSelected (Maybe Ports.FileToUpload)
     | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
     | PollTimerTick Time
+    | LoginExpirationTimerTick Time
     | InputTimerTick Time
     | PageInitTimerTick Time
     | SearchBarInput String
@@ -1082,6 +1085,28 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
+        LoginExpirationTimerTick time ->
+            case session.expiresAt of
+                Nothing ->
+                    let
+                        expiresIn =
+                            session.expiresIn |> Maybe.withDefault 3600 |> toFloat
+
+                        expiresAt =
+                           time + (expiresIn * Time.second) - Time.second |> floor -- minus one second taken to fire this event
+
+                        newSession =
+                            { session | expiresAt = Just expiresAt }
+                    in
+                    { model | session = newSession } => Session.store newSession
+
+                Just expiresAt ->
+                    let
+                        expired =
+                            (floor time) > expiresAt
+                    in
+                    { model | showLoginExpirationDialog = expired } => Cmd.none
+
         InputTimerTick time ->
             case page of
                 Samples subModel ->
@@ -1141,12 +1166,21 @@ updatePage page msg model =
 
 view : Model -> Html Msg
 view model =
-    case model.pageState of
-        Loaded page ->
-            viewPage model.session False page
+    div []
+        ((case model.pageState of
+            Loaded page ->
+                viewPage model.session False page
 
-        TransitioningFrom page ->
-            viewPage model.session True page
+            TransitioningFrom page ->
+                viewPage model.session True page
+        ) ::
+        [ Dialog.view
+            (if model.showLoginExpirationDialog then
+                Just (loginExpirationDialogConfig model)
+             else
+                Nothing
+            )
+        ])
 
 
 viewPage : Session -> Bool -> Page -> Html Msg
@@ -1475,6 +1509,23 @@ viewHeader page isLoading session =
 --    footer [] []
 
 
+loginExpirationDialogConfig : Model -> Dialog.Config Msg
+loginExpirationDialogConfig model =
+    let
+        content =
+            text "Your session has expired. Please sign-in again."
+
+        footer =
+            a [ Route.href Route.Login ] [ button [ class "btn btn-primary" ] [ text "Sign-In" ] ]
+    in
+    { closeMessage = Nothing
+    , containerClass = Nothing
+    , header = Just (h3 [] [ text "Notice" ])
+    , body = Just content
+    , footer = Just footer
+    }
+
+
 
 ---- SUBSCRIPTIONS ----
 
@@ -1488,6 +1539,7 @@ subscriptions model =
         , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
         , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) PollTimerTick
+        , Time.every (1 * Time.second) LoginExpirationTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
         , Time.every (250 * Time.millisecond) PageInitTimerTick
         ]
@@ -1541,21 +1593,20 @@ init flags location =
             , error = Nothing
             , pageState = Loaded initialPage
             , currentRoute = Nothing
+            , showLoginExpirationDialog = False
             }
 
         -- Kludge for Agave not returning required "token_type=bearer" in OAuth redirect
         location2 =
             { location | hash = location.hash ++ "&token_type=bearer" }
 
-        handleOAuthImplicit token state =
+        handleOAuthImplicit token expiresIn state =
             let
                 url =
-                    case state of
-                        Nothing -> ""
-                        Just state -> state
+                    state |> Maybe.withDefault ""
 
                 newSession =
-                    { session | token = toString token }
+                    { session | token = toString token, expiresIn = expiresIn }
 
                 loadProfile =
                     Request.Agave.getProfile (toString token) |> Http.toTask |> Task.map .result
@@ -1608,8 +1659,8 @@ init flags location =
                     { model | error = Just "parsing error" } ! []
     in
     case ( OAuth.Implicit.parse location2, OAuth.AuthorizationCode.parse location ) of
-        ( Ok { token, state }, _ ) ->
-            handleOAuthImplicit token state
+        ( Ok { token, expiresIn, state }, _ ) ->
+            handleOAuthImplicit token expiresIn state
 
         ( _, Ok { code } ) ->
             handleOAuthAuthorizationCode code
