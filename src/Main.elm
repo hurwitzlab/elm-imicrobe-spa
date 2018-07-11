@@ -399,10 +399,7 @@ updatePage page msg model =
         Authorize ->
             let
                 routeStr =
-                    case model.currentRoute of
-                        Nothing -> ""
-
-                        Just route -> routeToString route
+                    model.currentRoute |> Maybe.map routeToString |> Maybe.withDefault ""
             in
             model
                 ! [ OAuth.Implicit.authorize
@@ -410,7 +407,7 @@ updatePage page msg model =
                         , redirectUri = model.oauth.redirectUri
                         , responseType = OAuth.Token
                         , scope = [ "PRODUCTION" ]
-                        , state = Just routeStr --Just "000"
+                        , state = Just routeStr
                         , url = model.oauth.authEndpoint
                         }
                   ]
@@ -1079,11 +1076,16 @@ updatePage page msg model =
                         { model | session = newSession } => Session.store newSession
 
                     Just expiresAt ->
-                        let
-                            expired =
-                                (floor time) > expiresAt
-                        in
-                        { model | showLoginExpirationDialog = expired } => Cmd.none
+                        if (floor time) > expiresAt then -- expired
+                            let
+                                _ = Debug.log "LoginExpirationTimerTick" "Session expired!"
+                                
+                                newSession =
+                                    { session | token = "", expiresAt = Nothing }
+                            in
+                            { model | showLoginExpirationDialog = True, session = newSession } => Session.store newSession
+                        else
+                            { model | showLoginExpirationDialog = False } => Cmd.none
             else
                 model => Cmd.none
 
