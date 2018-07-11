@@ -4,9 +4,7 @@ import Data.User as User exposing (..)
 import Http
 import HttpBuilder exposing (RequestBuilder, withExpect, withQueryParams)
 import Json.Decode as Decode exposing (Decoder, string)
-import Json.Encode as Encode
 import Config exposing (apiBaseUrl)
-import Util exposing ((=>))
 
 
 
@@ -59,21 +57,16 @@ searchByName token term =
         |> HttpBuilder.toRequest
 
 
-recordLogin : String -> String -> Http.Request Login
-recordLogin token username =
+recordLogin : String -> Http.Request Login
+recordLogin token =
     let
         url =
             apiBaseUrl ++ "/users/login"
 
         headers =
             [( "Authorization", token)]
-
-        body =
-            Encode.object
-                [ "user_name" => Encode.string username ]
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson decoderLogin)
         |> HttpBuilder.toRequest
