@@ -96,7 +96,6 @@ init session id =
 type Msg
     = CartMsg Cart.Msg
     | RemoveSampleCompleted (Result Http.Error SampleGroup)
-    | Files
     | OpenSaveCartDialog
     | CloseSaveCartDialog
     | OpenShareCartDialog
@@ -161,9 +160,6 @@ update session msg model =
                 _ = Debug.log "error" (toString error)
             in
             model => Cmd.none => NoOp
-
-        Files ->
-            model => Route.modifyUrl Route.Files => NoOp
 
         OpenSaveCartDialog ->
             { model | showSaveCartDialog = True, showSaveCartBusy = False } => Cmd.none => NoOp
@@ -377,7 +373,12 @@ view model =
                 , View.Widgets.counter count
                 , viewCartControls isEmpty isLoggedIn model.selectedCartId model.sampleGroups
                 , div [ class "right", classList [ ("disabled", isEmpty) ] ]
-                    [ button [ class "margin-right btn btn-primary btn-sm", onClick Files] [ span [ class "glyphicon glyphicon-file"] [], text " Show Files" ]
+                    [ a [ Route.href Route.Files ]
+                        [ button [ class "margin-right btn btn-primary btn-sm" ]
+                            [ span [ class "glyphicon glyphicon-file"] []
+                            , text " Show Files"
+                            ]
+                        ]
                     ]
                 ]
             , viewCart cart samples
