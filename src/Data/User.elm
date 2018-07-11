@@ -12,6 +12,7 @@ type alias User =
     , user_name : String
     , first_name : String
     , last_name : String
+    , email : String
     , date : String
     , orcid : String
     , projects : List Project
@@ -50,6 +51,7 @@ type alias User2 =
     , user_name : String
     , first_name : String
     , last_name : String
+    , email : String
     , permconn : ProjectToUser
     }
 
@@ -143,6 +145,7 @@ decoder =
         |> required "user_name" Decode.string
         |> required "first_name" Decode.string
         |> required "last_name" Decode.string
+        |> optional "email" Decode.string ""
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
         |> optional "projects" (Decode.list decoderProject) []
@@ -157,6 +160,7 @@ decoderUser2 =
         |> required "user_name" Decode.string
         |> required "first_name" Decode.string
         |> required "last_name" Decode.string
+        |> optional "email" Decode.string ""
         |> required "project_to_user" decoderProjectToUser
 
 
@@ -282,6 +286,7 @@ encode user =
         , "user_name" => Encode.string user.user_name
         , "first_name" => Encode.string user.first_name
         , "last_name" => Encode.string user.last_name
+        , "email" => Encode.string user.email
         , "date" => Encode.string user.date
         , "orcid" => Encode.string user.orcid
         ]

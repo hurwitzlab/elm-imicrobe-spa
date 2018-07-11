@@ -30,27 +30,21 @@ type alias Model =
 init : Session -> Task PageLoadError Model
 init session =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Contact Us"
-
-        blank =
-            Task.succeed ""
-
         email =
-            case session.profile of
-                Nothing -> blank
-
-                Just profile -> Task.succeed profile.email
+            session.user |> Maybe.map .email |> Maybe.withDefault ""
 
         name =
-            case session.profile of
-                Nothing -> blank
-
-                Just profile -> Task.succeed (profile.first_name ++ " " ++ profile.last_name)
+            session.user
+                |> Maybe.map (\user -> user.first_name ++ " " ++ user.last_name)
+                |> Maybe.withDefault ""
     in
-    Task.map5 Model title name email blank (Task.succeed False)
-        |> Task.mapError Error.handleLoadError
+    Task.succeed
+        { pageTitle = "Contact Us"
+        , name = name
+        , email = email
+        , message = ""
+        , sent = False
+        }
 
 
 
@@ -124,37 +118,35 @@ decoderContact =
 
 view : Model -> Html Msg
 view model =
-    case model.sent of
-        True ->
-            div [ class "container" ]
-                [ div [ class "row center gray", style [("font-size","1.5em"), ("padding", "3em")] ]
-                    [ div [] [ text "We will respond to your message as soon as possible." ]
-                    , div [] [ text "Thanks for your feedback and for using iMicrobe!" ]
-                    ]
+    if model.sent then
+        div [ class "container" ]
+            [ div [ class "row center gray", style [("font-size","1.5em"), ("padding", "3em")] ]
+                [ div [] [ text "We will respond to your message as soon as possible." ]
+                , div [] [ text "Thanks for your feedback and for using iMicrobe!" ]
                 ]
-
-        False ->
-            div [ class "container" ]
-                [ div [ class "row" ]
-                    [ h1 []
-                        [ text (model.pageTitle) ]
-                    ]
-                , div [ class "row" ]
-                    [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
-                    ]
-                , div [ style [("padding-top", "2em")] ]
-                    [ div [ class "form-group" ]
-                        [ label [ attribute "for" "name" ] [ text "Your name" ]
-                        , input [ type_ "text", class "form-control", placeholder "Enter your name", value model.name, onInput SetName ] []
-                        ]
-                    , div [ class "form-group" ]
-                        [ label [ attribute "for" "email" ] [ text "Your email" ]
-                        , input [ type_ "email", class "form-control", placeholder "Enter your email", value model.email, onInput SetEmail ] []
-                        ]
-                    , div [ class "form-group" ]
-                        [ label [ attribute "for" "message" ] [ text "Your message" ]
-                        , textarea [ class "form-control", rows 3, onInput SetMessage ] []
-                        ]
-                    , button [ class "btn btn-primary", onClick Submit ] [ text "Submit" ]
-                    ]
+            ]
+    else
+        div [ class "container" ]
+            [ div [ class "row" ]
+                [ h1 []
+                    [ text (model.pageTitle) ]
                 ]
+            , div [ class "row" ]
+                [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
+                ]
+            , div [ style [("padding-top", "2em")] ]
+                [ div [ class "form-group" ]
+                    [ label [ attribute "for" "name" ] [ text "Your name" ]
+                    , input [ type_ "text", class "form-control", placeholder "Enter your name", value model.name, onInput SetName ] []
+                    ]
+                , div [ class "form-group" ]
+                    [ label [ attribute "for" "email" ] [ text "Your email" ]
+                    , input [ type_ "email", class "form-control", placeholder "Enter your email", value model.email, onInput SetEmail ] []
+                    ]
+                , div [ class "form-group" ]
+                    [ label [ attribute "for" "message" ] [ text "Your message" ]
+                    , textarea [ class "form-control", rows 3, onInput SetMessage ] []
+                    ]
+                , button [ class "btn btn-primary", onClick Submit ] [ text "Submit" ]
+                ]
+            ]

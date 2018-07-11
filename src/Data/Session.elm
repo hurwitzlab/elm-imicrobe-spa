@@ -21,7 +21,6 @@ type alias Session =
     , expiresIn : Maybe Int
     , expiresAt : Maybe Int
     , user : Maybe User
-    , profile : Maybe Profile
     , url : String
     }
 
@@ -33,7 +32,6 @@ empty =
     , expiresIn = Nothing
     , expiresAt = Nothing
     , user = Nothing
-    , profile = Nothing
     , url = ""
     }
 
@@ -46,7 +44,6 @@ decoder =
         |> optional "expiresIn" (Decode.nullable Decode.int) Nothing
         |> optional "expiresAt" (Decode.nullable Decode.int) Nothing
         |> optional "user" (Decode.nullable User.decoder) Nothing
-        |> optional "profile" (Decode.nullable Agave.decoderProfile) Nothing
         |> optional "url" Decode.string ""
 
 
@@ -58,7 +55,6 @@ encode session =
         , "expiresIn" => EncodeExtra.maybe Encode.int session.expiresIn
         , "expiresAt" => EncodeExtra.maybe Encode.int session.expiresAt
         , "user" => EncodeExtra.maybe User.encode session.user
-        , "profile" => EncodeExtra.maybe Agave.encodeProfile session.profile
         , "url" => Encode.string session.url
         ]
 

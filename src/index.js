@@ -23,11 +23,13 @@ require.context("../plugins/landing-page", true, /^\.\/.*\.(jpg|png|html|css)/);
 // Load config file
 var config = require('../config.json');
 
+const COOKIE_NAME = config.cookieName;
+
 // Start up Elm app
 var Elm = require('./Main.elm');
 var mountNode = document.getElementById('main');
 var app = Elm.Main.embed(mountNode, {
-    session: localStorage.session || ""
+    session: localStorage[COOKIE_NAME] || ""
 });
 
 
@@ -74,13 +76,13 @@ app.ports.setCenter.subscribe(function(model) {
 
 app.ports.storeSession.subscribe(function(session) {
     console.log("storeSession: ", session);
-    localStorage[config.cookieName] = session;
+    localStorage[COOKIE_NAME] = session;
 });
 
 // This event is only triggered when localStorage is modifed from another window
 window.addEventListener("storage",
     function(event) {
-        if (event.storageArea === localStorage && event.key === config.cookieName) {
+        if (event.storageArea === localStorage && event.key === COOKIE_NAME) {
             console.log("storage listener:", event.newValue);
             app.ports.onSessionChange.send(event.newValue);
         }

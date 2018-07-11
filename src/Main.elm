@@ -168,8 +168,7 @@ type Msg
     | JobsMsg Jobs.Msg
     | MapLoaded String String (Result PageLoadError Map.Model)
     | MapMsg Map.Msg
-    | LoadProfile Agave.Profile
-    | LoginRecorded User.Login
+    | LoginRecorded (Result PageLoadError User.Login)
     | ProfileLoaded (Result PageLoadError Profile.Model)
     | ProfileMsg Profile.Msg
     | ProjectGroupLoaded Int (Result PageLoadError ProjectGroup.Model)
@@ -419,7 +418,7 @@ updatePage page msg model =
         Deauthorize ->
             let
                 newSession =
-                    { session | token = "", user = Nothing, profile = Nothing }
+                    { session | token = "", expiresIn = Nothing, expiresAt = Nothing, user = Nothing }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
 
@@ -702,37 +701,15 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        LoadProfile profile ->
+        LoginRecorded (Ok login) ->
             let
-                session = model.session
-
-                newSession =
-                    { session | profile = Just profile }
-
-                recordLogin username =
-                    Request.User.recordLogin session.token username |> Http.toTask |> Task.attempt handleRecordLogin
-
-                handleRecordLogin login =
-                    case login of
-                        Ok login ->
-                            LoginRecorded login
-
-                        Err error ->
-                            let
-                                _ = Debug.log "Error" "could not record login: " ++ (toString error)
-                            in
-                            SetRoute (Just Route.Home)
-            in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession, (recordLogin profile.username) ]
-
-        LoginRecorded login ->
-            let
-                session = model.session
-
                 newSession =
                     { session | user = Just login.user }
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession ]
+
+        LoginRecorded (Err error) ->
+            { model | pageState = Loaded (Error error) } => redirectLoadError error
 
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
@@ -1086,26 +1063,29 @@ updatePage page msg model =
                     model => Cmd.none
 
         LoginExpirationTimerTick time ->
-            case session.expiresAt of
-                Nothing ->
-                    let
-                        expiresIn =
-                            session.expiresIn |> Maybe.withDefault 3600 |> toFloat
+            if session.token /= "" then
+                case session.expiresAt of
+                    Nothing ->
+                        let
+                            expiresIn =
+                                session.expiresIn |> Maybe.withDefault 3600 |> toFloat
 
-                        expiresAt =
-                           time + (expiresIn * Time.second) - Time.second |> floor -- minus one second taken to fire this event
+                            expiresAt =
+                               time + (expiresIn * Time.second) - Time.second |> floor -- minus one second taken to fire this event
 
-                        newSession =
-                            { session | expiresAt = Just expiresAt }
-                    in
-                    { model | session = newSession } => Session.store newSession
+                            newSession =
+                                { session | expiresAt = Just expiresAt }
+                        in
+                        { model | session = newSession } => Session.store newSession
 
-                Just expiresAt ->
-                    let
-                        expired =
-                            (floor time) > expiresAt
-                    in
-                    { model | showLoginExpirationDialog = expired } => Cmd.none
+                    Just expiresAt ->
+                        let
+                            expired =
+                                (floor time) > expiresAt
+                        in
+                        { model | showLoginExpirationDialog = expired } => Cmd.none
+            else
+                model => Cmd.none
 
         InputTimerTick time ->
             case page of
@@ -1375,25 +1355,24 @@ pageLayout isLoading session page content =
 viewHeader : ActivePage -> Bool -> Session -> Html Msg
 viewHeader page isLoading session =
     let
-        profile = session.profile
+        user =
+            session.user
 
         loginMenuItem =
-            case profile of
-                Nothing ->
-                    li [] [ a [ Route.href Route.Login ] [ text "Login" ] ]
-
-                Just profile ->
-                    li [ class "dropdown" ]
-                        [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
-                            [ text "My Account"
-                            , span [ class "caret" ] []
-                            ]
-                        , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                            [ li [] [ a [ Route.href Route.Dashboard ] [ text "Dashboard" ] ]
-                            , li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
-                            , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
-                            ]
+            if user == Nothing then
+                li [] [ a [ Route.href Route.Login ] [ text "Login" ] ]
+            else
+                li [ class "dropdown" ]
+                    [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
+                        [ text "My Account"
+                        , span [ class "caret" ] []
                         ]
+                    , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
+                        [ li [] [ a [ Route.href Route.Dashboard ] [ text "Dashboard" ] ]
+                        , li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
+                        , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
+                        ]
+                    ]
 
         numItemsInCart =
             Data.Cart.size session.cart
@@ -1418,7 +1397,7 @@ viewHeader page isLoading session =
                 "(" ++ (toString numItemsInCart) ++ ")"
 
         dashboardButton =
-            if profile == Nothing then
+            if user == Nothing then
                 text ""
             else
                 div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
@@ -1606,26 +1585,18 @@ init flags location =
                     state |> Maybe.withDefault ""
 
                 newSession =
-                    { session | token = toString token, expiresIn = expiresIn }
+                    { session | token = toString token, expiresIn = expiresIn, url = url }
 
-                loadProfile =
-                    Request.Agave.getProfile (toString token) |> Http.toTask |> Task.map .result
-
-                handleProfile profile =
-                    case profile of
-                        Ok profile ->
-                            LoadProfile profile
-
-                        Err _ ->
-                            let
-                                _ = Debug.log "Error" "could not retrieve profile"
-                            in
-                            SetRoute (Just Route.Home) --FIXME go to Error page with a relevant error message instead
+                recordLogin =
+                    Request.User.recordLogin newSession.token
+                        |> Http.toTask |> Task.mapError Error.handleLoadError
             in
-            { model | session = newSession } => Cmd.batch
-                [ Navigation.modifyUrl url
-                , Task.attempt handleProfile loadProfile
-                ]
+            { model | session = newSession } =>
+                Cmd.batch
+                    [ Session.store newSession
+                    , Navigation.modifyUrl url
+                    , Task.attempt LoginRecorded recordLogin
+                    ]
 
         handleOAuthAuthorizationCode code =
             let

@@ -68,10 +68,7 @@ init session id =
             Request.App.getByName app_name |> Http.toTask
 
         username =
-            case session.profile of
-                Nothing -> ""
-
-                Just profile -> profile.username
+            session.user |> Maybe.map .user_name |> Maybe.withDefault ""
     in
     loadJob
         |> Task.andThen
@@ -127,10 +124,7 @@ update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     let
         username =
-            case session.profile of
-                Nothing -> ""
-
-                Just profile -> profile.username
+            session.user |> Maybe.map .user_name |> Maybe.withDefault ""
 
         loadJobFromAgave =
             Request.Agave.getJob session.token model.job.id |> Http.toTask |> Task.map .result
