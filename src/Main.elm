@@ -417,7 +417,7 @@ updatePage page msg model =
                 newSession =
                     { session | token = "", expiresIn = Nothing, expiresAt = Nothing, user = Nothing }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession, Route.modifyUrl Route.Home ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, Navigation.load "/" ]
 
         AuthenticateORCID res ->
             case res of
@@ -1052,7 +1052,7 @@ updatePage page msg model =
                 Job id subModel ->
                     let
                         (pageModel, cmd) =
-                                Job.update session (Job.PollJob time) subModel
+                            Job.update session (Job.PollJob time) subModel
                     in
                     { model | pageState = Loaded (Job id pageModel) } => Cmd.map JobMsg cmd
 
@@ -1062,7 +1062,7 @@ updatePage page msg model =
         LoginExpirationTimerTick time ->
             if session.token /= "" then
                 case session.expiresAt of
-                    Nothing ->
+                    Nothing -> -- Initialize expiration time
                         let
                             expiresIn =
                                 session.expiresIn |> Maybe.withDefault 3600 |> toFloat
@@ -1079,9 +1079,9 @@ updatePage page msg model =
                         if (floor time) > expiresAt then -- expired
                             let
                                 _ = Debug.log "LoginExpirationTimerTick" "Session expired!"
-                                
+
                                 newSession =
-                                    { session | token = "", expiresAt = Nothing }
+                                    { session | token = "", expiresAt = Nothing, expiresIn = Nothing }
                             in
                             { model | showLoginExpirationDialog = True, session = newSession } => Session.store newSession
                         else
