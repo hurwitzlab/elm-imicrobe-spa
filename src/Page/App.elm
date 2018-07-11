@@ -322,12 +322,7 @@ update session msg model =
         OpenFileBrowser source inputId ->
             let
                 username =
-                    case session.profile of
-                        Nothing ->
-                            ""
-
-                        Just profile ->
-                            profile.username
+                    session.user |> Maybe.map .user_name |> Maybe.withDefault ""
             in
             model => Ports.createFileBrowser (App.FileBrowser inputId username session.token "" source)
 
@@ -337,11 +332,20 @@ update session msg model =
                     session.cart.contents |> Set.toList
 
                 cmd =
-                    Task.attempt LoadCartCompleted <|
-                        Task.map3 (\samples files sampleGroups -> (samples, files, sampleGroups))
-                            (Request.Sample.getSome session.token id_list |> Http.toTask) -- load samples for current cart
-                            (Request.Sample.files session.token id_list |> Http.toTask) -- load files for current cart
-                            (Request.SampleGroup.list session.token |> Http.toTask) -- load samples & files for saved carts
+                    if model.cartLoaded then
+                        Cmd.none
+                    else if id_list == [] then -- current cart is empty
+                        Task.attempt LoadCartCompleted <|
+                            Task.map3 (\samples files sampleGroups -> (samples, files, sampleGroups))
+                                (Task.succeed [])
+                                (Task.succeed [])
+                                (Request.SampleGroup.list session.token |> Http.toTask) -- load samples & files for saved carts
+                    else
+                        Task.attempt LoadCartCompleted <|
+                            Task.map3 (\samples files sampleGroups -> (samples, files, sampleGroups))
+                                (Request.Sample.getSome session.token id_list |> Http.toTask) -- load samples for current cart
+                                (Request.Sample.files session.token id_list |> Http.toTask) -- load files for current cart
+                                (Request.SampleGroup.list session.token |> Http.toTask) -- load samples & files for saved carts
             in
             { model | cartDialogInputId = Just inputId } => cmd
 
@@ -636,14 +640,14 @@ cartDialogConfig : Model -> Dialog.Config Msg
 cartDialogConfig model =
     let
         content =
-            if Cart.size model.cart > 0 then
-                if model.cartLoaded then
+            if model.cartLoaded then
+                if Cart.size model.cart > 0 then
                     viewCart model
                 else
-                    div [ class "center" ]
-                        [ div [ class "padded-xl spinner" ] [] ]
+                    text "The cart is empty"
             else
-                text "The cart is empty"
+                div [ class "center" ]
+                    [ div [ class "padded-xl spinner" ] [] ]
 
         header =
             h3 []
@@ -657,8 +661,11 @@ cartDialogConfig model =
         closeButton =
             button [ class "btn btn-default pull-right margin-right", onClick CancelCartDialog ] [ text "Close" ]
 
+        empty =
+            Cart.size model.cart == 0
+
         footer =
-            if not (model.cartLoaded && model.samples /= []) then
+            if not model.cartLoaded || empty then
                 closeButton
             else
                 div [ style [("display","inline")] ]
@@ -714,27 +721,6 @@ viewCartDropdown selectedCartId sampleGroups =
             ]
 
 
---viewCart : Model -> Html Msg
---viewCart model =
---    let
---        samples =
---            case model.selectedCartId of
---                Nothing ->  -- Current
---                    model.samples
---
---                Just id ->
---                    model.sampleGroups
---                        |> List.filter (\g -> g.sample_group_id == id)
---                        |> List.map .samples
---                        |> List.concat
---
---        cart =
---            samples |> List.map .sample_id |> Set.fromList |> Data.Cart.Cart
---
---        cartModel =
---            Cart.init cart Cart.Selectable
---    in
---    div [ class "scrollable-half" ] [ Cart.viewCart cartModel samples |> Html.map CartMsg ]
 viewCart : Model -> Html Msg
 viewCart model =
     let
