@@ -33,16 +33,6 @@ type alias Model =
 init : Session -> Maybe Int -> Task PageLoadError Model
 init session id =
     let
-        -- Load page - Perform tasks to load the resources of a page
-        title =
-            Task.succeed "Files"
-
-        tableState =
-            Task.succeed (Table.initialSort "Type")
-
-        filterType =
-            Task.succeed "All"
-
         id_list = -- sample IDs
             session.cart.contents |> Set.toList
 
