@@ -1,4 +1,4 @@
-module Data.Session exposing (Session, empty, decoder, encode, store)
+module Data.Session exposing (..)
 
 import Data.Cart as Cart exposing (Cart)
 import Data.Agave as Agave exposing (Profile)
@@ -34,6 +34,11 @@ empty =
     , user = Nothing
     , url = ""
     }
+
+
+expired : Session -> Session
+expired session =
+    { session | expiresAt = Nothing, expiresIn = Nothing, token = "", user = Nothing }
 
 
 decoder : Decoder Session

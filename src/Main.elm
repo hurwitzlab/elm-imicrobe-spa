@@ -415,7 +415,7 @@ updatePage page msg model =
         Deauthorize ->
             let
                 newSession =
-                    { session | token = "", expiresIn = Nothing, expiresAt = Nothing, user = Nothing }
+                    Session.expired session
             in
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Navigation.load "/" ]
 
@@ -1081,7 +1081,7 @@ updatePage page msg model =
                                 _ = Debug.log "LoginExpirationTimerTick" "Session expired!"
 
                                 newSession =
-                                    { session | token = "", expiresAt = Nothing, expiresIn = Nothing }
+                                    Session.expired session
                             in
                             { model | showLoginExpirationDialog = True, session = newSession } => Session.store newSession
                         else
@@ -1547,6 +1547,7 @@ initialPage =
 
 type alias Flags =
     { session : String
+    , startTime : Int
     }
 
 
@@ -1557,11 +1558,21 @@ init flags location =
 
         _ = Debug.log "location" (toString location)
 
-        session = --TODO use Maybe Session instead
+        session =
             if flags.session == "" then
                 Session.empty
             else
-                decodeSessionFromJson flags.session
+                let
+                    session =
+                        decodeSessionFromJson flags.session
+                in
+                if session.token /= "" && (session.expiresAt |> Maybe.map (\expiresAt -> flags.startTime > expiresAt) |> Maybe.withDefault False) then
+                    let
+                        _ = Debug.log "Expired session" (toString session)
+                    in
+                    Session.expired session
+                else
+                    session
 
         model =
             { oauth =

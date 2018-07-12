@@ -29,7 +29,8 @@ const COOKIE_NAME = config.cookieName;
 var Elm = require('./Main.elm');
 var mountNode = document.getElementById('main');
 var app = Elm.Main.embed(mountNode, {
-    session: localStorage[COOKIE_NAME] || ""
+    session: localStorage[COOKIE_NAME] || "",
+    startTime: Date.now()
 });
 
 
