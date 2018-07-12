@@ -53,19 +53,23 @@ type alias InternalModel =
 
 
 type alias Config =
-    { showNewFolderButton : Bool
+    { showMenuBar : Bool
+    , showNewFolderButton : Bool
     , showUploadFileButton : Bool
     , allowDirSelection : Bool
     , allowMultiSelection : Bool
+    , homePath : Maybe String
     }
 
 
 defaultConfig : Config
 defaultConfig =
-    { showNewFolderButton = True
+    { showMenuBar = True
+    , showNewFolderButton = True
     , showUploadFileButton = True
     , allowDirSelection = True
     , allowMultiSelection = False
+    , homePath = Nothing
     }
 
 
@@ -75,11 +79,11 @@ init session maybeConfig =
         user_name =
             session.user |> Maybe.map .user_name |> Maybe.withDefault ""
 
-        startingPath =
-            "/" ++ user_name
-
         config =
             maybeConfig |> Maybe.withDefault defaultConfig
+
+        startingPath =
+            config.homePath |> Maybe.withDefault ("/" ++ user_name)
     in
     Model
         { path = startingPath
@@ -299,6 +303,49 @@ determinePreviousPath path =
 view : Model -> Html Msg
 view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
     let
+        menuBar =
+            Html.form [ class "form-inline" ]
+                [ div [ class "form-group" ]
+                    [ div [ class "input-group" ]
+                        [ div [ class "input-group-btn" ]
+                            [ filterButton "Home"
+                            , filterButton "Shared"
+                            ]
+                        , input [ class "form-control", type_ "text", size 45, value path, onInput SetPath ] []
+                        , span [ class "input-group-btn" ]
+                            [ button [ class "btn btn-default", type_ "button", onClick (LoadPath path) ] [ text "Go " ]
+                            ]
+                        ]
+                    , button [ style [("visibility","hidden")] ] -- FIXME make a better spacer than this
+                        [ text " " ]
+                    , if (config.showNewFolderButton) then
+                        button [ class "btn btn-default btn-sm margin-right", type_ "button", onClick OpenNewFolderDialog ]
+                            [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
+                      else
+                        text ""
+                    , if (config.showUploadFileButton) then
+--                        div [ class "btn-group" ]
+--                            [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
+--                                [ span [ class "glyphicon glyphicon-cloud-upload" ] []
+--                                , text " Upload File "
+--                                , span [ class "caret" ] []
+--                                ]
+--                            , ul [ class "dropdown-menu" ]
+--                                [ li [] [ a [ onClick UploadFile ] [ text "From local" ] ]
+--                                , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
+--                                , li [] [ a [] [ text "From NCBI" ] ]
+--                                , li [] [ a [] [ text "From EBI" ] ]
+--                                ]
+--                            ]
+                            button [ class "btn btn-default btn-sm", type_ "button", onClick UploadFile ]
+                                [ span [ class "glyphicon glyphicon-cloud-upload" ] []
+                                , text " Upload File"
+                                ]
+                        else
+                          text ""
+                    ]
+                ]
+
         filterButton label =
             let
                 isActive =
@@ -308,47 +355,10 @@ view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, erro
                 [ text label ]
     in
     div []
-        [ Html.form [ class "form-inline" ]
-            [ div [ class "form-group" ]
-                [ div [ class "input-group" ]
-                    [ div [ class "input-group-btn" ]
-                        [ filterButton "Home"
-                        , filterButton "Shared"
-                        ]
-                    , input [ class "form-control", type_ "text", size 45, value path, onInput SetPath ] []
-                    , span [ class "input-group-btn" ]
-                        [ button [ class "btn btn-default", type_ "button", onClick (LoadPath path) ] [ text "Go " ]
-                        ]
-                    ]
-                , button [ style [("visibility","hidden")] ] -- FIXME make a better spacer than this
-                    [ text " " ]
-                , if (config.showNewFolderButton) then
-                    button [ class "btn btn-default btn-sm margin-right", type_ "button", onClick OpenNewFolderDialog ]
-                        [ span [ class "glyphicon glyphicon-folder-close" ] [], text " New Folder" ]
-                  else
-                    text ""
-                , if (config.showUploadFileButton) then
---                    div [ class "btn-group" ]
---                        [ button [ class "btn btn-default btn-sm dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ]
---                            [ span [ class "glyphicon glyphicon-cloud-upload" ] []
---                            , text " Upload File "
---                            , span [ class "caret" ] []
---                            ]
---                        , ul [ class "dropdown-menu" ]
---                            [ li [] [ a [ onClick UploadFile ] [ text "From local" ] ]
---                            , li [] [ a [] [ text "From URL (FTP/HTTP)" ] ]
---                            , li [] [ a [] [ text "From NCBI" ] ]
---                            , li [] [ a [] [ text "From EBI" ] ]
---                            ]
---                        ]
-                        button [ class "btn btn-default btn-sm", type_ "button", onClick UploadFile ]
-                            [ span [ class "glyphicon glyphicon-cloud-upload" ] []
-                            , text " Upload File"
-                            ]
-                    else
-                      text ""
-                ]
-            ]
+        [ if config.showMenuBar then
+            menuBar
+          else
+            text ""
         , br [] []
         , if errorMessage /= Nothing then
             div [ class "alert alert-danger" ] [ text (Maybe.withDefault "An error occurred" errorMessage) ]
@@ -416,7 +426,11 @@ nameColumn =
         , viewData = nameLink
         , sorter =
             Table.increasingOrDecreasingBy
-                (\data -> if data.type_ == "dir" then "..." ++ data.name else data.name) -- sort dirs before files
+                (\data ->
+                    if data.type_ == "dir" then -- sort dirs before files
+                        "..." ++ data.name
+                    else data.name
+                )
         }
 
 

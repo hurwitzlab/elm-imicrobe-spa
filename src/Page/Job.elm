@@ -21,6 +21,7 @@ import Time exposing (Time)
 import String.Extra
 import List.Extra
 import View.Spinner exposing (spinner)
+import View.FileBrowser as FileBrowser
 
 
 
@@ -32,13 +33,11 @@ type alias Model =
     , username : String
     , job_id : String
     , job : Agave.Job
+    , app : App.App
     , loadingJob : Bool
-    , loadingOutputs : Bool
     , loadingHistory : Bool
     , loadedHistory : Bool
-    , outputs : List Agave.JobOutput
     , history : List Agave.JobHistory
-    , app : App.App
     , loadingResults : Bool
     , loadedResults : Bool
     , results : Maybe (List (String, String))
@@ -46,6 +45,7 @@ type alias Model =
     , lastPollTime : Maybe Time
     , showCancelDialog : Bool
     , cancelDialogMessage : Maybe String
+    , fileBrowser : Maybe FileBrowser.Model
     }
 
 
@@ -81,13 +81,11 @@ init session id =
                                 , username = username
                                 , job_id = job.id
                                 , job = job
+                                , app = app
                                 , loadingJob = False
-                                , loadingOutputs = False
                                 , loadingHistory = False
                                 , loadedHistory = False
-                                , outputs = []
                                 , history = []
-                                , app = app
                                 , loadingResults = False
                                 , loadedResults = False
                                 , results = Nothing
@@ -95,6 +93,7 @@ init session id =
                                 , lastPollTime = Nothing
                                 , showCancelDialog = False
                                 , cancelDialogMessage = Nothing
+                                , fileBrowser = Nothing
                                 }
                         )
                 )
@@ -109,8 +108,7 @@ init session id =
 type Msg
     = GetHistory
     | SetHistory (List Agave.JobHistory)
-    | GetOutputs
-    | SetOutputs (List Agave.JobOutput)
+    | ShowOutputs
     | GetResults
     | SetResults (Result Http.Error (List (String, String)))
     | SetJob Agave.Job
@@ -118,6 +116,7 @@ type Msg
     | CancelJob
     | CancelJobCompleted (Result Http.Error Agave.Job)
     | CloseCancelDialog
+    | FileBrowserMsg FileBrowser.Msg
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -173,30 +172,21 @@ update session msg model =
 --            in
             { model | history = history, loadingHistory = False, loadedHistory = True } => Cmd.none
 
-        GetOutputs ->
+        ShowOutputs ->
             let
-                loadOutputs =
-                    Request.Agave.getJobOutputs model.job.owner session.token model.job_id Nothing |> Http.toTask |> Task.map .result
+                defaultConfig =
+                    FileBrowser.defaultConfig
 
-                handleOutputs outputs =
-                    case outputs of
-                        Ok outputs ->
-                            SetOutputs outputs
+                outputsPath =
+                    model.username ++ "/archive/jobs/job-" ++ model.job_id
 
-                        Err _ ->
-                            let
-                                _ = Debug.log "Error" "could not retrieve job outputs"
-                            in
-                            SetOutputs []
+                fileBrowser =
+                    FileBrowser.init session (Just { defaultConfig | showMenuBar = False, homePath = Just outputsPath })
+
+                (subModel, subCmd) =
+                    FileBrowser.update session FileBrowser.RefreshPath fileBrowser
             in
-            { model | loadingOutputs = True } => Task.attempt handleOutputs loadOutputs
-
-        SetOutputs outputs ->
-            let
-                filtered =
-                    List.filter (\output -> output.name /= ".") outputs
-            in
-            { model | outputs = filtered } => Cmd.none
+            { model | fileBrowser = Just subModel } => Cmd.map FileBrowserMsg subCmd
 
         GetResults -> -- this code is a little complicated
             let
@@ -330,6 +320,19 @@ update session msg model =
 
         CloseCancelDialog ->
             { model | showCancelDialog = False } => Cmd.none
+
+        FileBrowserMsg subMsg ->
+            case model.fileBrowser of
+                Nothing ->
+                    model => Cmd.none
+
+                Just fileBrowser ->
+                    let
+                        ( newFileBrowser, subCmd ) =
+                            FileBrowser.update session subMsg fileBrowser
+                    in
+                    { model | fileBrowser = Just newFileBrowser } => Cmd.map FileBrowserMsg subCmd
+
 
 
 -- VIEW --
@@ -545,38 +548,33 @@ viewOutputs model =
         body =
             case model.job.status of
                 "FINISHED" ->
-                    case model.outputs of
-                        [] ->
-                            if model.loadingOutputs then
-                                [ tr [] [ td [] [ spinner ] ] ]
-                            else
-                                [ tr [] [ td [] [ button [ class "btn btn-default", onClick GetOutputs ] [ text "Show Outputs" ] ] ] ]
+                    case model.fileBrowser of
+                        Nothing ->
+                            button [ class "btn btn-default", onClick ShowOutputs ] [ text "Show Outputs" ]
 
-                        _ -> (List.map viewOutput model.outputs)
+                        Just fileBrowser ->
+                            div [ style [("height","60vh"), ("overflow-y","auto")] ]
+                                [ FileBrowser.view fileBrowser |> Html.map FileBrowserMsg ]
 
                 "FAILED" ->
-                    [ tr [] [ td [] [ text "None" ] ] ]
+                    text "None"
 
                 _ ->
-                    [ tr [] [ td [] [ div [ class "italic" ] [ text "Job is not FINISHED, please wait ..." ] ] ] ]
+                    text "Job is not FINISHED, please wait ..."
 
         de_url =
             "https://de.cyverse.org/de/?type=data&folder=/iplant/home/" ++ model.username ++ "/archive/jobs/job-" ++ model.job_id --FIXME move base url to config
     in
     div []
         [ h2 [] [ text "Outputs" ]
-        , div [] [ text "Browse and view output files in the ", a [ target "_blank", href de_url ] [ text "CyVerse Data Store" ], text "." ]
-        , table [ class "table" ]
-            [ tbody [] body
+        , div []
+            [ text "Browse and view output files in the "
+            , a [ target "_blank", href de_url ] [ text "CyVerse Data Store" ]
+            , text "."
             ]
-        ]
-
-
-viewOutput : Agave.JobOutput -> Html msg
-viewOutput output =
-    tr []
-        [ td [] [ text output.name ]
-        , td [] [ text output.type_ ]
+        , table [ class "table" ]
+            [ tbody [] [ tr [] [ td [] [ body ] ] ]
+            ]
         ]
 
 
