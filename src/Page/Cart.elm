@@ -373,7 +373,7 @@ view model =
                 , View.Widgets.counter count
                 , viewCartControls isEmpty isLoggedIn model.selectedCartId model.sampleGroups
                 , div [ class "right", classList [ ("disabled", isEmpty) ] ]
-                    [ a [ Route.href Route.Files ]
+                    [ a [ Route.href (Route.Files model.selectedCartId) ]
                         [ button [ class "margin-right btn btn-primary btn-sm" ]
                             [ span [ class "glyphicon glyphicon-file"] []
                             , text " Show Files"

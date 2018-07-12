@@ -7,6 +7,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Http
 import Request.Sample
+import Request.SampleGroup
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
 import Route
@@ -29,8 +30,8 @@ type alias Model =
     }
 
 
-init : Session -> Task PageLoadError Model
-init session =
+init : Session -> Maybe Int -> Task PageLoadError Model
+init session id =
     let
         -- Load page - Perform tasks to load the resources of a page
         title =
@@ -42,17 +43,31 @@ init session =
         filterType =
             Task.succeed "All"
 
-        id_list =
+        id_list = -- sample IDs
             session.cart.contents |> Set.toList
 
         loadSampleFiles =
-            if id_list == [] then
-                Task.succeed []
-            else
-                Request.Sample.files session.token id_list |> Http.toTask
+            case id of
+                Nothing -> -- Current
+                    if id_list == [] then
+                        Task.succeed []
+                    else
+                        Request.Sample.files session.token id_list |> Http.toTask
+
+                Just id ->
+                    Request.SampleGroup.files session.token id |> Http.toTask
     in
-    Task.map4 Model title tableState filterType loadSampleFiles
-        |> Task.mapError Error.handleLoadError
+    loadSampleFiles
+        |> Task.andThen
+            (\files ->
+                Task.succeed
+                    { pageTitle = "Files"
+                    , tableState = Table.initialSort "Type"
+                    , filterType = "All"
+                    , files = files
+                    }
+            )
+            |> Task.mapError Error.handleLoadError
 
 
 

@@ -20,7 +20,7 @@ type Route
     | Dashboard
     | Domains
     | Domain Int
-    | Files
+    | Files (Maybe Int)
     | Investigator Int
     | Investigators
     | Jobs
@@ -58,7 +58,8 @@ routeMather =
         , map Dashboard (s "dashboard")
         , map Domains (s "domains")
         , map Domain (s "domains" </> int)
-        , map Files (s "files")
+        , map (Files Nothing) (s "files")
+        , map (Files << Just) (s "files" </> int)
         , map Home (s "")
         , map Investigator (s "investigators" </> int)
         , map Investigators (s "investigators")
@@ -121,8 +122,11 @@ routeToString page =
                 Home ->
                     []
 
-                Files ->
+                Files Nothing ->
                     [ "files" ]
+
+                Files (Just id) ->
+                    [ "files", toString id ]
 
                 Domains ->
                     [ "domains" ]

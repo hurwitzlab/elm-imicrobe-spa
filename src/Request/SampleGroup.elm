@@ -1,6 +1,6 @@
 module Request.SampleGroup exposing (..)
 
-import Data.Sample exposing (SampleGroup, decoderSampleGroup)
+import Data.Sample exposing (SampleGroup, SampleFile, decoderSampleGroup, decoderSampleFile)
 import Http
 import HttpBuilder
 import Json.Decode as Decode
@@ -104,4 +104,19 @@ removeAllSamples token sample_group_id =
     HttpBuilder.delete url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect (Http.expectJson decoderSampleGroup)
+        |> HttpBuilder.toRequest
+
+
+files : String -> Int -> Http.Request (List SampleFile)
+files token sample_group_id =
+    let
+        url =
+            apiBaseUrl ++ "/sample_groups/" ++ (toString sample_group_id) ++ "/files"
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderSampleFile))
         |> HttpBuilder.toRequest

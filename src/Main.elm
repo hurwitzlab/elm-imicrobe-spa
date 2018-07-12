@@ -96,7 +96,7 @@ type Page
     | Domain Int Domain.Model
     | Domains Domains.Model
     | Error PageLoadError
-    | Files Files.Model
+    | Files (Maybe Int) Files.Model
     | Home Home.Model
     | Investigator Int Investigator.Model
     | Investigators Investigators.Model
@@ -154,7 +154,7 @@ type Msg
     | DomainMsg Domain.Msg
     | DomainsLoaded (Result PageLoadError Domains.Model)
     | DomainsMsg Domains.Msg
-    | FilesLoaded (Result PageLoadError Files.Model)
+    | FilesLoaded (Maybe Int) (Result PageLoadError Files.Model)
     | FilesMsg Files.Msg
     | HomeLoaded (Result PageLoadError Home.Model)
     | HomeMsg Home.Msg
@@ -278,8 +278,8 @@ setRoute maybeRoute model =
         Just (Route.Domain id) ->
             transition (DomainLoaded id) (Domain.init id)
 
-        Just Route.Files ->
-            transition FilesLoaded (Files.init model.session)
+        Just (Route.Files id) ->
+            transition (FilesLoaded id) (Files.init model.session id)
 
         Just Route.Home ->
             transition HomeLoaded (Home.init model.session)
@@ -580,16 +580,16 @@ updatePage page msg model =
         DomainLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
-        FilesLoaded (Ok subModel) ->
-            { model | pageState = Loaded (Files subModel) } => scrollToTop
+        FilesLoaded id (Ok subModel) ->
+            { model | pageState = Loaded (Files id subModel) } => scrollToTop
 
-        FilesLoaded (Err error) ->
+        FilesLoaded id (Err error) ->
             { model | pageState = Loaded (Error error) } => Cmd.none
 
         FilesMsg subMsg ->
             case page of
-                Files subModel ->
-                    toPage Files FilesMsg Files.update subMsg subModel
+                Files id subModel ->
+                    toPage (Files id) FilesMsg Files.update subMsg subModel
 
                 _ ->
                     model => Cmd.none
@@ -1240,7 +1240,7 @@ viewPage session isLoading page =
             Error.view subModel
                 |> layout Page.Other
 
-        Files subModel ->
+        Files id subModel ->
             Files.view subModel
                 |> Html.map FilesMsg
                 |> layout Page.Files
