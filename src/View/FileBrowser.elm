@@ -73,21 +73,13 @@ init : Session -> Maybe Config -> Model --Task Http.Error Model
 init session maybeConfig =
     let
         user_name =
-            case session.user of
-                Nothing -> ""
-
-                Just user -> user.user_name
+            session.user |> Maybe.map .user_name |> Maybe.withDefault ""
 
         startingPath =
             "/" ++ user_name
 
         config =
-            case maybeConfig of
-                Nothing ->
-                    defaultConfig
-
-                Just config ->
-                    config
+            maybeConfig |> Maybe.withDefault defaultConfig
     in
     Model
         { path = startingPath
