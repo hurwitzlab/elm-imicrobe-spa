@@ -1,7 +1,6 @@
 module Data.Session exposing (..)
 
 import Data.Cart as Cart exposing (Cart)
-import Data.Agave as Agave exposing (Profile)
 import Data.User as User exposing (User)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
@@ -9,7 +8,6 @@ import Json.Encode as Encode exposing (Value)
 import Json.Encode.Extra as EncodeExtra
 import Util exposing ((=>))
 import Ports
-import Set
 
 
 -- IMPORTANT!!!
@@ -27,7 +25,7 @@ type alias Session =
 
 empty : Session
 empty =
-    { cart = Cart Set.empty
+    { cart = Cart.empty
     , token = ""
     , expiresIn = Nothing
     , expiresAt = Nothing
