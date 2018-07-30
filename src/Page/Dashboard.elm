@@ -38,6 +38,7 @@ import Ports
 
 type alias Model =
     { user : User
+    , token : String
     , newProjectName : String
     , showNewProjectDialog : Bool
     , showNewProjectBusy : Bool
@@ -77,6 +78,7 @@ init session =
             (\user ->
                 Task.succeed
                     { user = user
+                    , token = session.token
                     , newProjectName = ""
                     , showNewProjectDialog = False
                     , showNewProjectBusy = False
@@ -867,7 +869,7 @@ viewInfo model =
                             p [] [ text "Here are the contents of your CyVerse Data Store home directory.", br [] [], text "Double-click to open a directory." ]
 
                         file :: _ ->
-                            viewFileInfo file
+                            viewFileInfo model.token file
 
                 Activity ->
                     case List.filter (\entry -> entry.id == model.selectedActivityRowId) model.user.log of
@@ -886,8 +888,8 @@ viewInfo model =
     div [ class "info-panel" ] [ info ]
 
 
-viewFileInfo : FileResult -> Html Msg
-viewFileInfo file =
+viewFileInfo : String -> FileResult -> Html Msg
+viewFileInfo token file =
     let
         myLocale =
             { usLocale | decimals = 0 }
@@ -932,6 +934,13 @@ viewFileInfo file =
 --                    [ td [] [ button [ class "btn btn-link btn-xs" ]
 --                        [ span [ class "glyphicon glyphicon-plus" ] [], text " Add to Sample" ] ]
 --                    ]
+                , tr []
+                    [ td []
+                        [ a [ type_ "button", class "btn btn-link btn-xs", href ("http://localhost:3006/download" ++ file.path ++ "?token=" ++ token) ]
+                            [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download"
+                            ]
+                        ]
+                    ]
                 , tr []
                     [ td []
                         [ button [ class "btn btn-link btn-xs" ]
