@@ -234,7 +234,7 @@ stopJob token id =
             agaveBaseUrl ++ "/jobs/v2/" ++ id
 
         headers =
-            [( "Authorization", token)]
+            [( "Authorization", token), ("Content-type", "application/x-www-form-urlencoded")]
 
         body =
             "action=stop"
