@@ -68,6 +68,7 @@ type alias InputValue =
 
 type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/, see DefaultValue in this file as example
     { order : Int
+    , visible : Bool
     , type_ : String
     , default : DefaultValue
     , enum_values : Maybe (List (List (String, String)))
@@ -238,6 +239,7 @@ decoderParameterValue : Decoder ParameterValue
 decoderParameterValue =
     decode ParameterValue
         |> required "order" Decode.int
+        |> optional "visible" Decode.bool True
         |> required "type" Decode.string
         |> optional "default" decoderDefaultValue (StringValue "")
         |> optional "enum_values" (Decode.nullable (Decode.list (Decode.keyValuePairs Decode.string))) Nothing

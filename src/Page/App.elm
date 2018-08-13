@@ -587,7 +587,7 @@ viewAppParameter input =
 
         -- Hide parameters with ID's that start with double-underscore (requested by Ken/Josh)
         hidden =
-            case String.startsWith "__" param.id of
+            case (not param.value.visible) || String.startsWith "__" param.id of
                 True ->
                     [ style [("display", "none")] ]
 
