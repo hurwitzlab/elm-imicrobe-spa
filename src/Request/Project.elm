@@ -104,8 +104,8 @@ create token project_name =
         |> HttpBuilder.toRequest
 
 
-update : String -> Int -> String -> String -> String -> String -> List Domain -> List Investigator -> Http.Request Project
-update token project_id project_name project_code project_type project_url domains investigators =
+update : String -> Int -> String -> String -> String -> String -> String -> List Domain -> List Investigator -> Http.Request Project
+update token project_id project_name project_description project_code project_type project_url domains investigators =
     let
         url =
             apiBaseUrl ++ "/projects/" ++ (toString project_id)
@@ -116,6 +116,7 @@ update token project_id project_name project_code project_type project_url domai
         body =
             Encode.object
                 [ "project_name" => Encode.string project_name
+                , "project_description" => Encode.string project_description
                 , "project_code" => Encode.string project_code
                 , "project_type" => Encode.string project_type
                 , "project_url" => Encode.string project_url
@@ -127,6 +128,27 @@ update token project_id project_name project_code project_type project_url domai
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect (Http.expectJson Project.decoder)
+        |> HttpBuilder.toRequest
+
+
+publish : String -> Int -> Bool -> Http.Request String
+publish token project_id validate =
+    let
+        url =
+            apiBaseUrl ++ "/projects/" ++ (toString project_id) ++ "/publish"
+
+        headers =
+            [( "Authorization", token)]
+
+        body =
+            Encode.object
+                [ "validate" => Encode.bool validate ]
+
+    in
+    HttpBuilder.post url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withJsonBody body
+        |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
 
 

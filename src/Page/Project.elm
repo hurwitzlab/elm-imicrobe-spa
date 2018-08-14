@@ -60,8 +60,12 @@ type alias Model =
     , showShareDialogBusy : Bool
     , shareDialogError : String
     , shareDropdownState : View.SearchableDropdown.State
+    , showPublishDialog : Bool
+    , showPublishDialogBusy : Bool
+    , publishDialogError : String
     , showEditInfoDialog : Bool
     , projectName : String
+    , projectDescription : String
     , projectCode : String
     , projectType : String
     , projectURL : String
@@ -129,8 +133,12 @@ init session id =
                     , showShareDialogBusy = False
                     , shareDialogError = ""
                     , shareDropdownState = View.SearchableDropdown.init
+                    , showPublishDialog = False
+                    , showPublishDialogBusy = False
+                    , publishDialogError = ""
                     , showEditInfoDialog = False
                     , projectName = ""
+                    , projectDescription = ""
                     , projectCode = ""
                     , projectType = ""
                     , projectURL = ""
@@ -182,9 +190,14 @@ type Msg
     | RemoveFromProjectGroupCompleted (Result Http.Error Data.ProjectGroup.ProjectGroup)
     | UnshareWithUser Int
     | UnshareWithUserCompleted (Result Http.Error String)
+    | OpenPublishDialog
+    | ClosePublishDialog
+    | PublishProject
+    | PublishProjectCompleted (Result Http.Error String)
     | OpenEditInfoDialog
     | CloseEditInfoDialog
     | SetProjectName String
+    | SetProjectDescription String
     | SetProjectCode String
     | SetProjectType String
     | SetProjectURL String
@@ -466,10 +479,47 @@ update session msg model =
             in
             model => Cmd.none => NoOp
 
+        OpenPublishDialog ->
+            let
+                publishProject =
+                    Request.Project.publish session.token model.project_id True |> Http.toTask
+            in
+            { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject => NoOp
+
+        ClosePublishDialog ->
+            { model | showPublishDialog = False } => Cmd.none => NoOp
+
+        PublishProject ->
+            let
+                publishProject =
+                    Request.Project.publish session.token model.project_id False |> Http.toTask
+            in
+            model => Task.attempt PublishProjectCompleted publishProject => NoOp
+
+        PublishProjectCompleted (Ok _) ->
+            { model | showPublishDialogBusy = False } => Cmd.none => NoOp
+
+        PublishProjectCompleted (Err error) ->
+            let
+                errorMsg =
+                    case error of
+                        Http.BadStatus response ->
+                            case String.length response.body of
+                                0 ->
+                                    "Bad status - please contact support"
+
+                                _ ->
+                                    response.body
+                        _ ->
+                            toString error
+            in
+            { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none => NoOp
+
         OpenEditInfoDialog ->
             { model
                 | showEditInfoDialog = True
                 , projectName = model.project.project_name
+                , projectDescription = model.project.description
                 , projectCode = model.project.project_code
                 , projectType = model.project.project_type
                 , projectURL = model.project.url
@@ -480,6 +530,9 @@ update session msg model =
 
         SetProjectName name ->
             { model | projectName = name } => Cmd.none => NoOp
+
+        SetProjectDescription desc ->
+            { model | projectDescription = desc } => Cmd.none => NoOp
 
         SetProjectCode code ->
             { model | projectCode = code } => Cmd.none => NoOp
@@ -513,7 +566,7 @@ update session msg model =
                     View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
 
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.projectName model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
+                    Request.Project.update session.token model.project_id model.projectName model.projectDescription model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
 
@@ -526,6 +579,7 @@ update session msg model =
                 | project =
                     { newProject
                         | project_name = project.project_name
+                        , description = project.description
                         , project_code = project.project_code
                         , project_type = project.project_type
                         , url = project.url
@@ -746,7 +800,8 @@ view model =
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
                     , small [] [ text model.project.project_name ]
-                    , viewShareButton model
+                    , viewPublishButton model.project
+                    , viewShareButton model.project
                     ]
                 ]
             , viewProject model.project model.isEditable
@@ -771,6 +826,13 @@ view model =
 
                     Just id ->
                         Just (shareDialogConfig id model)
+              else if model.showPublishDialog then
+                case model.currentUserId of
+                    Nothing ->
+                        Nothing
+
+                    Just id ->
+                        Just (publishDialogConfig id model)
              else if (model.confirmationDialog /= Nothing) then
                 model.confirmationDialog
              else if model.showEditInfoDialog then
@@ -783,24 +845,24 @@ view model =
         ]
 
 
-viewShareButton : Model -> Html Msg
-viewShareButton model =
-    if model.project.private == 1 then
+viewShareButton : Project -> Html Msg
+viewShareButton project =
+    if project.private == 1 then
         let
             buttonLabel =
-                if List.length model.project.users <= 1 && List.length model.project.project_groups == 0 then
+                if List.length project.users <= 1 && List.length project.project_groups == 0 then
                     "Project is Private"
                 else
                     "Project is Shared"
 
             numGroups =
-                List.length model.project.project_groups
+                List.length project.project_groups
 
             numUsers =
-                List.length model.project.users - 1
+                List.length project.users - 1
 
             groupsStr =
-                List.map .group_name model.project.project_groups |> String.join ", "
+                List.map .group_name project.project_groups |> String.join ", "
 
             usersStr =
                 (toString numUsers) ++ " " ++ (pluralize "user" numUsers)
@@ -836,12 +898,32 @@ viewShareButton model =
             , div [ class "small-text pull-right" ]
                 [ text shareStr ]
             ]
-    else if model.project.project_groups /= [] then
+    else if project.project_groups /= [] then
         let
             mkLabel group =
                 a [ class "label label-primary tiny-text", title (group.group_name ++ " Group"), Route.href (Route.ProjectGroup group.project_group_id) ] [ text group.group_name ]
         in
-        span [ class "pull-right" ] (List.map mkLabel model.project.project_groups |> List.intersperse (text " "))
+        span [ class "pull-right" ] (List.map mkLabel project.project_groups |> List.intersperse (text " "))
+    else
+        text ""
+
+
+viewPublishButton : Project -> Html Msg
+viewPublishButton project =
+    let
+        viewBtn label =
+            button [ class "btn btn-default pull-right margin-left", onClick OpenPublishDialog ] [ text label ]
+    in
+    if project.private == 0 then
+        text ""
+    else if project.publication_status == 0 then
+        viewBtn "Publish Project"
+    else if project.publication_status == 1 || project.publication_status == 2  then
+        viewBtn "Publication in Progress ..."
+    else if project.publication_status == 3 then
+        viewBtn "Source: EBI"
+    else if project.publication_status == -1 then
+        viewBtn "Publication Error!"
     else
         text ""
 
@@ -864,6 +946,10 @@ viewProject project isEditable =
         , tr []
             [ th [] [ text "Name" ]
             , td [] [ text project.project_name ]
+            ]
+        , tr []
+            [ th [] [ text "Description" ]
+            , td [] [ text project.description ]
             ]
         , tr []
             [ th [] [ text "Code" ]
@@ -1417,6 +1503,37 @@ viewPermissionDropdown user =
         ]
 
 
+publishDialogConfig : Int -> Model -> Dialog.Config Msg
+publishDialogConfig currentUserId model =
+    let
+        content =
+            if model.showPublishDialogBusy then
+                spinner
+            else if model.publishDialogError /= "" then
+                let
+                    errorList =
+                        String.split "," model.publishDialogError
+
+                    viewError msg =
+                        li [ class "red" ] [ text msg ]
+                in
+                div []
+                    [ text "The project cannot be published until these issues are corrected:"
+                    , div []
+                        [ ul [] (List.map viewError errorList) ]
+                    ]
+            else
+                div []
+                    [ text "foo" ]
+    in
+    { closeMessage = Just ClosePublishDialog
+    , containerClass = Just "narrow-modal-container"
+    , header = Just (h3 [] [ text "Publish Project" ])
+    , body = Just content
+    , footer = Nothing
+    }
+
+
 editInfoDialogConfig : Model -> Dialog.Config Msg
 editInfoDialogConfig model =
     let
@@ -1425,6 +1542,10 @@ editInfoDialogConfig model =
                 [ div [ class "form-group" ]
                     [ label [] [ text "Name" ]
                     , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectName, onInput SetProjectName ] []
+                    ]
+                , div [ class "form-group" ]
+                    [ label [] [ text "Description" ]
+                    , input [ class "form-control", type_ "text", placeholder "Enter the description (required)", value model.projectDescription, onInput SetProjectDescription ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Accession" ]
