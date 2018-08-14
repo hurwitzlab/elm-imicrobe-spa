@@ -124,6 +124,10 @@ tr.padded > td {
     color: gray;
 }
 
+.red {
+    color: red;
+}
+
 .absolute {
     position: absolute;
 }

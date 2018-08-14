@@ -32,6 +32,7 @@ type alias Project =
     , combined_assembly_count : Int
     , users : List User
     , private : Int
+    , publication_status : Int
     }
 
 
@@ -162,6 +163,7 @@ decoder =
         |> optional "combined_assembly_count" Decode.int 0
         |> optional "users" (Decode.list decoderUser) []
         |> optional "private" Decode.int 0
+        |> optional "publication_status" Decode.int 0
 
 
 decoderProjectGroup : Decoder ProjectGroup
