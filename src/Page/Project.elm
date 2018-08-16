@@ -194,6 +194,7 @@ type Msg
     | ClosePublishDialog
     | PublishProject
     | PublishProjectCompleted (Result Http.Error String)
+    | PublishStatusCompleted (Result Http.Error Int)
     | OpenEditInfoDialog
     | CloseEditInfoDialog
     | SetProjectName String
@@ -480,11 +481,20 @@ update session msg model =
             model => Cmd.none => NoOp
 
         OpenPublishDialog ->
-            let
-                publishProject =
-                    Request.Project.publish session.token model.project_id True |> Http.toTask
-            in
-            { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject => NoOp
+            if model.project.publication_status == 0 then
+                let
+                    publishProject =
+                        Request.Project.publish session.token model.project_id True |> Http.toTask
+                in
+                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject => NoOp
+            else if model.project.publication_status == 1 || model.project.publication_status == 2 then
+                let
+                    getStatus =
+                        Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .publication_status
+                in
+                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishStatusCompleted getStatus => NoOp
+            else
+                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none => NoOp
 
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none => NoOp
@@ -514,6 +524,19 @@ update session msg model =
                             toString error
             in
             { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none => NoOp
+
+        PublishStatusCompleted (Ok status) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | showPublishDialogBusy = False, project = { newProject | publication_status = status } } => Cmd.none => NoOp
+
+        PublishStatusCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none => NoOp
 
         OpenEditInfoDialog ->
             { model
@@ -1522,9 +1545,15 @@ publishDialogConfig currentUserId model =
                     , div []
                         [ ul [] (List.map viewError errorList) ]
                     ]
+            else if model.project.publication_status >= 0 && model.project.publication_status <= 2 then
+                div []
+                    [ text "Publishing..." ]
+            else if model.project.publication_status == 3 then
+                div []
+                    [ text "Published" ]
             else
                 div []
-                    [ text "foo" ]
+                    [ text "Error" ]
     in
     { closeMessage = Just ClosePublishDialog
     , containerClass = Just "narrow-modal-container"
