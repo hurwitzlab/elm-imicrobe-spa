@@ -1,4 +1,4 @@
-module Page.Project exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
+module Page.Project exposing (Model, Msg(..), PublishMsg(..), ExternalMsg(..), init, update, view)
 
 import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup, User)
 import Data.ProjectGroup
@@ -169,6 +169,10 @@ init session id =
 
 type Msg
     = CartMsg Cart.Msg
+    | InfoMsg InfoMsg
+    | PublishMsg PublishMsg
+    | ShareMsg ShareMsg
+    | PublicationMsg PublicationMsg
     | GetAssemblies
     | SetAssemblies (List Assembly)
     | SetAssemblyQuery String
@@ -179,7 +183,43 @@ type Msg
     | SetCombinedAssemblyTableState Table.State
     | OpenConfirmationDialog String Msg
     | CloseConfirmationDialog
-    | OpenShareDialog
+    | OpenNewSampleDialog
+    | CloseNewSampleDialog
+    | SetNewSampleName String
+    | CreateNewSample
+    | CreateNewSampleCompleted (Result Http.Error Data.Sample.Sample)
+    | RemoveSample Int
+    | RemoveSampleCompleted (Result Http.Error Project)
+
+
+type InfoMsg
+    = OpenEditInfoDialog
+    | CloseEditInfoDialog
+    | SetProjectName String
+    | SetProjectDescription String
+    | SetProjectCode String
+    | SetProjectType String
+    | SetProjectURL String
+    | AddProjectDomain Int String
+    | RemoveProjectDomain Int
+    | SetInvestigatorName String
+    | SearchInvestigatorCompleted (Result Http.Error (List Data.Investigator.Investigator))
+    | SelectInvestigatorToAdd Int String
+    | RemoveInvestigator Int
+    | UpdateProjectInfo
+    | UpdateProjectInfoCompleted (Result Http.Error Project)
+
+
+type PublishMsg
+    = OpenPublishDialog
+    | ClosePublishDialog
+    | PublishProjectCompleted (Result Http.Error String)
+    | RefreshStatus Time
+    | RefreshStatusCompleted (Result Http.Error String)
+
+
+type ShareMsg
+    = OpenShareDialog
     | CloseShareDialog
     | CloseShareDialogError
     | SetShareUserName String
@@ -191,35 +231,11 @@ type Msg
     | RemoveFromProjectGroupCompleted (Result Http.Error Data.ProjectGroup.ProjectGroup)
     | UnshareWithUser Int
     | UnshareWithUserCompleted (Result Http.Error String)
-    | OpenPublishDialog
-    | ClosePublishDialog
-    | PublishProjectCompleted (Result Http.Error String)
-    | RefreshPublishStatus Time
-    | PublishStatusCompleted (Result Http.Error String)
-    | OpenEditInfoDialog
-    | CloseEditInfoDialog
-    | SetProjectName String
-    | SetProjectDescription String
-    | SetProjectCode String
-    | SetProjectType String
-    | SetProjectURL String
-    | AddProjectDomain Int String
-    | RemoveProjectDomain Int
-    | UpdateProjectInfo
-    | UpdateProjectInfoCompleted (Result Http.Error Project)
-    | OpenNewSampleDialog
-    | CloseNewSampleDialog
-    | SetNewSampleName String
-    | CreateNewSample
-    | CreateNewSampleCompleted (Result Http.Error Data.Sample.Sample)
-    | RemoveSample Int
-    | RemoveSampleCompleted (Result Http.Error Project)
-    | SetInvestigatorName String
-    | SearchInvestigatorCompleted (Result Http.Error (List Data.Investigator.Investigator))
-    | SelectInvestigatorToAdd Int String
-    | RemoveInvestigator Int
-    | OpenAddOrEditPublicationDialog (Maybe Publication)
-    | CloseAddOrEditPublicationDialog
+
+
+type PublicationMsg
+    = OpenPublicationDialog (Maybe Publication)
+    | ClosePublicationDialog
     | SetPublicationTitle String
     | SetPublicationAuthors String
     | SetPublicationDate String
@@ -253,6 +269,34 @@ update session msg model =
                     Cart.update session subMsg model.cart
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
+        InfoMsg subMsg ->
+            let
+                (newModel, newCmd) =
+                    updateInfo session subMsg model
+            in
+            newModel => Cmd.map InfoMsg newCmd => NoOp
+
+        PublishMsg subMsg ->
+            let
+                (newModel, newCmd) =
+                    updatePublish session subMsg model
+            in
+            newModel => Cmd.map PublishMsg newCmd => NoOp
+
+        ShareMsg subMsg ->
+            let
+                (newModel, newCmd) =
+                    updateShare session subMsg model
+            in
+            newModel => Cmd.map ShareMsg newCmd => NoOp
+
+        PublicationMsg subMsg ->
+            let
+                (newModel, newCmd) =
+                    updatePublication session subMsg model
+            in
+            newModel => Cmd.map PublicationMsg newCmd => NoOp
 
         GetAssemblies ->
             let
@@ -318,359 +362,6 @@ update session msg model =
         CloseConfirmationDialog ->
             { model | confirmationDialog = Nothing } => Cmd.none => NoOp
 
-        OpenShareDialog ->
-            { model | showShareDialog = True } => Cmd.none => NoOp
-
-        CloseShareDialog ->
-            { model | showShareDialog = False } => Cmd.none => NoOp
-
-        CloseShareDialogError ->
-            { model | shareDialogError = "" } => Cmd.none => NoOp
-
-        SetShareUserName name ->
-            let
-                dropdownState =
-                    model.shareDropdownState
-            in
-            if String.length name >= 3 then
-                let
-                    searchByName =
-                        Task.map2 (\users groups -> (users, groups))
-                            (Request.User.searchByName session.token name |> Http.toTask)
-                            (Request.ProjectGroup.searchByName session.token name |> Http.toTask)
-                in
-                { model | shareDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersAndGroupsCompleted searchByName => NoOp
-            else
-                { model | shareDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none => NoOp
-
-        SearchUsersAndGroupsCompleted (Ok (users, groups)) ->
-            let
-                userDisplayName user =
-                    user.first_name ++ " " ++ user.last_name ++ " (" ++ user.user_name ++ ")"
-
-                groupDisplayName group =
-                    let
-                        numUsers =
-                            List.length group.users
-                    in
-                    "Group: " ++ group.group_name ++ " (" ++ (numUsers |> toString) ++ " " ++ (Util.pluralize "user" numUsers) ++ ")"
-
-                results =
-                    List.append
-                        (List.map (\u -> (u.user_id, userDisplayName u)) users)
-                        (List.map (\g -> (g.project_group_id, groupDisplayName g)) groups)
-
-                dropdownState =
-                    model.shareDropdownState
-            in
-            { model | shareDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
-
-        SearchUsersAndGroupsCompleted (Err error) -> -- TODO finish this
-            let
-                _ = Debug.log "SearchUsersAndGroupsCompleted" (toString error)
-            in
-            model => Cmd.none => NoOp
-
-        ShareWithUser permission id name ->
-            let
-                dropdownState =
-                    model.shareDropdownState
-
-                newModel =
-                    { model | showShareDialogBusy = True, shareDropdownState = { dropdownState | value = "", results = [] } }
-            in
-            if String.startsWith "Group: " name then --FIXME total kludge
-                let
-                    noChange =
-                        List.any (\g -> g.project_group_id == id) model.project.project_groups
-
-                    addProjectToProjectGroup =
-                        Request.ProjectGroup.addProject session.token id model.project_id True |> Http.toTask
-                in
-                if noChange then
-                    model => Cmd.none => NoOp
-                else
-                    newModel => Task.attempt AddToProjectGroupCompleted addProjectToProjectGroup => NoOp
-            else
-                let
-                    noChange =
-                        List.any (\u -> u.user_id == id && u.permconn.permission == permission) model.project.users
-
-                    isOwner =
-                        List.any (\u -> u.user_id == id && u.permconn.permission == "owner") model.project.users
-
-                    addUserToProject =
-                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
-                in
-                if noChange || isOwner then
-                    model => Cmd.none => NoOp
-                else
-                    newModel => Task.attempt ShareWithUserCompleted addUserToProject => NoOp
-
-        ShareWithUserCompleted (Ok project) ->
-            let
-                newProject =
-                    model.project
-            in
-            { model | showShareDialogBusy = False, project = { newProject | users = project.users } } => Cmd.none => NoOp
-
-        ShareWithUserCompleted (Err error) -> -- TODO finish this
-            let
-                _ = Debug.log "Error:" (toString error)
-            in
-            model => Cmd.none => NoOp
-
-        AddToProjectGroupCompleted (Ok group) ->
-            let
-                newProject =
-                    model.project
-
-                newGroups =
-                    (ProjectGroup group.project_group_id group.group_name group.users) :: model.project.project_groups -- FIXME kludge due to multiple type defs
-            in
-            { model | showShareDialogBusy = False, project = { newProject | project_groups = newGroups } } => Cmd.none => NoOp
-
-        AddToProjectGroupCompleted (Err error) ->
-            let
-                error =
-                    "You don't have permission to share with that group."
-            in
-            { model | showShareDialogBusy = False, shareDialogError = error } => Cmd.none => NoOp
-
-        RemoveFromProjectGroup groupId ->
-            let
-                removeFromProjectGroup =
-                    Request.ProjectGroup.removeProject session.token groupId model.project_id |> Http.toTask
-
-                newProject =
-                    model.project
-
-                newGroups =
-                    List.filter (\g -> g.project_group_id /= groupId) model.project.project_groups
-            in
-            { model | project = { newProject | project_groups = newGroups } } => Task.attempt RemoveFromProjectGroupCompleted removeFromProjectGroup => NoOp
-
-        RemoveFromProjectGroupCompleted (Ok _) ->
-            model => Cmd.none => NoOp
-
-        RemoveFromProjectGroupCompleted (Err error) -> -- TODO finish this
-            let
-                _ = Debug.log "Error:" (toString error)
-            in
-            model => Cmd.none => NoOp
-
-        UnshareWithUser id ->
-            let
-                removeUser =
-                    Request.Project.removeUserFromProject session.token model.project_id id |> Http.toTask
-
-                newProject =
-                    model.project
-
-                newUsers =
-                    List.filter (\u -> u.user_id /= id) model.project.users
-            in
-            { model | project = { newProject | users = newUsers } } => Task.attempt UnshareWithUserCompleted removeUser => NoOp
-
-        UnshareWithUserCompleted (Ok _) ->
-            model => Cmd.none => NoOp
-
-        UnshareWithUserCompleted (Err error) -> -- TODO finish this
-            let
-                _ = Debug.log "Error:" (toString error)
-            in
-            model => Cmd.none => NoOp
-
-        OpenPublishDialog ->
-            let
-                status =
-                    model.project.publication_status
-            in
-            if status == "" then
-                let
-                    publishProject =
-                        Request.Project.publish session.token model.project_id True |> Http.toTask
-                in
-                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject => NoOp
-            else if status == "FINISHED" || status == "FAILED" then
-                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none => NoOp
-            else
-                let
-                    getStatus =
-                        Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .publication_status
-                in
-                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishStatusCompleted getStatus => NoOp
-
-        ClosePublishDialog ->
-            { model | showPublishDialog = False } => Cmd.none => NoOp
-
-        PublishProjectCompleted (Ok _) ->
-            { model | showPublishDialogBusy = False } => Cmd.none => NoOp
-
-        PublishProjectCompleted (Err error) ->
-            let
-                errorMsg =
-                    case error of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status - please contact support"
-
-                                _ ->
-                                    response.body
-                        _ ->
-                            toString error
-            in
-            { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none => NoOp
-
-        RefreshPublishStatus time ->
---            if model.loadingJob == False && isRunning model.job then
---                let
---                    _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
---
---                    startTime =
---                        case model.startTime of
---                            Nothing -> time
---
---                            Just t -> t
---
---                    lastPollTime =
---                        case model.lastPollTime of
---                            Nothing -> time
---
---                            Just t -> t
---
---                    timeSinceStart =
---                        time - startTime
---
---                    timeSinceLastPoll =
---                        time - lastPollTime
---
---                    handleJob job =
---                        case job of
---                            Ok job ->
---                                SetJob job
---
---                            Err error ->
---                                let
---                                    _ = Debug.log "Error" ("could not poll job" ++ (toString error))
---                                in
---                                SetJob model.job
---
---                    doPoll =
---                        -- Poll every 10 seconds if job has been running less than 15 minutes
---                        if timeSinceStart < (15 * Time.minute) && timeSinceLastPoll >= (10 * Time.second) then
---                            True
---                        -- Poll every 30 seconds if job has been running less than 30 minutes
---                        else if timeSinceStart < (30 * Time.minute) && timeSinceLastPoll >= (30 * Time.second) then
---                            True
---                        -- Poll every 60 seconds if job has been running longer than 30 minutes
---                        else if timeSinceStart >= (30 * Time.minute) && timeSinceLastPoll >= (60 * Time.second) then
---                            True
---                        else
---                            False
---                in
---                case doPoll of
---                    True ->
---                        { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt handleJob loadJob
---                    False ->
---                        { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
---            else
-                model => Cmd.none => NoOp
-
-        PublishStatusCompleted (Ok status) ->
-            let
-                newProject =
-                    model.project
-            in
-            { model | showPublishDialogBusy = False, project = { newProject | publication_status = status } } => Cmd.none => NoOp
-
-        PublishStatusCompleted (Err error) -> -- TODO finish this
-            let
-                _ = Debug.log "Error:" (toString error)
-            in
-            model => Cmd.none => NoOp
-
-        OpenEditInfoDialog ->
-            { model
-                | showEditInfoDialog = True
-                , projectName = model.project.project_name
-                , projectDescription = model.project.description
-                , projectCode = model.project.project_code
-                , projectType = model.project.project_type
-                , projectURL = model.project.url
-             } => Cmd.none => NoOp
-
-        CloseEditInfoDialog ->
-            { model | showEditInfoDialog = False } => Cmd.none => NoOp
-
-        SetProjectName name ->
-            { model | projectName = name } => Cmd.none => NoOp
-
-        SetProjectDescription desc ->
-            { model | projectDescription = desc } => Cmd.none => NoOp
-
-        SetProjectCode code ->
-            { model | projectCode = code } => Cmd.none => NoOp
-
-        SetProjectType type_ ->
-            { model | projectType = type_ } => Cmd.none => NoOp
-
-        SetProjectURL url ->
-            { model | projectURL = url } => Cmd.none => NoOp
-
-        AddProjectDomain id name ->
-            let
-                newDropdownState =
-                    View.TagsDropdown.add id name model.domainDropdownState
-            in
-            { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
-
-        RemoveProjectDomain id ->
-            let
-                newDropdownState =
-                    View.TagsDropdown.remove id model.domainDropdownState
-            in
-            { model | domainDropdownState = newDropdownState } => Cmd.none => NoOp
-
-        UpdateProjectInfo ->
-            let
-                domains =
-                    View.TagsDropdown.selected model.domainDropdownState |> List.map (\t -> Domain (Tuple.first t) (Tuple.second t))
-
-                investigators =
-                    View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
-
-                updateInfo =
-                    Request.Project.update session.token model.project_id model.projectName model.projectDescription model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
-            in
-            { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo => NoOp
-
-        UpdateProjectInfoCompleted (Ok project) ->
-            let
-                newProject =
-                    model.project
-            in
-            { model
-                | project =
-                    { newProject
-                        | project_name = project.project_name
-                        , description = project.description
-                        , project_code = project.project_code
-                        , project_type = project.project_type
-                        , url = project.url
-                        , domains = project.domains
-                        , investigators = project.investigators
-                        , project_groups = project.project_groups
-                    }
-            } => Cmd.none => NoOp
-
-        UpdateProjectInfoCompleted (Err error) ->
-            let
-                _ = Debug.log "error" (toString error) -- TODO show to user
-            in
-            model => Cmd.none => NoOp
-
         OpenNewSampleDialog ->
             { model | showNewSampleDialog = True } => Cmd.none => NoOp
 
@@ -714,6 +405,52 @@ update session msg model =
             in
             model => Cmd.none => NoOp
 
+
+updateInfo : Session -> InfoMsg -> Model -> ( Model, Cmd InfoMsg )
+updateInfo session msg model =
+    case msg of
+        OpenEditInfoDialog ->
+            { model
+                | showEditInfoDialog = True
+                , projectName = model.project.project_name
+                , projectDescription = model.project.description
+                , projectCode = model.project.project_code
+                , projectType = model.project.project_type
+                , projectURL = model.project.url
+             } => Cmd.none
+
+        CloseEditInfoDialog ->
+            { model | showEditInfoDialog = False } => Cmd.none
+
+        SetProjectName name ->
+            { model | projectName = name } => Cmd.none
+
+        SetProjectDescription desc ->
+            { model | projectDescription = desc } => Cmd.none
+
+        SetProjectCode code ->
+            { model | projectCode = code } => Cmd.none
+
+        SetProjectType type_ ->
+            { model | projectType = type_ } => Cmd.none
+
+        SetProjectURL url ->
+            { model | projectURL = url } => Cmd.none
+
+        AddProjectDomain id name ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.add id name model.domainDropdownState
+            in
+            { model | domainDropdownState = newDropdownState } => Cmd.none
+
+        RemoveProjectDomain id ->
+            let
+                newDropdownState =
+                    View.TagsDropdown.remove id model.domainDropdownState
+            in
+            { model | domainDropdownState = newDropdownState } => Cmd.none
+
         SetInvestigatorName name ->
             let
                 searchByName =
@@ -729,7 +466,7 @@ update session msg model =
                 dropdownState =
                     model.investigatorDropdownState
             in
-            { model | investigatorDropdownState = { dropdownState | value = name } } => cmd => NoOp
+            { model | investigatorDropdownState = { dropdownState | value = name } } => cmd
 
         SearchInvestigatorCompleted (Ok investigators) ->
             let
@@ -739,10 +476,10 @@ update session msg model =
                 dropdownState =
                     model.investigatorDropdownState
             in
-            { model | investigatorDropdownState = { dropdownState | results = results } } => Cmd.none => NoOp
+            { model | investigatorDropdownState = { dropdownState | results = results } } => Cmd.none
 
         SearchInvestigatorCompleted (Err error) -> -- TODO finish this
-            model => Cmd.none => NoOp
+            model => Cmd.none
 
         SelectInvestigatorToAdd id name ->
             let
@@ -755,16 +492,343 @@ update session msg model =
             { model
                 | investigatorDropdownState = { dropdownState | value = "", results = [], selectedId = Just id }
                 , newInvestigatorTagState = tagState
-            } => Cmd.none => NoOp
+            } => Cmd.none
 
         RemoveInvestigator id ->
             let
                 tagState =
                     View.Tags.remove id model.newInvestigatorTagState
             in
-            { model | newInvestigatorTagState = tagState } => Cmd.none => NoOp
+            { model | newInvestigatorTagState = tagState } => Cmd.none
 
-        OpenAddOrEditPublicationDialog publication ->
+        UpdateProjectInfo ->
+            let
+                domains =
+                    View.TagsDropdown.selected model.domainDropdownState |> List.map (\t -> Domain (Tuple.first t) (Tuple.second t))
+
+                investigators =
+                    View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
+
+                updateInfo =
+                    Request.Project.update session.token model.project_id model.projectName model.projectDescription model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
+            in
+            { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo
+
+        UpdateProjectInfoCompleted (Ok project) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model
+                | project =
+                    { newProject
+                        | project_name = project.project_name
+                        , description = project.description
+                        , project_code = project.project_code
+                        , project_type = project.project_type
+                        , url = project.url
+                        , domains = project.domains
+                        , investigators = project.investigators
+                        , project_groups = project.project_groups
+                    }
+            } => Cmd.none
+
+        UpdateProjectInfoCompleted (Err error) ->
+            let
+                _ = Debug.log "error" (toString error) -- TODO show to user
+            in
+            model => Cmd.none
+
+
+updatePublish : Session -> PublishMsg -> Model -> ( Model, Cmd PublishMsg )
+updatePublish session msg model =
+    case msg of
+        OpenPublishDialog ->
+            let
+                status =
+                    model.project.publication_status
+            in
+            if status == "" then
+                let
+                    publishProject =
+                        Request.Project.publish session.token model.project_id True |> Http.toTask
+                in
+                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject
+            else if status == "FINISHED" || status == "FAILED" then
+                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none
+            else
+                let
+                    getStatus =
+                        Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .publication_status
+                in
+                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt RefreshStatusCompleted getStatus
+
+        ClosePublishDialog ->
+            { model | showPublishDialog = False } => Cmd.none
+
+        PublishProjectCompleted (Ok _) ->
+            { model | showPublishDialogBusy = False } => Cmd.none
+
+        PublishProjectCompleted (Err error) ->
+            let
+                errorMsg =
+                    case error of
+                        Http.BadStatus response ->
+                            case String.length response.body of
+                                0 ->
+                                    "Bad status - please contact support"
+
+                                _ ->
+                                    response.body
+                        _ ->
+                            toString error
+            in
+            { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none
+
+        RefreshStatus time ->
+    --        if model.loadingJob == False && isRunning model.job then
+    --            let
+    --                _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
+    --
+    --                startTime =
+    --                    case model.startTime of
+    --                        Nothing -> time
+    --
+    --                        Just t -> t
+    --
+    --                lastPollTime =
+    --                    case model.lastPollTime of
+    --                        Nothing -> time
+    --
+    --                        Just t -> t
+    --
+    --                timeSinceStart =
+    --                    time - startTime
+    --
+    --                timeSinceLastPoll =
+    --                    time - lastPollTime
+    --
+    --                handleJob job =
+    --                    case job of
+    --                        Ok job ->
+    --                            SetJob job
+    --
+    --                        Err error ->
+    --                            let
+    --                                _ = Debug.log "Error" ("could not poll job" ++ (toString error))
+    --                            in
+    --                            SetJob model.job
+    --
+    --                doPoll =
+    --                    -- Poll every 10 seconds if job has been running less than 15 minutes
+    --                    if timeSinceStart < (15 * Time.minute) && timeSinceLastPoll >= (10 * Time.second) then
+    --                        True
+    --                    -- Poll every 30 seconds if job has been running less than 30 minutes
+    --                    else if timeSinceStart < (30 * Time.minute) && timeSinceLastPoll >= (30 * Time.second) then
+    --                        True
+    --                    -- Poll every 60 seconds if job has been running longer than 30 minutes
+    --                    else if timeSinceStart >= (30 * Time.minute) && timeSinceLastPoll >= (60 * Time.second) then
+    --                        True
+    --                    else
+    --                        False
+    --            in
+    --            case doPoll of
+    --                True ->
+    --                    { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt PublishStatusCompleted getStatus
+    --                False ->
+    --                    { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
+    --        else
+                model => Cmd.none
+
+        RefreshStatusCompleted (Ok status) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | showPublishDialogBusy = False, project = { newProject | publication_status = status } } => Cmd.none
+
+        RefreshStatusCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none
+
+
+updateShare : Session -> ShareMsg -> Model -> ( Model, Cmd ShareMsg )
+updateShare session msg model =
+    case msg of
+        OpenShareDialog ->
+            { model | showShareDialog = True } => Cmd.none
+
+        CloseShareDialog ->
+            { model | showShareDialog = False } => Cmd.none
+
+        CloseShareDialogError ->
+            { model | shareDialogError = "" } => Cmd.none
+
+        SetShareUserName name ->
+            let
+                dropdownState =
+                    model.shareDropdownState
+            in
+            if String.length name >= 3 then
+                let
+                    searchByName =
+                        Task.map2 (\users groups -> (users, groups))
+                            (Request.User.searchByName session.token name |> Http.toTask)
+                            (Request.ProjectGroup.searchByName session.token name |> Http.toTask)
+                in
+                { model | shareDropdownState = { dropdownState | value = name } } => Task.attempt SearchUsersAndGroupsCompleted searchByName
+            else
+                { model | shareDropdownState = { dropdownState | value = name, results = [] } } => Cmd.none
+
+        SearchUsersAndGroupsCompleted (Ok (users, groups)) ->
+            let
+                userDisplayName user =
+                    user.first_name ++ " " ++ user.last_name ++ " (" ++ user.user_name ++ ")"
+
+                groupDisplayName group =
+                    let
+                        numUsers =
+                            List.length group.users
+                    in
+                    "Group: " ++ group.group_name ++ " (" ++ (numUsers |> toString) ++ " " ++ (Util.pluralize "user" numUsers) ++ ")"
+
+                results =
+                    List.append
+                        (List.map (\u -> (u.user_id, userDisplayName u)) users)
+                        (List.map (\g -> (g.project_group_id, groupDisplayName g)) groups)
+
+                dropdownState =
+                    model.shareDropdownState
+            in
+            { model | shareDropdownState = { dropdownState | results = results } } => Cmd.none
+
+        SearchUsersAndGroupsCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "SearchUsersAndGroupsCompleted" (toString error)
+            in
+            model => Cmd.none
+
+        ShareWithUser permission id name ->
+            let
+                dropdownState =
+                    model.shareDropdownState
+
+                newModel =
+                    { model | showShareDialogBusy = True, shareDropdownState = { dropdownState | value = "", results = [] } }
+            in
+            if String.startsWith "Group: " name then --FIXME total kludge
+                let
+                    noChange =
+                        List.any (\g -> g.project_group_id == id) model.project.project_groups
+
+                    addProjectToProjectGroup =
+                        Request.ProjectGroup.addProject session.token id model.project_id True |> Http.toTask
+                in
+                if noChange then
+                    model => Cmd.none
+                else
+                    newModel => Task.attempt AddToProjectGroupCompleted addProjectToProjectGroup
+            else
+                let
+                    noChange =
+                        List.any (\u -> u.user_id == id && u.permconn.permission == permission) model.project.users
+
+                    isOwner =
+                        List.any (\u -> u.user_id == id && u.permconn.permission == "owner") model.project.users
+
+                    addUserToProject =
+                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
+                in
+                if noChange || isOwner then
+                    model => Cmd.none
+                else
+                    newModel => Task.attempt ShareWithUserCompleted addUserToProject
+
+        ShareWithUserCompleted (Ok project) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | showShareDialogBusy = False, project = { newProject | users = project.users } } => Cmd.none
+
+        ShareWithUserCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none
+
+        AddToProjectGroupCompleted (Ok group) ->
+            let
+                newProject =
+                    model.project
+
+                newGroups =
+                    (ProjectGroup group.project_group_id group.group_name group.users) :: model.project.project_groups -- FIXME kludge due to multiple type defs
+            in
+            { model | showShareDialogBusy = False, project = { newProject | project_groups = newGroups } } => Cmd.none
+
+        AddToProjectGroupCompleted (Err error) ->
+            let
+                error =
+                    "You don't have permission to share with that group."
+            in
+            { model | showShareDialogBusy = False, shareDialogError = error } => Cmd.none
+
+        RemoveFromProjectGroup groupId ->
+            let
+                removeFromProjectGroup =
+                    Request.ProjectGroup.removeProject session.token groupId model.project_id |> Http.toTask
+
+                newProject =
+                    model.project
+
+                newGroups =
+                    List.filter (\g -> g.project_group_id /= groupId) model.project.project_groups
+            in
+            { model | project = { newProject | project_groups = newGroups } } => Task.attempt RemoveFromProjectGroupCompleted removeFromProjectGroup
+
+        RemoveFromProjectGroupCompleted (Ok _) ->
+            model => Cmd.none
+
+        RemoveFromProjectGroupCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none
+
+        UnshareWithUser id ->
+            let
+                removeUser =
+                    Request.Project.removeUserFromProject session.token model.project_id id |> Http.toTask
+
+                newProject =
+                    model.project
+
+                newUsers =
+                    List.filter (\u -> u.user_id /= id) model.project.users
+            in
+            { model | project = { newProject | users = newUsers } } => Task.attempt UnshareWithUserCompleted removeUser
+
+        UnshareWithUserCompleted (Ok _) ->
+            model => Cmd.none
+
+        UnshareWithUserCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "Error:" (toString error)
+            in
+            model => Cmd.none
+
+
+updatePublication : Session -> PublicationMsg -> Model -> ( Model, Cmd PublicationMsg )
+updatePublication session msg model =
+    let
+        loadProject _ =
+            Request.Project.get session.token model.project_id |> Http.toTask
+    in
+    case msg of
+        OpenPublicationDialog publication ->
             { model
                 | showAddOrEditPublicationDialog = True
                 , showAddOrEditPublicationBusy = False
@@ -774,25 +838,25 @@ update session msg model =
                 , publicationDate = Maybe.withDefault "" (Maybe.map .pub_date publication)
                 , publicationPubMedID = Maybe.withDefault "" (Maybe.map (.pubmed_id >> toString) publication)
                 , publicationDOI = Maybe.withDefault "" (Maybe.map .doi publication)
-            } => Cmd.none => NoOp
+            } => Cmd.none
 
-        CloseAddOrEditPublicationDialog ->
-            { model | showAddOrEditPublicationDialog = False } => Cmd.none => NoOp
+        ClosePublicationDialog ->
+            { model | showAddOrEditPublicationDialog = False } => Cmd.none
 
         SetPublicationTitle title ->
-            { model | publicationTitle = title } => Cmd.none => NoOp
+            { model | publicationTitle = title } => Cmd.none
 
         SetPublicationAuthors authors ->
-            { model | publicationAuthors = authors } => Cmd.none => NoOp
+            { model | publicationAuthors = authors } => Cmd.none
 
         SetPublicationDate date ->
-            { model | publicationDate = date } => Cmd.none => NoOp
+            { model | publicationDate = date } => Cmd.none
 
         SetPublicationPubMedID id ->
-            { model | publicationPubMedID = id } => Cmd.none => NoOp
+            { model | publicationPubMedID = id } => Cmd.none
 
         SetPublicationDOI doi ->
-            { model | publicationDOI = doi } => Cmd.none => NoOp
+            { model | publicationDOI = doi } => Cmd.none
 
         AddPublication ->
             let
@@ -803,20 +867,20 @@ update session msg model =
                     Request.Publication.create session.token model.project_id model.publicationTitle model.publicationAuthors model.publicationDate pubmedId model.publicationDOI |> Http.toTask
                         |> Task.andThen loadProject
             in
-            { model | showAddOrEditPublicationBusy = True } => Task.attempt AddPublicationCompleted createPublication => NoOp
+            { model | showAddOrEditPublicationBusy = True } => Task.attempt AddPublicationCompleted createPublication
 
         AddPublicationCompleted (Ok project) ->
             let
                 newProject =
                     model.project
             in
-            { model | showAddOrEditPublicationDialog = False, project = { newProject | publications = project.publications } } => Cmd.none => NoOp
+            { model | showAddOrEditPublicationDialog = False, project = { newProject | publications = project.publications } } => Cmd.none
 
         AddPublicationCompleted (Err error) ->
             let
                 _ = Debug.log "error" (toString error) -- TODO show to user
             in
-            { model | showAddOrEditPublicationDialog = False } => Cmd.none => NoOp
+            { model | showAddOrEditPublicationDialog = False } => Cmd.none
 
         UpdatePublication pub_id ->
             let
@@ -827,20 +891,20 @@ update session msg model =
                     Request.Publication.update session.token pub_id model.publicationTitle model.publicationAuthors model.publicationDate pubmedId model.publicationDOI |> Http.toTask
                         |> Task.andThen loadProject
             in
-            { model | confirmationDialog = Nothing, showAddOrEditPublicationBusy = True } => Task.attempt UpdatePublicationCompleted updatePublication => NoOp
+            { model | confirmationDialog = Nothing, showAddOrEditPublicationBusy = True } => Task.attempt UpdatePublicationCompleted updatePublication
 
         UpdatePublicationCompleted (Ok project) ->
             let
                 newProject =
                     model.project
             in
-            { model | showAddOrEditPublicationDialog = False, project = { newProject | publications = project.publications } } => Cmd.none => NoOp
+            { model | showAddOrEditPublicationDialog = False, project = { newProject | publications = project.publications } } => Cmd.none
 
         UpdatePublicationCompleted (Err error) ->
             let
                 _ = Debug.log "error" (toString error) -- TODO show to user
             in
-            model => Cmd.none => NoOp
+            model => Cmd.none
 
         RemovePublication pub_id ->
             let
@@ -848,20 +912,20 @@ update session msg model =
                     Request.Publication.remove session.token pub_id |> Http.toTask
                         |> Task.andThen loadProject
             in
-            { model | confirmationDialog = Nothing } => Task.attempt RemovePublicationCompleted removePublication => NoOp
+            { model | confirmationDialog = Nothing } => Task.attempt RemovePublicationCompleted removePublication
 
         RemovePublicationCompleted (Ok project) ->
             let
                 newProject =
                     model.project
             in
-            { model | project = { newProject | publications = project.publications } } => Cmd.none => NoOp
+            { model | project = { newProject | publications = project.publications } } => Cmd.none
 
         RemovePublicationCompleted (Err error) ->
             let
                 _ = Debug.log "error" (toString error) -- TODO show to user
             in
-            model => Cmd.none => NoOp
+            model => Cmd.none
 
 
 
@@ -965,7 +1029,7 @@ viewShareButton project =
                     ""
                 )
         in
-        button [ class "btn btn-default pull-right", onClick OpenShareDialog ]
+        button [ class "btn btn-default pull-right", onClick (ShareMsg OpenShareDialog) ]
             [ div []
                 [ span [ class "glyphicon glyphicon-lock" ] []
                 , text " "
@@ -988,7 +1052,7 @@ viewPublishButton : Project -> Html Msg
 viewPublishButton project =
     let
         viewBtn label =
-            button [ class "btn btn-default pull-right margin-left", onClick OpenPublishDialog ] [ text label ]
+            button [ class "btn btn-default pull-right margin-left", onClick OpenPublishDialog ] [ text label ] |> Html.map PublishMsg
     in
     if project.private == 0 then
         text ""
@@ -1010,7 +1074,7 @@ viewProject project isEditable =
 
         editButton =
             if isEditable then
-                button [ class "btn btn-default btn-xs", onClick OpenEditInfoDialog ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
+                button [ class "btn btn-default btn-xs", onClick (InfoMsg OpenEditInfoDialog) ] [ span [ class "glyphicon glyphicon-cog" ] [], text " Edit" ]
             else
                 text ""
     in
@@ -1102,7 +1166,7 @@ viewPublications pubs isEditable =
 
         addButton =
             if isEditable then
-                button [ class "btn btn-default btn-sm pull-right", onClick (OpenAddOrEditPublicationDialog Nothing) ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Publication" ]
+                button [ class "btn btn-default btn-sm pull-right", onClick (OpenPublicationDialog Nothing |> PublicationMsg) ] [ span [ class "glyphicon glyphicon-plus" ] [], text " Add Publication" ]
             else
                 text ""
     in
@@ -1125,8 +1189,8 @@ viewPublication isEditable pub =
     let
         editButtons =
             if isEditable then
-                [ button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this publication?" (RemovePublication pub.publication_id)) ] [ text "Remove" ]
-                , button [ class "btn btn-default btn-xs pull-right margin-right", onClick (OpenAddOrEditPublicationDialog (Just pub)) ] [ text "Edit" ]
+                [ button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this publication?" (RemovePublication pub.publication_id |> PublicationMsg)) ] [ text "Remove" ]
+                , button [ class "btn btn-default btn-xs pull-right margin-right", onClick (OpenPublicationDialog (Just pub) |> PublicationMsg) ] [ text "Edit" ]
                 ]
             else
                 [ text "" ]
@@ -1442,7 +1506,7 @@ shareDialogConfig currentUserId model =
                     , if model.shareDialogError /= "" then
                         div [ class "alert alert-danger alert-dismissible" ]
                             [ button [ type_ "button", class "close" ]
-                                [ span [ property "innerHTML" (Json.Encode.string "&times;"), onClick CloseShareDialogError ] [] ]
+                                [ span [ property "innerHTML" (Json.Encode.string "&times;"), onClick (ShareMsg CloseShareDialogError) ] [] ]
                             , text model.shareDialogError
                             ]
                       else if model.showShareDialogBusy then
@@ -1472,13 +1536,13 @@ shareDialogConfig currentUserId model =
                 , div [ class "form-group" ]
                     [ div [] [ text "Add a person or group:" ]
                     , div []
-                        [ View.SearchableDropdown.view shareDropdownConfig model.shareDropdownState
+                        [ View.SearchableDropdown.view shareDropdownConfig model.shareDropdownState |> Html.map ShareMsg
                         ]
                     ]
                 , br [] []
                 ]
     in
-    { closeMessage = Just CloseShareDialog
+    { closeMessage = Just (ShareMsg CloseShareDialog)
     , containerClass = Just "narrow-modal-container"
     , header = Just (h3 [] [ text "Share Project" ])
     , body = Just content
@@ -1486,7 +1550,7 @@ shareDialogConfig currentUserId model =
     }
 
 
-shareDropdownConfig : View.SearchableDropdown.Config Msg Msg
+shareDropdownConfig : View.SearchableDropdown.Config ShareMsg ShareMsg
 shareDropdownConfig =
     { placeholder = "Enter the name of the person or group to add "
     , autofocus = False
@@ -1558,7 +1622,7 @@ viewGroup isEditable group =
             , text (Util.pluralize "user" numUsers)
             , text ")"
             , if isEditable then
-                button [ class "btn btn-default btn-xs pull-right", onClick (RemoveFromProjectGroup group.project_group_id) ] [ text "Remove" ]
+                button [ class "btn btn-default btn-xs pull-right", onClick (RemoveFromProjectGroup group.project_group_id |> ShareMsg) ] [ text "Remove" ]
               else
                 text ""
             ]
@@ -1570,9 +1634,9 @@ viewPermissionDropdown user =
     div [ class "pull-right dropdown" ]
         [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text (capitalize user.permconn.permission), text " ", span [ class "caret" ] [] ]
         , ul [ class "dropdown-menu nowrap" ]
-            [ li [] [ a [ onClick (ShareWithUser "read-only" user.user_id user.user_name) ] [ text "Read-only: can view but not modify" ] ]
-            , li [] [ a [ onClick (ShareWithUser "read-write" user.user_id user.user_name) ] [ text "Read-write: can view/edit but not delete" ] ]
-            , li [] [ a [ onClick (UnshareWithUser user.user_id) ] [ text "Remove access" ] ]
+            [ li [] [ a [ onClick (ShareWithUser "read-only" user.user_id user.user_name |> ShareMsg) ] [ text "Read-only: can view but not modify" ] ]
+            , li [] [ a [ onClick (ShareWithUser "read-write" user.user_id user.user_name |> ShareMsg) ] [ text "Read-write: can view/edit but not delete" ] ]
+            , li [] [ a [ onClick (UnshareWithUser user.user_id |> ShareMsg) ] [ text "Remove access" ] ]
             ]
         ]
 
@@ -1606,7 +1670,7 @@ publishDialogConfig currentUserId model =
                 div []
                     [ text model.project.publication_status ]
     in
-    { closeMessage = Just ClosePublishDialog
+    { closeMessage = Just (PublishMsg ClosePublishDialog)
     , containerClass = Just "narrow-modal-container"
     , header = Just (h3 [] [ text "Publish Project" ])
     , body = Just content
@@ -1621,15 +1685,15 @@ editInfoDialogConfig model =
             Html.form []
                 [ div [ class "form-group" ]
                     [ label [] [ text "Name" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectName, onInput SetProjectName ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectName, onInput SetProjectName ] [] |> Html.map InfoMsg
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Description" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the description (required)", value model.projectDescription, onInput SetProjectDescription ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the description (required)", value model.projectDescription, onInput SetProjectDescription ] [] |> Html.map InfoMsg
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Accession" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the accession (required)", value model.projectCode, onInput SetProjectCode ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the accession (required)", value model.projectCode, onInput SetProjectCode ] [] |> Html.map InfoMsg
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Type" ]
@@ -1639,20 +1703,20 @@ editInfoDialogConfig model =
                             [ div [ class "dropdown" ]
                                 [ button [ class "btn btn-default dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text "Select ", span [ class "caret" ] [] ]
                                 , ul [ class "dropdown-menu dropdown-menu-right" ]
-                                    (List.map (\s -> li [ onClick (SetProjectType s) ] [ a [] [ text s ]]) model.project.available_types)
+                                    (List.map (\s -> li [ onClick (SetProjectType s |> InfoMsg) ] [ a [] [ text s ]]) model.project.available_types)
                                 ]
                             ]
                         ]
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Domains" ]
-                    , View.TagsDropdown.view (domainDropdownConfig (List.map (\d -> (d.domain_id, d.domain_name)) model.project.available_domains)) model.domainDropdownState
+                    , View.TagsDropdown.view (domainDropdownConfig (List.map (\d -> (d.domain_id, d.domain_name)) model.project.available_domains)) model.domainDropdownState |> Html.map InfoMsg
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Investigators" ]
                     , div []
-                        [ View.Tags.view (View.Tags.Config RemoveInvestigator) model.newInvestigatorTagState
-                        , View.SearchableDropdown.view investigatorDropdownConfig model.investigatorDropdownState
+                        [ View.Tags.view (View.Tags.Config RemoveInvestigator) model.newInvestigatorTagState |> Html.map InfoMsg
+                        , View.SearchableDropdown.view investigatorDropdownConfig model.investigatorDropdownState |> Html.map InfoMsg
                         ]
                     ]
 --                , div [ class "form-group" ]
@@ -1661,17 +1725,17 @@ editInfoDialogConfig model =
 --                    ]
                 , div [ class "form-group" ]
                     [ label [] [ text "URL" ]
-                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.projectURL, onInput SetProjectURL ] []
+                    , input [ class "form-control", type_ "text", placeholder "Enter the URL (optional)", value model.projectURL, onInput SetProjectURL ] [] |> Html.map InfoMsg
                     ]
                 ]
 
         footer =
             div []
-                [ button [ class "btn btn-default pull-left", onClick CloseEditInfoDialog ] [ text "Cancel" ]
-                , button [ class "btn btn-primary", onClick UpdateProjectInfo ] [ text "Update" ]
+                [ button [ class "btn btn-default pull-left", onClick (InfoMsg CloseEditInfoDialog) ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick (InfoMsg UpdateProjectInfo) ] [ text "Update" ]
                 ]
     in
-    { closeMessage = Just CloseEditInfoDialog
+    { closeMessage = Just (InfoMsg CloseEditInfoDialog)
     , containerClass = Nothing
     , header = Just (h3 [] [ text "Modify Project Info" ])
     , body = Just content
@@ -1679,7 +1743,7 @@ editInfoDialogConfig model =
     }
 
 
-domainDropdownConfig : List (Int, String) -> View.TagsDropdown.Config Msg Msg
+domainDropdownConfig : List (Int, String) -> View.TagsDropdown.Config InfoMsg InfoMsg
 domainDropdownConfig domains =
     { options = domains
     , addMsg = AddProjectDomain
@@ -1687,7 +1751,7 @@ domainDropdownConfig domains =
     }
 
 
-investigatorDropdownConfig : View.SearchableDropdown.Config Msg Msg
+investigatorDropdownConfig : View.SearchableDropdown.Config InfoMsg InfoMsg
 investigatorDropdownConfig =
     { placeholder = "Enter the name of the investigator to add "
     , autofocus = False
@@ -1741,38 +1805,38 @@ addOrEditPublicationDialogConfig model =
                 Html.form []
                     [ div [ class "form-group" ]
                         [ label [] [ text "Title" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.publicationTitle, placeholder "Enter the title (required)", onInput SetPublicationTitle ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationTitle, placeholder "Enter the title (required)", onInput SetPublicationTitle ] [] |> Html.map PublicationMsg
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Authors" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.publicationAuthors, placeholder "Enter the author names separated by commas (required)", onInput SetPublicationAuthors ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationAuthors, placeholder "Enter the author names separated by commas (required)", onInput SetPublicationAuthors ] [] |> Html.map PublicationMsg
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "Publication Date" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.publicationDate, placeholder "Enter the publication date as MM/DD/YYYY (required)", onInput SetPublicationDate ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationDate, placeholder "Enter the publication date as MM/DD/YYYY (required)", onInput SetPublicationDate ] [] |> Html.map PublicationMsg
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "PubMed ID" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.publicationPubMedID, placeholder "Enter the PubMed ID or leave blank (optional)", onInput SetPublicationPubMedID ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationPubMedID, placeholder "Enter the PubMed ID or leave blank (optional)", onInput SetPublicationPubMedID ] [] |> Html.map PublicationMsg
                         ]
                     , div [ class "form-group" ]
                         [ label [] [ text "DOI" ]
-                        , input [ class "form-control", type_ "text", size 20, value model.publicationDOI, placeholder "Enter the DOI or leave blank (optional)", onInput SetPublicationDOI ] []
+                        , input [ class "form-control", type_ "text", size 20, value model.publicationDOI, placeholder "Enter the DOI or leave blank (optional)", onInput SetPublicationDOI ] [] |> Html.map PublicationMsg
                         ]
                     ]
 
         footer =
             div [ disabled model.showAddOrEditPublicationBusy ]
-                [ button [ class "btn btn-default pull-left", onClick CloseAddOrEditPublicationDialog ] [ text "Cancel" ]
+                [ button [ class "btn btn-default pull-left", onClick (PublicationMsg ClosePublicationDialog) ] [ text "Cancel" ]
                 , case model.publicationIdToEdit of
                     Nothing ->
-                        button [ class "btn btn-primary", onClick AddPublication ] [ text "Add" ]
+                        button [ class "btn btn-primary", onClick (PublicationMsg AddPublication) ] [ text "Add" ]
 
                     Just id ->
-                        button [ class "btn btn-primary", onClick (UpdatePublication id) ] [ text "Update" ]
+                        button [ class "btn btn-primary", onClick (UpdatePublication id |> PublicationMsg) ] [ text "Update" ]
                 ]
     in
-    { closeMessage = Just CloseAddOrEditPublicationDialog
+    { closeMessage = Just (PublicationMsg ClosePublicationDialog)
     , containerClass = Nothing
     , header = Just (h3 [] [ text "Add Publication" ])
     , body = Just content

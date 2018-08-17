@@ -1056,6 +1056,13 @@ updatePage page msg model =
                     in
                     { model | pageState = Loaded (Job id pageModel) } => Cmd.map JobMsg cmd
 
+                Project id subModel ->
+                    let
+                        ((pageModel, cmd), extCmd) =
+                            Project.update session (Project.PublishMsg (Project.RefreshStatus time)) subModel
+                    in
+                    { model | pageState = Loaded (Project id pageModel) } => Cmd.map ProjectMsg cmd
+
                 _ ->
                     model => Cmd.none
 
