@@ -200,7 +200,8 @@ type Msg
     | SelectFile Data.App.FileBrowser
     | FileUploadFileSelected (Maybe Ports.FileToUpload)
     | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
-    | PollTimerTick Time
+    | JobPollTimerTick Time
+    | PublishPollTimerTick Time
     | LoginExpirationTimerTick Time
     | InputTimerTick Time
     | PageInitTimerTick Time
@@ -1047,7 +1048,7 @@ updatePage page msg model =
                 _ ->
                     model => Cmd.none
 
-        PollTimerTick time ->
+        JobPollTimerTick time ->
             case page of
                 Job id subModel ->
                     let
@@ -1056,10 +1057,15 @@ updatePage page msg model =
                     in
                     { model | pageState = Loaded (Job id pageModel) } => Cmd.map JobMsg cmd
 
+                _ ->
+                    model => Cmd.none
+
+        PublishPollTimerTick time ->
+            case page of
                 Project id subModel ->
                     let
                         ((pageModel, cmd), extCmd) =
-                            Project.update session (Project.PublishMsg (Project.RefreshStatus time)) subModel
+                            Project.update session (Project.PublishMsg Project.RefreshStatus) subModel
                     in
                     { model | pageState = Loaded (Project id pageModel) } => Cmd.map ProjectMsg cmd
 
@@ -1526,7 +1532,8 @@ subscriptions model =
         , Ports.onFileSelect SelectFile
         , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
         , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
-        , Time.every (10 * Time.second) PollTimerTick
+        , Time.every (10 * Time.second) JobPollTimerTick
+        , Time.every (2 * Time.second) PublishPollTimerTick
         , Time.every (1 * Time.second) LoginExpirationTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
         , Time.every (250 * Time.millisecond) PageInitTimerTick

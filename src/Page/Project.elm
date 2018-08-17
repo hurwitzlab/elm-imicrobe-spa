@@ -22,7 +22,6 @@ import Request.Publication
 import Request.User
 import Route
 import String.Extra
-import Time exposing (Time)
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
@@ -215,7 +214,7 @@ type PublishMsg
     = OpenPublishDialog
     | ClosePublishDialog
     | PublishProjectCompleted (Result Http.Error String)
-    | RefreshStatus Time
+    | RefreshStatus
     | RefreshStatusCompleted (Result Http.Error (Maybe String))
 
 
@@ -260,6 +259,8 @@ update session msg model =
     let
         loadProject _ =
             Request.Project.get session.token model.project_id |> Http.toTask
+
+        _ = Debug.log "Project.update" (toString msg)
     in
     case msg of
         CartMsg subMsg ->
@@ -574,8 +575,12 @@ updatePublish session msg model =
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none
 
-        PublishProjectCompleted (Ok _) ->
-            { model | showPublishDialogBusy = False } => Cmd.none
+        PublishProjectCompleted (Ok status) ->
+            let
+                newProject =
+                    model.project
+            in
+            { model | showPublishDialogBusy = False, project = { newProject | ebi_status = Just status } } => Cmd.none
 
         PublishProjectCompleted (Err error) ->
             let
@@ -593,7 +598,7 @@ updatePublish session msg model =
             in
             { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none
 
-        RefreshStatus time ->
+        RefreshStatus ->
             if submissionInProgress then
                 let
                     _ = Debug.log "Page.Project" "polling job "
@@ -1630,7 +1635,7 @@ publishDialogConfig currentUserId model =
             else
                 case model.project.ebi_status of
                     Nothing ->
-                        text ""
+                        text "Oops, an error occurred"
 
                     Just "FINISHED" ->
                         div []
@@ -1642,7 +1647,9 @@ publishDialogConfig currentUserId model =
 
                     Just status ->
                         div []
-                            [ viewStatus status ]
+                            [ text "Progress: "
+                            , viewStatus status
+                            ]
 
         viewStatus status =
             let
@@ -1650,7 +1657,7 @@ publishDialogConfig currentUserId model =
                     let
                         label = String.Extra.replace "_" " " status -- replace _ with space
                     in
-                    div [ class "progress", style [("float","left"), ("width","20em")] ]
+                    div [ class "progress", style [("width","20em")] ]
                         [ div [ class "progress-bar progress-bar-striped active", style [("width", ((toString pct) ++ "%"))],
                                 attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
                             [ text label ]
@@ -1663,6 +1670,7 @@ publishDialogConfig currentUserId model =
                 "QUEUED" -> progressBar 40
                 "STAGING_INPUTS" -> progressBar 50
                 "SUBMITTING" -> progressBar 60
+                "SUBMITTED" -> progressBar 70
                 "FINISHED" -> progressBar 100
                 _ -> text status
     in
