@@ -21,6 +21,7 @@ import Request.Investigator
 import Request.Publication
 import Request.User
 import Route
+import String.Extra
 import Time exposing (Time)
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
@@ -215,7 +216,7 @@ type PublishMsg
     | ClosePublishDialog
     | PublishProjectCompleted (Result Http.Error String)
     | RefreshStatus Time
-    | RefreshStatusCompleted (Result Http.Error String)
+    | RefreshStatusCompleted (Result Http.Error (Maybe String))
 
 
 type ShareMsg
@@ -542,26 +543,33 @@ updateInfo session msg model =
 
 updatePublish : Session -> PublishMsg -> Model -> ( Model, Cmd PublishMsg )
 updatePublish session msg model =
+    let
+        getStatus =
+            Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .ebi_status
+
+        submissionInProgress =
+            case model.project.ebi_status of
+                Nothing ->
+                    False
+
+                Just status ->
+                    status /= "FINISHED" && status /= "FAILED" && status /= "STOPPED"
+    in
     case msg of
         OpenPublishDialog ->
-            let
-                status =
-                    model.project.publication_status
-            in
-            if status == "" then
-                let
-                    publishProject =
-                        Request.Project.publish session.token model.project_id True |> Http.toTask
-                in
-                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject
-            else if status == "FINISHED" || status == "FAILED" then
-                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none
-            else
-                let
-                    getStatus =
-                        Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .publication_status
-                in
-                { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt RefreshStatusCompleted getStatus
+            case model.project.ebi_status of
+                Nothing ->
+                    let
+                        publishProject =
+                            Request.Project.publish session.token model.project_id True |> Http.toTask
+                    in
+                    { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject
+
+                Just status ->
+                    if status == "FINISHED" || status == "FAILED" then
+                        { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none
+                    else
+                        { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt RefreshStatusCompleted getStatus
 
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none
@@ -586,58 +594,12 @@ updatePublish session msg model =
             { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none
 
         RefreshStatus time ->
-    --        if model.loadingJob == False && isRunning model.job then
-    --            let
-    --                _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
-    --
-    --                startTime =
-    --                    case model.startTime of
-    --                        Nothing -> time
-    --
-    --                        Just t -> t
-    --
-    --                lastPollTime =
-    --                    case model.lastPollTime of
-    --                        Nothing -> time
-    --
-    --                        Just t -> t
-    --
-    --                timeSinceStart =
-    --                    time - startTime
-    --
-    --                timeSinceLastPoll =
-    --                    time - lastPollTime
-    --
-    --                handleJob job =
-    --                    case job of
-    --                        Ok job ->
-    --                            SetJob job
-    --
-    --                        Err error ->
-    --                            let
-    --                                _ = Debug.log "Error" ("could not poll job" ++ (toString error))
-    --                            in
-    --                            SetJob model.job
-    --
-    --                doPoll =
-    --                    -- Poll every 10 seconds if job has been running less than 15 minutes
-    --                    if timeSinceStart < (15 * Time.minute) && timeSinceLastPoll >= (10 * Time.second) then
-    --                        True
-    --                    -- Poll every 30 seconds if job has been running less than 30 minutes
-    --                    else if timeSinceStart < (30 * Time.minute) && timeSinceLastPoll >= (30 * Time.second) then
-    --                        True
-    --                    -- Poll every 60 seconds if job has been running longer than 30 minutes
-    --                    else if timeSinceStart >= (30 * Time.minute) && timeSinceLastPoll >= (60 * Time.second) then
-    --                        True
-    --                    else
-    --                        False
-    --            in
-    --            case doPoll of
-    --                True ->
-    --                    { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt PublishStatusCompleted getStatus
-    --                False ->
-    --                    { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
-    --        else
+            if submissionInProgress then
+                let
+                    _ = Debug.log "Page.Project" "polling job "
+                in
+                model => Task.attempt RefreshStatusCompleted getStatus
+            else
                 model => Cmd.none
 
         RefreshStatusCompleted (Ok status) ->
@@ -645,7 +607,7 @@ updatePublish session msg model =
                 newProject =
                     model.project
             in
-            { model | showPublishDialogBusy = False, project = { newProject | publication_status = status } } => Cmd.none
+            { model | showPublishDialogBusy = False, project = { newProject | ebi_status = status } } => Cmd.none
 
         RefreshStatusCompleted (Err error) -> -- TODO finish this
             let
@@ -1056,14 +1018,19 @@ viewPublishButton project =
     in
     if project.private == 0 then
         text ""
-    else if project.publication_status == "" then
-        viewBtn "Publish Project"
-    else if project.publication_status == "FINISHED" then
-        viewBtn "Source: EBI"
-    else if project.publication_status == "failed" then
-        viewBtn "Publication Failed!"
     else
-        viewBtn "Publication in Progress ..."
+        case project.ebi_status of
+            Nothing ->
+                viewBtn "Publish Project"
+
+            Just "FINISHED" ->
+                viewBtn "Source: EBI"
+
+            Just "FAILED" ->
+                viewBtn "Publication Failed!"
+
+            _ ->
+                viewBtn "Publication in Progress ..."
 
 
 viewProject : Project -> Bool -> Html Msg
@@ -1660,15 +1627,44 @@ publishDialogConfig currentUserId model =
                     , div []
                         [ ul [] (List.map viewError errorList) ]
                     ]
-            else if model.project.publication_status == "FINISHED" then
-                div []
-                    [ text "Published" ]
-            else if model.project.publication_status == "FAILED" then
-                div []
-                    [ text "Error" ]
             else
-                div []
-                    [ text model.project.publication_status ]
+                case model.project.ebi_status of
+                    Nothing ->
+                        text ""
+
+                    Just "FINISHED" ->
+                        div []
+                            [ text "Published" ]
+
+                    Just "FAILED" ->
+                        div []
+                            [ text "Error" ]
+
+                    Just status ->
+                        div []
+                            [ viewStatus status ]
+
+        viewStatus status =
+            let
+                progressBar pct =
+                    let
+                        label = String.Extra.replace "_" " " status -- replace _ with space
+                    in
+                    div [ class "progress", style [("float","left"), ("width","20em")] ]
+                        [ div [ class "progress-bar progress-bar-striped active", style [("width", ((toString pct) ++ "%"))],
+                                attribute "role" "progressbar", attribute "aria-valuenow" (toString pct), attribute "aria-valuemin" "0", attribute "aria-valuemax" "100" ]
+                            [ text label ]
+                        ]
+            in
+            case String.toUpper status of
+                "PENDING" -> progressBar 10
+                "CREATED" -> progressBar 20
+                "INITIALIZING" -> progressBar 30
+                "QUEUED" -> progressBar 40
+                "STAGING_INPUTS" -> progressBar 50
+                "SUBMITTING" -> progressBar 60
+                "FINISHED" -> progressBar 100
+                _ -> text status
     in
     { closeMessage = Just (PublishMsg ClosePublishDialog)
     , containerClass = Just "narrow-modal-container"

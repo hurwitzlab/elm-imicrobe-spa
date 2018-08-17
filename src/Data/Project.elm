@@ -32,7 +32,10 @@ type alias Project =
     , combined_assembly_count : Int
     , users : List User
     , private : Int
-    , publication_status : String
+    , ebi_status : Maybe String
+    , ebi_submitter_id : Maybe Int
+    , ebi_submission_date : Maybe String
+    , ebi_accn : Maybe String
     }
 
 
@@ -163,7 +166,10 @@ decoder =
         |> optional "combined_assembly_count" Decode.int 0
         |> optional "users" (Decode.list decoderUser) []
         |> optional "private" Decode.int 0
-        |> optional "publication_status" Decode.string ""
+        |> optional "ebi_status" (Decode.nullable Decode.string) Nothing
+        |> optional "ebi_submitter_id" (Decode.nullable Decode.int) Nothing
+        |> optional "ebi_submission_date" (Decode.nullable Decode.string) Nothing
+        |> optional "ebi_accn" (Decode.nullable Decode.string) Nothing
 
 
 decoderProjectGroup : Decoder ProjectGroup
