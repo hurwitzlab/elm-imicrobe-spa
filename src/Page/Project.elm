@@ -21,6 +21,7 @@ import Request.Investigator
 import Request.Publication
 import Request.User
 import Route
+import Time exposing (Time)
 import Task exposing (Task)
 import Table exposing (defaultCustomizations)
 import View.Cart as Cart
@@ -192,9 +193,9 @@ type Msg
     | UnshareWithUserCompleted (Result Http.Error String)
     | OpenPublishDialog
     | ClosePublishDialog
-    | PublishProject
     | PublishProjectCompleted (Result Http.Error String)
-    | PublishStatusCompleted (Result Http.Error Int)
+    | RefreshPublishStatus Time
+    | PublishStatusCompleted (Result Http.Error String)
     | OpenEditInfoDialog
     | CloseEditInfoDialog
     | SetProjectName String
@@ -481,30 +482,27 @@ update session msg model =
             model => Cmd.none => NoOp
 
         OpenPublishDialog ->
-            if model.project.publication_status == 0 then
+            let
+                status =
+                    model.project.publication_status
+            in
+            if status == "" then
                 let
                     publishProject =
                         Request.Project.publish session.token model.project_id True |> Http.toTask
                 in
                 { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject => NoOp
-            else if model.project.publication_status == 1 || model.project.publication_status == 2 then
+            else if status == "FINISHED" || status == "FAILED" then
+                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none => NoOp
+            else
                 let
                     getStatus =
                         Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .publication_status
                 in
                 { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishStatusCompleted getStatus => NoOp
-            else
-                { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none => NoOp
 
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none => NoOp
-
-        PublishProject ->
-            let
-                publishProject =
-                    Request.Project.publish session.token model.project_id False |> Http.toTask
-            in
-            model => Task.attempt PublishProjectCompleted publishProject => NoOp
 
         PublishProjectCompleted (Ok _) ->
             { model | showPublishDialogBusy = False } => Cmd.none => NoOp
@@ -524,6 +522,61 @@ update session msg model =
                             toString error
             in
             { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none => NoOp
+
+        RefreshPublishStatus time ->
+--            if model.loadingJob == False && isRunning model.job then
+--                let
+--                    _ = Debug.log "Job.Poll" ("polling job " ++ (toString model.job.id))
+--
+--                    startTime =
+--                        case model.startTime of
+--                            Nothing -> time
+--
+--                            Just t -> t
+--
+--                    lastPollTime =
+--                        case model.lastPollTime of
+--                            Nothing -> time
+--
+--                            Just t -> t
+--
+--                    timeSinceStart =
+--                        time - startTime
+--
+--                    timeSinceLastPoll =
+--                        time - lastPollTime
+--
+--                    handleJob job =
+--                        case job of
+--                            Ok job ->
+--                                SetJob job
+--
+--                            Err error ->
+--                                let
+--                                    _ = Debug.log "Error" ("could not poll job" ++ (toString error))
+--                                in
+--                                SetJob model.job
+--
+--                    doPoll =
+--                        -- Poll every 10 seconds if job has been running less than 15 minutes
+--                        if timeSinceStart < (15 * Time.minute) && timeSinceLastPoll >= (10 * Time.second) then
+--                            True
+--                        -- Poll every 30 seconds if job has been running less than 30 minutes
+--                        else if timeSinceStart < (30 * Time.minute) && timeSinceLastPoll >= (30 * Time.second) then
+--                            True
+--                        -- Poll every 60 seconds if job has been running longer than 30 minutes
+--                        else if timeSinceStart >= (30 * Time.minute) && timeSinceLastPoll >= (60 * Time.second) then
+--                            True
+--                        else
+--                            False
+--                in
+--                case doPoll of
+--                    True ->
+--                        { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt handleJob loadJob
+--                    False ->
+--                        { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
+--            else
+                model => Cmd.none => NoOp
 
         PublishStatusCompleted (Ok status) ->
             let
@@ -939,16 +992,14 @@ viewPublishButton project =
     in
     if project.private == 0 then
         text ""
-    else if project.publication_status == 0 then
+    else if project.publication_status == "" then
         viewBtn "Publish Project"
-    else if project.publication_status == 1 || project.publication_status == 2  then
-        viewBtn "Publication in Progress ..."
-    else if project.publication_status == 3 then
+    else if project.publication_status == "FINISHED" then
         viewBtn "Source: EBI"
-    else if project.publication_status == -1 then
-        viewBtn "Publication Error!"
+    else if project.publication_status == "failed" then
+        viewBtn "Publication Failed!"
     else
-        text ""
+        viewBtn "Publication in Progress ..."
 
 
 viewProject : Project -> Bool -> Html Msg
@@ -972,7 +1023,7 @@ viewProject project isEditable =
             ]
         , tr []
             [ th [] [ text "Description" ]
-            , td [] [ text project.description ]
+            , td [] [ div [ style [("overflow-y", "auto"), ("max-height", "6.75em")] ] [ text project.description ] ]
             ]
         , tr []
             [ th [] [ text "Code" ]
@@ -1545,15 +1596,15 @@ publishDialogConfig currentUserId model =
                     , div []
                         [ ul [] (List.map viewError errorList) ]
                     ]
-            else if model.project.publication_status >= 0 && model.project.publication_status <= 2 then
-                div []
-                    [ text "Publishing..." ]
-            else if model.project.publication_status == 3 then
+            else if model.project.publication_status == "FINISHED" then
                 div []
                     [ text "Published" ]
-            else
+            else if model.project.publication_status == "FAILED" then
                 div []
                     [ text "Error" ]
+            else
+                div []
+                    [ text model.project.publication_status ]
     in
     { closeMessage = Just ClosePublishDialog
     , containerClass = Just "narrow-modal-container"
