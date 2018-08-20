@@ -1533,7 +1533,7 @@ subscriptions model =
         , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
         , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) JobPollTimerTick
-        , Time.every (2 * Time.second) PublishPollTimerTick
+        , Time.every (5 * Time.second) PublishPollTimerTick
         , Time.every (1 * Time.second) LoginExpirationTimerTick
         , Time.every (500 * Time.millisecond) InputTimerTick
         , Time.every (250 * Time.millisecond) PageInitTimerTick
