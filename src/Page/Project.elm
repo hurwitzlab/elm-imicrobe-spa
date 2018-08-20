@@ -101,13 +101,15 @@ init session id =
             project.users ++ (List.map .users project.project_groups |> List.concat)
 
         isEditable project =
-            case userId of
-                Nothing ->
-                    False
+            project.private == 1 &&
+                (case userId of
+                    Nothing ->
+                        False
 
-                Just userId ->
-                    allUsers project
-                        |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
+                    Just userId ->
+                        allUsers project
+                            |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
+                )
     in
     loadProject
         |> Task.andThen
@@ -259,8 +261,6 @@ update session msg model =
     let
         loadProject _ =
             Request.Project.get session.token model.project_id |> Http.toTask
-
-        _ = Debug.log "Project.update" (toString msg)
     in
     case msg of
         CartMsg subMsg ->
@@ -403,7 +403,7 @@ update session msg model =
 
         RemoveSampleCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "RemoveSampleCompleted" (toString error) -- TODO show to user
             in
             model => Cmd.none => NoOp
 
@@ -537,7 +537,7 @@ updateInfo session msg model =
 
         UpdateProjectInfoCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "UpdateProjectInfoCompleted" (toString error) -- TODO show to user
             in
             model => Cmd.none
 
@@ -564,13 +564,13 @@ updatePublish session msg model =
                         publishProject =
                             Request.Project.publish session.token model.project_id True |> Http.toTask
                     in
-                    { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt PublishProjectCompleted publishProject
+                    { model | showPublishDialog = True, showPublishDialogBusy = True, publishDialogError = "" } => Task.attempt PublishProjectCompleted publishProject
 
                 Just status ->
                     if status == "FINISHED" || status == "FAILED" then
-                        { model | showPublishDialog = True, showPublishDialogBusy = False } => Cmd.none
+                        { model | showPublishDialog = True, showPublishDialogBusy = False, publishDialogError = "" } => Cmd.none
                     else
-                        { model | showPublishDialog = True, showPublishDialogBusy = True } => Task.attempt RefreshStatusCompleted getStatus
+                        { model | showPublishDialog = True, showPublishDialogBusy = True, publishDialogError = "" } => Task.attempt RefreshStatusCompleted getStatus
 
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none
@@ -600,9 +600,6 @@ updatePublish session msg model =
 
         RefreshStatus ->
             if submissionInProgress then
-                let
-                    _ = Debug.log "Page.Project" "polling job "
-                in
                 model => Task.attempt RefreshStatusCompleted getStatus
             else
                 model => Cmd.none
@@ -616,7 +613,7 @@ updatePublish session msg model =
 
         RefreshStatusCompleted (Err error) -> -- TODO finish this
             let
-                _ = Debug.log "Error:" (toString error)
+                _ = Debug.log "RefreshStatusCompleted" (toString error)
             in
             model => Cmd.none
 
@@ -722,7 +719,7 @@ updateShare session msg model =
 
         ShareWithUserCompleted (Err error) -> -- TODO finish this
             let
-                _ = Debug.log "Error:" (toString error)
+                _ = Debug.log "ShareWithUserCompleted" (toString error)
             in
             model => Cmd.none
 
@@ -761,7 +758,7 @@ updateShare session msg model =
 
         RemoveFromProjectGroupCompleted (Err error) -> -- TODO finish this
             let
-                _ = Debug.log "Error:" (toString error)
+                _ = Debug.log "RemoveFromProjectGroupCompleted" (toString error)
             in
             model => Cmd.none
 
@@ -783,7 +780,7 @@ updateShare session msg model =
 
         UnshareWithUserCompleted (Err error) -> -- TODO finish this
             let
-                _ = Debug.log "Error:" (toString error)
+                _ = Debug.log "UnshareWithUserCompleted" (toString error)
             in
             model => Cmd.none
 
@@ -845,7 +842,7 @@ updatePublication session msg model =
 
         AddPublicationCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "AddPublicationCompleted" (toString error) -- TODO show to user
             in
             { model | showAddOrEditPublicationDialog = False } => Cmd.none
 
@@ -869,7 +866,7 @@ updatePublication session msg model =
 
         UpdatePublicationCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "UpdatePublicationCompleted" (toString error) -- TODO show to user
             in
             model => Cmd.none
 
@@ -890,7 +887,7 @@ updatePublication session msg model =
 
         RemovePublicationCompleted (Err error) ->
             let
-                _ = Debug.log "error" (toString error) -- TODO show to user
+                _ = Debug.log "RemovePublicationCompleted" (toString error) -- TODO show to user
             in
             model => Cmd.none
 
@@ -1021,21 +1018,21 @@ viewPublishButton project =
         viewBtn label =
             button [ class "btn btn-default pull-right margin-left", onClick OpenPublishDialog ] [ text label ] |> Html.map PublishMsg
     in
-    if project.private == 0 then
-        text ""
-    else
-        case project.ebi_status of
-            Nothing ->
-                viewBtn "Publish Project"
+    case project.ebi_status of
+        Nothing ->
+            viewBtn "Publish Project"
 
-            Just "FINISHED" ->
-                viewBtn "Source: EBI"
+        Just "FINISHED" ->
+            viewBtn "Source: EBI"
 
-            Just "FAILED" ->
-                viewBtn "Publication Failed!"
+        Just "FAILED" ->
+            viewBtn "Publication Failed!"
 
-            _ ->
+        _ ->
+            if project.private == 1 then
                 viewBtn "Publication in Progress ..."
+            else
+                text ""
 
 
 viewProject : Project -> Bool -> Html Msg
@@ -1672,7 +1669,7 @@ publishDialogConfig currentUserId model =
                 "SUBMITTING" -> progressBar 60
                 "SUBMITTED" -> progressBar 70
                 "FINISHED" -> progressBar 100
-                _ -> text status
+                _ -> progressBar 0
     in
     { closeMessage = Just (PublishMsg ClosePublishDialog)
     , containerClass = Just "narrow-modal-container"
