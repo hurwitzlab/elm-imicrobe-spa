@@ -19,7 +19,7 @@ import Table exposing (defaultCustomizations)
 import List.Extra
 import String.Extra exposing (replace)
 import Maybe.Extra
-import Util exposing ((=>))
+import Util exposing ((=>), isUrl)
 import View.Cart as Cart
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
 import View.Spinner exposing (spinner)
@@ -820,6 +820,12 @@ viewFiles availableFileTypes files isEditable isBusy =
 viewFile : Bool -> List SampleFileType -> SampleFile2 -> Html Msg
 viewFile isEditable availableFileTypes file =
     let
+        link =
+            if isUrl file.file then
+                file.file
+            else
+                dataCommonsUrl ++ file.file
+
 --        availableTypes =
 --            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
 
@@ -828,7 +834,7 @@ viewFile isEditable availableFileTypes file =
     in
     tr []
         [ td []
-            [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
+            [ a [ href link, target "_blank" ] [ text file.file ]
             ]
         , td []
             [ if isEditable then
@@ -1038,9 +1044,7 @@ attrValueView attr =
             attr.sample_attr_type.url_template |> Maybe.withDefault ""
     in
     Table.HtmlDetails []
-        [ if String.startsWith "http://" value
-            || String.startsWith "https://" value
-            || String.startsWith "ftp://" value
+        [ if isUrl value
         then
             a [ href value, target "_blank" ] [ text value ]
         else if urlTemplate /= "" then
