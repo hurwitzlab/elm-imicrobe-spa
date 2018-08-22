@@ -144,7 +144,6 @@ publish token project_id validate =
         body =
             Encode.object
                 [ "validate" => Encode.bool validate ]
-
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers

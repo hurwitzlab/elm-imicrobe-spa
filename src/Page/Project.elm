@@ -64,6 +64,7 @@ type alias Model =
     , showPublishDialog : Bool
     , showPublishDialogBusy : Bool
     , publishDialogError : String
+    , validForPublish : Bool
     , showEditInfoDialog : Bool
     , projectName : String
     , projectDescription : String
@@ -103,14 +104,15 @@ init session id =
 
         isEditable project =
             project.private == 1 &&
-                (case userId of
-                    Nothing ->
-                        False
+            project.ebi_status == Nothing &&
+            (case userId of
+                Nothing ->
+                    False
 
-                    Just userId ->
-                        allUsers project
-                            |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
-                )
+                Just userId ->
+                    allUsers project
+                        |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
+            )
     in
     loadProject
         |> Task.andThen
@@ -140,6 +142,7 @@ init session id =
                     , showPublishDialog = False
                     , showPublishDialogBusy = False
                     , publishDialogError = ""
+                    , validForPublish = False
                     , showEditInfoDialog = False
                     , projectName = ""
                     , projectDescription = ""
@@ -218,6 +221,8 @@ type InfoMsg
 type PublishMsg
     = OpenPublishDialog
     | ClosePublishDialog
+    | ValidateProjectCompleted (Result Http.Error String)
+    | PublishProject
     | PublishProjectCompleted (Result Http.Error String)
     | RefreshStatus
     | RefreshStatusCompleted (Result Http.Error (Maybe String))
@@ -563,16 +568,28 @@ updatePublish session msg model =
 
                 Just status ->
                     status /= "FINISHED" && status /= "FAILED" && status /= "STOPPED"
+
+        errorMsg error =
+            case error of
+                Http.BadStatus response ->
+                    case String.length response.body of
+                        0 ->
+                            "Bad status - please contact support"
+
+                        _ ->
+                            response.body
+                _ ->
+                    toString error
     in
     case msg of
         OpenPublishDialog ->
             case model.project.ebi_status of
                 Nothing ->
                     let
-                        publishProject =
+                        validateProject =
                             Request.Project.publish session.token model.project_id True |> Http.toTask
                     in
-                    { model | showPublishDialog = True, showPublishDialogBusy = True, publishDialogError = "" } => Task.attempt PublishProjectCompleted publishProject
+                    { model | showPublishDialog = True, showPublishDialogBusy = True, publishDialogError = "" } => Task.attempt ValidateProjectCompleted validateProject
 
                 Just status ->
                     if status == "FINISHED" || status == "FAILED" then
@@ -583,6 +600,22 @@ updatePublish session msg model =
         ClosePublishDialog ->
             { model | showPublishDialog = False } => Cmd.none
 
+        ValidateProjectCompleted (Ok status) ->
+            { model | showPublishDialogBusy = False, validForPublish = True } => Cmd.none
+
+        ValidateProjectCompleted (Err error) -> -- TODO finish this
+            let
+                _ = Debug.log "ValidateProjectCompleted" (toString error)
+            in
+            { model | showPublishDialogBusy = False, validForPublish = False, publishDialogError = errorMsg error } => Cmd.none
+
+        PublishProject ->
+            let
+                publishProject =
+                    Request.Project.publish session.token model.project_id False |> Http.toTask
+            in
+            { model | showPublishDialog = True, showPublishDialogBusy = True, publishDialogError = "", isEditable = False } => Task.attempt PublishProjectCompleted publishProject
+
         PublishProjectCompleted (Ok status) ->
             let
                 newProject =
@@ -591,20 +624,7 @@ updatePublish session msg model =
             { model | showPublishDialogBusy = False, project = { newProject | ebi_status = Just status } } => Cmd.none
 
         PublishProjectCompleted (Err error) ->
-            let
-                errorMsg =
-                    case error of
-                        Http.BadStatus response ->
-                            case String.length response.body of
-                                0 ->
-                                    "Bad status - please contact support"
-
-                                _ ->
-                                    response.body
-                        _ ->
-                            toString error
-            in
-            { model | showPublishDialogBusy = False, publishDialogError = errorMsg } => Cmd.none
+            { model | showPublishDialogBusy = False, publishDialogError = errorMsg error } => Cmd.none
 
         RefreshStatus ->
             if submissionInProgress then
@@ -1023,22 +1043,22 @@ viewShareButton project =
 viewPublishButton : Project -> Html Msg
 viewPublishButton project =
     let
-        viewBtn label =
-            button [ class "btn btn-default pull-right margin-left", onClick OpenPublishDialog ] [ text label ] |> Html.map PublishMsg
+        viewBtn btnClass label =
+            button [ class ("pull-right margin-left btn " ++ btnClass), onClick OpenPublishDialog ] [ text label ] |> Html.map PublishMsg
     in
     case project.ebi_status of
         Nothing ->
-            viewBtn "Publish Project"
+            viewBtn "btn-default" "Publish Project"
 
         Just "FINISHED" ->
-            viewBtn "Source: EBI"
+            viewBtn "btn-default" "Source: EBI"
 
         Just "FAILED" ->
-            viewBtn "Publication Failed!"
+            viewBtn "btn-danger" "Publication Failed"
 
         _ ->
             if project.private == 1 then
-                viewBtn "Publication in Progress ..."
+                viewBtn "btn-default" "Publication in Progress ..."
             else
                 text ""
 
@@ -1621,6 +1641,16 @@ viewPermissionDropdown user =
 publishDialogConfig : Int -> Model -> Dialog.Config Msg
 publishDialogConfig currentUserId model =
     let
+        description =
+            div []
+                [ p []
+                    [ text "Projects and associated samples can be submitted to EBI's nucleotide archive (ENA). For further information please refer to the "
+                    , a [] [ text "documentation" ]
+                    , text "."
+                    ]
+                , p [] [ strong [] [ text "Important:" ], text " After a project is submitted, the project and it's associated samples can no longer be edited.  This is a final step in the project/sample creation process." ]
+                ]
+
         content =
             if model.showPublishDialogBusy then
                 spinner
@@ -1630,29 +1660,50 @@ publishDialogConfig currentUserId model =
                         String.split "," model.publishDialogError
 
                     viewError msg =
-                        li [ class "red" ] [ text msg ]
+                        li [] [ text msg ]
                 in
                 div []
-                    [ text "The project cannot be published until these issues are corrected:"
-                    , div []
-                        [ ul [] (List.map viewError errorList) ]
+                    [ description
+                    , br [] []
+                    , div [ class "alert alert-danger", style [("max-height","10em"), ("overflow-y","auto")] ]
+                        [ p [] [ text "The project cannot be submitted until these issues are corrected:" ]
+                        , div []
+                            [ ul [] (List.map viewError errorList) ]
+                        ]
                     ]
             else
                 case model.project.ebi_status of
                     Nothing ->
-                        text "Oops, an error occurred"
+                        if model.validForPublish then
+                            div []
+                                [ description
+                                , br [] []
+                                , div [ class "alert alert-info" ] [ text "This project meets the requirements and is ready to be submitted.  Click the 'Publish' button to submit." ]
+                                ]
+                        else
+                            text "Oops, an error occurred"
 
                     Just "FINISHED" ->
+                        let
+                            accn =
+                                model.project.ebi_accn |> Maybe.withDefault "ERROR"
+
+                            url =
+                                "https://www.ebi.ac.uk/ena/data/view/" ++ accn -- FIXME hardcoded base url
+                        in
                         div []
-                            [ text "Published" ]
+                            [ text "This project is published in EBI-ENA under accession "
+                            , a [ href url, target "_blank" ] [ text accn ]
+                            , text "."
+                            ]
 
                     Just "FAILED" ->
-                        div []
-                            [ text "Error" ]
+                        div [ class "alert alert-danger", style [("max-height","10em"), ("overflow-y","auto")] ]
+                            [ text "An error occurred while submitting the project.  Please contact ", a [ Route.href Route.Contact ] [ text "support" ], text " for assistance." ]
 
                     Just status ->
                         div []
-                            [ text "Progress: "
+                            [ p [] [ text "Submitting to EBI-ENA ..." ]
                             , viewStatus status
                             ]
 
@@ -1678,12 +1729,21 @@ publishDialogConfig currentUserId model =
                 "SUBMITTED" -> progressBar 70
                 "FINISHED" -> progressBar 100
                 _ -> progressBar 0
+
+        footer =
+            div []
+                [ button [ class "btn btn-default pull-left", onClick (PublishMsg ClosePublishDialog) ] [ text "Close" ]
+                , if model.project.ebi_status == Nothing && model.validForPublish then
+                    button [ class "btn btn-primary", onClick (PublishMsg PublishProject) ] [ text "Publish" ]
+                  else
+                    text ""
+                ]
     in
     { closeMessage = Just (PublishMsg ClosePublishDialog)
     , containerClass = Just "narrow-modal-container"
     , header = Just (h3 [] [ text "Publish Project" ])
     , body = Just content
-    , footer = Nothing
+    , footer = Just footer
     }
 
 
