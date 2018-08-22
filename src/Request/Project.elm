@@ -104,8 +104,8 @@ create token project_name =
         |> HttpBuilder.toRequest
 
 
-update : String -> Int -> String -> String -> String -> String -> String -> List Domain -> List Investigator -> Http.Request Project
-update token project_id project_name project_description project_code project_type project_url domains investigators =
+update : String -> Int -> String -> String -> String -> String -> String -> String -> List Domain -> List Investigator -> Http.Request Project
+update token project_id project_name project_description project_code project_type project_institution project_url domains investigators =
     let
         url =
             apiBaseUrl ++ "/projects/" ++ (toString project_id)
@@ -119,6 +119,7 @@ update token project_id project_name project_description project_code project_ty
                 , "project_description" => Encode.string project_description
                 , "project_code" => Encode.string project_code
                 , "project_type" => Encode.string project_type
+                , "project_institution" => Encode.string project_institution
                 , "project_url" => Encode.string project_url
                 , "domains" => Encode.list (List.map encodeDomain domains)
                 , "investigators" => Encode.list (List.map encodeInvestigator investigators)

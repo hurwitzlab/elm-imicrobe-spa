@@ -20,6 +20,7 @@ type alias Project =
     , peptide_file : String
     , num_samples : String
     , domains : List Domain
+    , institution : String
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
@@ -154,6 +155,7 @@ decoder =
         |> optional "peptide_file" Decode.string "NA"
         |> optional "num_samples" Decode.string ""
         |> optional "domains" (Decode.list decoderDomain) []
+        |> optional "institution" Decode.string ""
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
