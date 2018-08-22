@@ -69,6 +69,7 @@ type alias Model =
     , projectDescription : String
     , projectCode : String
     , projectType : String
+    , projectInstitution : String
     , projectURL : String
     , domainDropdownState : View.TagsDropdown.State
     , groupDropdownState : View.TagsDropdown.State
@@ -144,6 +145,7 @@ init session id =
                     , projectDescription = ""
                     , projectCode = ""
                     , projectType = ""
+                    , projectInstitution = ""
                     , projectURL = ""
                     , domainDropdownState = View.TagsDropdown.init (List.map (\d -> (d.domain_id, d.domain_name)) project.domains)
                     , groupDropdownState = View.TagsDropdown.init (List.map (\g -> (g.project_group_id, g.group_name)) project.project_groups)
@@ -201,6 +203,7 @@ type InfoMsg
     | SetProjectDescription String
     | SetProjectCode String
     | SetProjectType String
+    | SetProjectInstitution String
     | SetProjectURL String
     | AddProjectDomain Int String
     | RemoveProjectDomain Int
@@ -418,6 +421,7 @@ updateInfo session msg model =
                 , projectDescription = model.project.description
                 , projectCode = model.project.project_code
                 , projectType = model.project.project_type
+                , projectInstitution = model.project.institution
                 , projectURL = model.project.url
              } => Cmd.none
 
@@ -435,6 +439,9 @@ updateInfo session msg model =
 
         SetProjectType type_ ->
             { model | projectType = type_ } => Cmd.none
+
+        SetProjectInstitution institution ->
+            { model | projectInstitution = institution } => Cmd.none
 
         SetProjectURL url ->
             { model | projectURL = url } => Cmd.none
@@ -512,7 +519,7 @@ updateInfo session msg model =
                     View.Tags.selected model.newInvestigatorTagState |> List.map (\t -> Investigator (Tuple.first t) (Tuple.second t) "")
 
                 updateInfo =
-                    Request.Project.update session.token model.project_id model.projectName model.projectDescription model.projectCode model.projectType model.projectURL domains investigators |> Http.toTask
+                    Request.Project.update session.token model.project_id model.projectName model.projectDescription model.projectCode model.projectType model.projectInstitution model.projectURL domains investigators |> Http.toTask
             in
             { model | showEditInfoDialog = False } => Task.attempt UpdateProjectInfoCompleted updateInfo
 
@@ -528,6 +535,7 @@ updateInfo session msg model =
                         , description = project.description
                         , project_code = project.project_code
                         , project_type = project.project_type
+                        , institution = project.institution
                         , url = project.url
                         , domains = project.domains
                         , investigators = project.investigators
@@ -1071,6 +1079,10 @@ viewProject project isEditable =
             , td [] (viewDomains project.domains)
             ]
         , tr []
+            [ th [] [ text "Institution" ]
+            , td [] [ text project.institution ]
+            ]
+        , tr []
             [ th [] [ text "Investigators" ]
             , td [] (View.Investigator.viewList project.investigators)
             ]
@@ -1082,10 +1094,6 @@ viewProject project isEditable =
             [ th [] [ text "URL" ]
             , td [] [ a [ href project.url, target "_blank" ] [ text project.url ] ]
             ]
---        , tr []
---            [ th [] [ text "Description" ]
---            , td [] [ text project.description ]
---            ]
         , tr []
             [ td [] [ editButton ]
             ]
@@ -1712,6 +1720,10 @@ editInfoDialogConfig model =
                 , div [ class "form-group" ]
                     [ label [] [ text "Domains" ]
                     , View.TagsDropdown.view (domainDropdownConfig (List.map (\d -> (d.domain_id, d.domain_name)) model.project.available_domains)) model.domainDropdownState |> Html.map InfoMsg
+                    ]
+                , div [ class "form-group" ]
+                    [ label [] [ text "Institution" ]
+                    , input [ class "form-control", type_ "text", placeholder "Enter the institution (required)", value model.projectInstitution, onInput SetProjectInstitution ] [] |> Html.map InfoMsg
                     ]
                 , div [ class "form-group" ]
                     [ label [] [ text "Investigators" ]
