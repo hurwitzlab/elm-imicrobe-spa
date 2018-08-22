@@ -102,7 +102,8 @@ init session id =
 
                 Just userId ->
                     sample.project.private == 1 &&
-                        (allUsers sample |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write")))
+                    sample.project.ebi_status == Nothing &&
+                    (allUsers sample |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write")))
 
         currentUser sample =
             case userId of
