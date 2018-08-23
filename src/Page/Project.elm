@@ -1665,7 +1665,7 @@ publishDialogConfig currentUserId model =
                 div []
                     [ description
                     , br [] []
-                    , div [ class "alert alert-danger", style [("max-height","10em"), ("overflow-y","auto")] ]
+                    , div [ class "alert alert-danger", style [("max-height","50vh"), ("overflow-y","auto")] ]
                         [ p [] [ text "The project cannot be submitted until these issues are corrected:" ]
                         , div []
                             [ ul [] (List.map viewError errorList) ]
