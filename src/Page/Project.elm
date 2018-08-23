@@ -1087,7 +1087,7 @@ viewProject project isEditable =
             , td [] [ div [ style [("overflow-y", "auto"), ("max-height", "6.75em")] ] [ text project.description ] ]
             ]
         , tr []
-            [ th [] [ text "Code" ]
+            [ th [] [ text "Accession" ]
             , td [] [ text project.project_code ]
             ]
         , tr []
