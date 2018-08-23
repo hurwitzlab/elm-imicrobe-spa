@@ -1751,7 +1751,7 @@ editInfoDialogConfig : Model -> Dialog.Config Msg
 editInfoDialogConfig model =
     let
         content =
-            Html.form []
+            Html.form [ style [("max-height","60vh"), ("overflow-y", "auto")] ]
                 [ div [ class "form-group" ]
                     [ label [] [ text "Name" ]
                     , input [ class "form-control", type_ "text", placeholder "Enter the name (required)", value model.projectName, onInput SetProjectName ] [] |> Html.map InfoMsg
