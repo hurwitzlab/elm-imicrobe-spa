@@ -225,7 +225,7 @@ type PublishMsg
     | PublishProject
     | PublishProjectCompleted (Result Http.Error String)
     | RefreshStatus
-    | RefreshStatusCompleted (Result Http.Error (Maybe String))
+    | RefreshStatusCompleted (Result Http.Error Project)
 
 
 type ShareMsg
@@ -559,7 +559,7 @@ updatePublish : Session -> PublishMsg -> Model -> ( Model, Cmd PublishMsg )
 updatePublish session msg model =
     let
         getStatus =
-            Request.Project.get session.token model.project_id |> Http.toTask |> Task.map .ebi_status
+            Request.Project.get session.token model.project_id |> Http.toTask
 
         submissionInProgress =
             case model.project.ebi_status of
@@ -632,12 +632,12 @@ updatePublish session msg model =
             else
                 model => Cmd.none
 
-        RefreshStatusCompleted (Ok status) ->
+        RefreshStatusCompleted (Ok project) ->
             let
                 newProject =
                     model.project
             in
-            { model | showPublishDialogBusy = False, project = { newProject | ebi_status = status } } => Cmd.none
+            { model | showPublishDialogBusy = False, project = { newProject | ebi_status = project.ebi_status, ebi_accn = project.ebi_accn } } => Cmd.none
 
         RefreshStatusCompleted (Err error) -> -- TODO finish this
             let
