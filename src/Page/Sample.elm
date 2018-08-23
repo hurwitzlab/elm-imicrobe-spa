@@ -793,10 +793,10 @@ viewFiles availableFileTypes files isEditable isBusy =
                 ]
 
         body =
-            if numFiles == 0 then
-                text "None"
-            else if isBusy then
+            if isBusy then
                 spinner
+            else if numFiles == 0 then
+                text "None"
             else
                 table [ class "table table-condensed" ]
                     [ tbody [] (cols :: (List.sortBy .file files |> List.map (viewFile isEditable availableFileTypes))) ]
