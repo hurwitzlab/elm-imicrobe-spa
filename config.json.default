@@ -3,5 +3,5 @@
     "googleApiKey": "Google Maps API key",
     "googleAnalyticsId": "Google Analytics Tracking ID",
     "agaveFilesUrl": "https://agave.iplantc.org/files/v2/listings",
-    "syndicateRestUrl": "https://www.imicrobe.us/syndicate/refseq/fs/"
+    "syndicateRestUrl": "https://www.imicrobe.us/syndicate/gbmetagenomics/fs/"
 }
