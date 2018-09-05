@@ -521,7 +521,7 @@ viewAppInput input =
         syndicateButton =
             -- mdb changed 6/27/18 -- show RefSeq button in all apps, not just Libra
 --            if List.member "syndicate" agaveAppInput.semantics.ontology then
-                browserButton "RefSeq" (OpenFileBrowser "syndicate" id)
+                browserButton "GenBank" (OpenFileBrowser "syndicate" id)
 --            else
 --                text ""
     in

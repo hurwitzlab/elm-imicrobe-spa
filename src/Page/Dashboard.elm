@@ -30,6 +30,7 @@ import View.Sample
 import View.Dialog exposing (confirmationDialogConfig)
 import View.Widgets
 import Ports
+import Config exposing (apiBaseUrl)
 
 
 
@@ -936,7 +937,7 @@ viewFileInfo token file =
 --                    ]
                 , tr []
                     [ td []
-                        [ a [ type_ "button", class "btn btn-link btn-xs", href ("http://localhost:3006/download" ++ file.path ++ "?token=" ++ token) ]
+                        [ a [ type_ "button", class "btn btn-link btn-xs", href (apiBaseUrl ++ "/download" ++ file.path ++ "?token=" ++ token) ]
                             [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download"
                             ]
                         ]
