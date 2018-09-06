@@ -19,6 +19,7 @@ type alias Assembly =
     , sample_id : Int
     , project : Maybe Project
     , sample : Maybe Sample
+    , url : String
     }
 
 
@@ -67,6 +68,7 @@ decoder =
         |> optional "sample_id" Decode.int 0
         |> optional "project" (Decode.nullable decoderProject) Nothing
         |> optional "sample" (Decode.nullable decoderSample) Nothing
+        |> optional "url" Decode.string ""
 
 
 encode : Assembly -> Value

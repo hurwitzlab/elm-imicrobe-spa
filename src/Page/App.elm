@@ -155,9 +155,9 @@ update session msg model =
                 newValue =
                     if source == "syndicate" then
                         if model.app.provider_name == "plan-b" then
-                            String.split ";" value |> List.map (\s -> "hsyn:///refseq/" ++ s) |> String.join ";" --FIXME hardcoded
+                            String.split ";" value |> List.map (\s -> "hsyn:///gbmetagenomics/" ++ s) |> String.join ";" --FIXME hardcoded
                         else
-                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/refseq/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
+                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/gbmetagenomics/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
                     else --"agave"
                         if String.startsWith "/iplant/home" value then
                             String.Extra.replace "/iplant/home" "" value
@@ -521,7 +521,7 @@ viewAppInput input =
         syndicateButton =
             -- mdb changed 6/27/18 -- show RefSeq button in all apps, not just Libra
 --            if List.member "syndicate" agaveAppInput.semantics.ontology then
-                browserButton "RefSeq" (OpenFileBrowser "syndicate" id)
+                browserButton "GenBank" (OpenFileBrowser "syndicate" id)
 --            else
 --                text ""
     in

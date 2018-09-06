@@ -6,7 +6,7 @@
   "dependencies": {
     "agave-file-browser": "git+https://github.com/hurwitzlab/agave-file-browser.git",
     "blueimp-canvas-to-blob": "^3.14.0",
-    "blueimp-file-upload": "^9.21.0",
+    "blueimp-file-upload": "^9.22.0",
     "blueimp-load-image": "^2.19.0",
     "bootstrap": "^3.3.7",
     "bootstrap-loader": "^2.1.0",
@@ -24,16 +24,17 @@
     "jstree": "^3.3.5",
     "less": "^2.7.2",
     "less-loader": "^4.1.0",
-    "node-sass": "^4.9.0",
+    "node-sass": "^4.9.3",
     "resolve-url-loader": "^2.3.0",
     "sass-loader": "^6.0.7",
     "sim-plots": "git+https://github.com/hurwitzlab/sim-plots.git",
     "style-loader": "^0.18.2",
-    "url-loader": "^0.5.9"
+    "url-loader": "^0.5.9",
+    "url-parse": "^1.4.3"
   },
   "devDependencies": {
     "webpack": "^3.12.0",
-    "webpack-dev-server": "^2.11.2"
+    "webpack-dev-server": "^2.11.3"
   },
   "scripts": {
     "start": "webpack-dev-server --hot --inline",
