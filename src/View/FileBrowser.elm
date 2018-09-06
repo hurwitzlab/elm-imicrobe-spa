@@ -9,6 +9,7 @@ However there is so much functionality packed into this module that it seems jus
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onDoubleClick, onInput)
+import Events exposing (onKeyDown)
 import Table exposing (defaultCustomizations)
 import Dialog
 import Task exposing (Task)
@@ -116,6 +117,7 @@ loadPath token path =
 type Msg
     = SetFilter String
     | SetPath String
+    | KeyDown Int
     | SelectPath String
     | RefreshPath
     | LoadPath String
@@ -156,6 +158,12 @@ updateInternal session msg model =
 
         SetPath path ->
             { model | path = path } => Cmd.none
+
+        KeyDown key ->
+            if key == 13 then -- enter key
+                updateInternal session (LoadPath model.path) model
+            else
+                model => Cmd.none
 
         SelectPath path ->
             let
@@ -304,14 +312,14 @@ view : Model -> Html Msg
 view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
     let
         menuBar =
-            Html.form [ class "form-inline" ]
+            div [ class "form-inline" ]
                 [ div [ class "form-group" ]
                     [ div [ class "input-group" ]
                         [ div [ class "input-group-btn" ]
                             [ filterButton "Home"
                             , filterButton "Shared"
                             ]
-                        , input [ class "form-control", type_ "text", size 45, value path, onInput SetPath ] []
+                        , input [ class "form-control",  type_ "text", size 45, value path, onInput SetPath, onKeyDown KeyDown ] []
                         , span [ class "input-group-btn" ]
                             [ button [ class "btn btn-default", type_ "button", onClick (LoadPath path) ] [ text "Go " ]
                             ]
