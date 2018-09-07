@@ -18,7 +18,7 @@ import View.Dialog exposing (confirmationDialogConfig)
 import Request.User
 import Request.Project
 import Request.ProjectGroup
-import Util exposing ((=>), capitalize)
+import Util exposing ((=>), capitalize, isUrl)
 
 
 
@@ -410,12 +410,10 @@ viewProjectGroup isEditable group =
 
 viewUrl : String -> Html msg
 viewUrl url =
-    case String.startsWith "http" url of
-        True ->
-            a [ href url, target "_blank" ] [ text url ]
-
-        _ ->
-            text url
+    if isUrl url then
+        a [ href url, target "_blank" ] [ text url ]
+    else
+        text url
 
 
 viewProjects : List Project -> Bool -> Html Msg

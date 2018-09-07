@@ -20,6 +20,7 @@ type alias Project =
     , peptide_file : String
     , num_samples : String
     , domains : List Domain
+    , institution : String
     , investigators : List Investigator
     , publications : List Publication
     , samples : List Sample
@@ -32,6 +33,10 @@ type alias Project =
     , combined_assembly_count : Int
     , users : List User
     , private : Int
+    , ebi_status : Maybe String
+    , ebi_submitter_id : Maybe Int
+    , ebi_submission_date : Maybe String
+    , ebi_accn : Maybe String
     }
 
 
@@ -150,6 +155,7 @@ decoder =
         |> optional "peptide_file" Decode.string "NA"
         |> optional "num_samples" Decode.string ""
         |> optional "domains" (Decode.list decoderDomain) []
+        |> optional "institution" Decode.string ""
         |> optional "investigators" (Decode.list decoderInv) []
         |> optional "publications" (Decode.list decoderPub) []
         |> optional "samples" (Decode.list decoderSample) []
@@ -162,6 +168,10 @@ decoder =
         |> optional "combined_assembly_count" Decode.int 0
         |> optional "users" (Decode.list decoderUser) []
         |> optional "private" Decode.int 0
+        |> optional "ebi_status" (Decode.nullable Decode.string) Nothing
+        |> optional "ebi_submitter_id" (Decode.nullable Decode.int) Nothing
+        |> optional "ebi_submission_date" (Decode.nullable Decode.string) Nothing
+        |> optional "ebi_accn" (Decode.nullable Decode.string) Nothing
 
 
 decoderProjectGroup : Decoder ProjectGroup

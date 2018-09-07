@@ -7,6 +7,10 @@ import Util exposing ((=>))
 
 
 
+-- IMPORTANT!!!
+-- This type exists in the Session.
+-- When changing the structure of this record be sure to change the cookieName in config.json to prevent
+-- errors when decoding the old cookies (can manifest as infinite login loop)
 type alias User =
     { user_id : Int
     , user_name : String
@@ -15,6 +19,7 @@ type alias User =
     , email : String
     , date : String
     , orcid : String
+    , role : Int
     , projects : List Project
     , project_groups : List ProjectGroup
     , log : List LogEntry
@@ -148,6 +153,7 @@ decoder =
         |> optional "email" Decode.string ""
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
+        |> optional "role" Decode.int 0
         |> optional "projects" (Decode.list decoderProject) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "log" (Decode.list decoderLogEntry) []
@@ -289,4 +295,5 @@ encode user =
         , "email" => Encode.string user.email
         , "date" => Encode.string user.date
         , "orcid" => Encode.string user.orcid
+        , "role" => Encode.int user.role
         ]

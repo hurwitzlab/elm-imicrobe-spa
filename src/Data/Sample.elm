@@ -99,6 +99,7 @@ type alias Project =
     , users : List User
     , project_groups : List ProjectGroup
     , private : Int
+    , ebi_status : Maybe String
     }
 
 
@@ -421,6 +422,7 @@ decoderProject =
         |> optional "users" (Decode.list decoderUser) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "private" Decode.int 0
+        |> optional "ebi_status" (Decode.nullable Decode.string) Nothing
 
 
 decoderProjectGroup : Decoder ProjectGroup

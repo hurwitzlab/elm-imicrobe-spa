@@ -19,7 +19,7 @@ import Table exposing (defaultCustomizations)
 import List.Extra
 import String.Extra exposing (replace)
 import Maybe.Extra
-import Util exposing ((=>))
+import Util exposing ((=>), isUrl)
 import View.Cart as Cart
 import View.Dialog exposing (confirmationDialogConfig, infoDialogConfig, errorDialogConfig)
 import View.Spinner exposing (spinner)
@@ -101,7 +101,9 @@ init session id =
                     False
 
                 Just userId ->
-                    List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write")) (allUsers sample)
+                    sample.project.private == 1 &&
+                    sample.project.ebi_status == Nothing &&
+                    (allUsers sample |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write")))
 
         currentUser sample =
             case userId of
@@ -679,7 +681,7 @@ viewSample sample isEditable =
             , td [] [ text sample.sample_name ]
             ]
         , tr []
-            [ th [] [ text "Code" ]
+            [ th [] [ text "Accession" ]
             , td [] [ text sample.sample_acc ]
             ]
         , tr []
@@ -733,11 +735,11 @@ editInfoDialogConfig model isBusy =
             else
                 Html.form []
                     [ div [ class "form-group" ]
-                        [ label [] [ text "Sample Name" ]
+                        [ label [] [ text "Name" ]
                         , input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name (required)", value model.sampleName, onInput SetSampleName ] []
                         ]
                     , div [ class "form-group" ]
-                        [ label [] [ text "Sample Code" ]
+                        [ label [] [ text "Accession" ]
                         , input [ class "form-control", type_ "text", size 20, placeholder "Enter the code (required)", value model.sampleCode, onInput SetSampleCode ] []
                         ]
                     , div [ class "form-group" ]
@@ -791,10 +793,10 @@ viewFiles availableFileTypes files isEditable isBusy =
                 ]
 
         body =
-            if numFiles == 0 then
-                text "None"
-            else if isBusy then
+            if isBusy then
                 spinner
+            else if numFiles == 0 then
+                text "None"
             else
                 table [ class "table table-condensed" ]
                     [ tbody [] (cols :: (List.sortBy .file files |> List.map (viewFile isEditable availableFileTypes))) ]
@@ -820,6 +822,12 @@ viewFiles availableFileTypes files isEditable isBusy =
 viewFile : Bool -> List SampleFileType -> SampleFile2 -> Html Msg
 viewFile isEditable availableFileTypes file =
     let
+        link =
+            if isUrl file.file then
+                file.file
+            else
+                dataCommonsUrl ++ file.file
+
 --        availableTypes =
 --            [ (1, "Reads"), (2, "Contigs"), (7, "Assembly"), (51, "Annotation"), (36, "Meta"), (35, "Unknown") ]
 
@@ -828,7 +836,7 @@ viewFile isEditable availableFileTypes file =
     in
     tr []
         [ td []
-            [ a [ href (dataCommonsUrl ++ file.file), target "_blank" ] [ text file.file ]
+            [ a [ href link, target "_blank" ] [ text file.file ]
             ]
         , td []
             [ if isEditable then
@@ -1038,9 +1046,7 @@ attrValueView attr =
             attr.sample_attr_type.url_template |> Maybe.withDefault ""
     in
     Table.HtmlDetails []
-        [ if String.startsWith "http://" value
-            || String.startsWith "https://" value
-            || String.startsWith "ftp://" value
+        [ if isUrl value
         then
             a [ href value, target "_blank" ] [ text value ]
         else if urlTemplate /= "" then

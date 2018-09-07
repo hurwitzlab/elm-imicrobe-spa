@@ -43,6 +43,13 @@ removeTrailingSlash path =
             path
 
 
+isUrl : String -> Bool
+isUrl s =
+    String.startsWith "http://" s
+        || String.startsWith "https://" s
+        || String.startsWith "ftp://" s
+
+
 -- toTuple
 (=>) : a -> b -> ( a, b )
 (=>) =
