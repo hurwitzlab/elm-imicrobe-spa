@@ -937,7 +937,7 @@ view model =
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
                     , small [] [ text model.project.project_name ]
-                    , if model.isBetaUser then
+                    , if model.isEditable && model.isBetaUser then
                         viewPublishButton model.project
                       else
                         text ""
