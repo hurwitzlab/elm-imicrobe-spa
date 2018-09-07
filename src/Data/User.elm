@@ -15,6 +15,7 @@ type alias User =
     , email : String
     , date : String
     , orcid : String
+    , role : Int
     , projects : List Project
     , project_groups : List ProjectGroup
     , log : List LogEntry
@@ -148,6 +149,7 @@ decoder =
         |> optional "email" Decode.string ""
         |> required "date" Decode.string
         |> optional "orcid" Decode.string ""
+        |> optional "role" Decode.int 0
         |> optional "projects" (Decode.list decoderProject) []
         |> optional "project_groups" (Decode.list decoderProjectGroup) []
         |> optional "log" (Decode.list decoderLogEntry) []
