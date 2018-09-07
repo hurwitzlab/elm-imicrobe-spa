@@ -55,6 +55,7 @@ type alias Model =
     , combinedAssemblyTableState : Table.State
     , combinedAssemblyQuery : String
     , isEditable : Bool
+    , isBetaUser : Bool
     , currentUserId : Maybe Int
     , confirmationDialog : Maybe (Dialog.Config Msg)
     , showShareDialog : Bool
@@ -113,6 +114,9 @@ init session id =
                     allUsers project
                         |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
             )
+
+        isBetaUser =
+            (session.user |> Maybe.map .role |> Maybe.withDefault 0) > 0
     in
     loadProject
         |> Task.andThen
@@ -133,6 +137,7 @@ init session id =
                     , combinedAssemblyTableState = Table.initialSort "Name"
                     , combinedAssemblyQuery = ""
                     , isEditable = isEditable project
+                    , isBetaUser = isBetaUser
                     , currentUserId = userId
                     , confirmationDialog = Nothing
                     , showShareDialog = False
@@ -932,7 +937,10 @@ view model =
                 [ h1 []
                     [ text (model.pageTitle ++ " ")
                     , small [] [ text model.project.project_name ]
-                    , viewPublishButton model.project
+                    , if model.isBetaUser then
+                        viewPublishButton model.project
+                      else
+                        text ""
                     , viewShareButton model.project
                     ]
                 ]
