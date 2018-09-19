@@ -340,6 +340,10 @@ update session msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        label =
+            String.Extra.replace "_" " " model.job.status -- replace _ with space
+    in
     div [ class "container" ]
         [ div [ class "row" ]
             [ div [ class "page-header" ]
@@ -348,7 +352,7 @@ view model =
                     , small []
                         [ text model.job.name ]
                     , small [ class "pull-right", style [("padding-top","0.6em")] ]
-                        [ text ("Status: " ++ model.job.status) ]
+                        [ text ("Status: " ++ label) ]
                     ]
                 ]
             , viewJob model
@@ -422,7 +426,8 @@ viewStatus status =
     let
         progressBar pct =
             let
-                label = String.Extra.replace "_" " " status -- replace _ with space
+                label =
+                    String.Extra.replace "_" " " status -- replace _ with space
             in
             div [ class "progress", style [("float","left"), ("width","20em")] ]
                 [ div [ class "progress-bar progress-bar-striped active", style [("width", ((toString pct) ++ "%"))],
