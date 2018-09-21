@@ -48,6 +48,11 @@ type alias InternalModel =
     , showNewFolderDialog : Bool
     , showNewFolderBusy : Bool
     , newFolderName : String
+    , showViewFileDialog : Bool
+    , showViewFileBusy : Bool
+    , filePath : Maybe String
+    , fileContent : Maybe String
+    , fileErrorMessage : Maybe String
     , errorMessage : Maybe String
     , confirmationDialog : Maybe (Dialog.Config Msg)
     }
@@ -100,6 +105,11 @@ init session maybeConfig =
         , showNewFolderDialog = False
         , showNewFolderBusy = False
         , newFolderName = ""
+        , showViewFileDialog = False
+        , showViewFileBusy = False
+        , filePath = Nothing
+        , fileContent = Nothing
+        , fileErrorMessage = Nothing
         , errorMessage = Nothing
         , confirmationDialog = Nothing
         }
@@ -108,6 +118,9 @@ init session maybeConfig =
 loadPath : String -> String -> Task Http.Error (List FileResult)
 loadPath token path =
     Request.Agave.getFileList token path |> Http.toTask |> Task.map .result
+
+
+maxViewFileSz = 5000
 
 
 
@@ -122,6 +135,9 @@ type Msg
     | RefreshPath
     | LoadPath String
     | LoadPathCompleted (Result Http.Error (List FileResult))
+    | OpenPath String Int
+    | OpenPathCompleted (Result Http.Error String)
+    | CloseViewFileDialog
     | OpenNewFolderDialog
     | CloseNewFolderDialog
     | SetNewFolderName String
@@ -241,6 +257,25 @@ updateInternal session msg model =
             in
             { model | errorMessage = (Just msg), isBusy = False } => cmd
 
+        OpenPath path length ->
+            let
+                chunkSz =
+                    Basics.min (length-1) (maxViewFileSz-1)
+
+                openPath token path =
+                    Request.Agave.getFileRange token path (Just (0, chunkSz)) |> Http.toTask
+            in
+            { model | showViewFileDialog = True, showViewFileBusy = True, filePath = Just path } => Task.attempt OpenPathCompleted (openPath session.token path)
+
+        OpenPathCompleted (Ok data) ->
+            { model | fileContent = Just data, showViewFileBusy = False } => Cmd.none
+
+        OpenPathCompleted (Err error) ->
+            { model | fileErrorMessage = (Just (toString error)) } => Cmd.none
+
+        CloseViewFileDialog ->
+            { model | showViewFileDialog = False } => Cmd.none
+
         OpenNewFolderDialog ->
             { model | showNewFolderDialog = True, showNewFolderBusy = False } => Cmd.none
 
@@ -309,7 +344,11 @@ determinePreviousPath path =
 
 
 view : Model -> Html Msg
-view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, errorMessage, confirmationDialog, showNewFolderDialog, showNewFolderBusy, config}) =
+view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, errorMessage, confirmationDialog,
+            showNewFolderDialog, showNewFolderBusy,
+            showViewFileDialog, showViewFileBusy, filePath, fileContent, fileErrorMessage,
+            config
+            }) =
     let
         menuBar =
             div [ class "form-inline" ]
@@ -319,7 +358,7 @@ view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, erro
                             [ filterButton "Home"
                             , filterButton "Shared"
                             ]
-                        , input [ class "form-control",  type_ "text", size 45, value path, onInput SetPath, onKeyDown KeyDown ] []
+                        , samp [] [ input [ class "form-control",  type_ "text", size 45, value path, onInput SetPath, onKeyDown KeyDown ] [] ]
                         , span [ class "input-group-btn" ]
                             [ button [ class "btn btn-default", type_ "button", onClick (LoadPath path) ] [ text "Go " ]
                             ]
@@ -380,6 +419,8 @@ view (Model {path, pathFilter, contents, tableState, selectedPaths, isBusy, erro
                 confirmationDialog
              else if showNewFolderDialog then
                 Just (newFolderDialogConfig showNewFolderBusy)
+             else if showViewFileDialog && filePath /= Nothing then
+                Just (viewFileDialogConfig (filePath |> Maybe.withDefault "") (fileContent |> Maybe.withDefault "") showViewFileBusy fileErrorMessage)
              else
                 Nothing
             )
@@ -409,6 +450,8 @@ toRowAttrs config selectedPaths data =
     |> List.append
         (if data.type_ == "dir" then
             [ onDoubleClick (LoadPath data.path) ]
+        else if data.type_ == "file" then
+            [ onDoubleClick (OpenPath data.path data.length) ]
         else
             []
         )
@@ -465,12 +508,10 @@ newFolderDialogConfig : Bool -> Dialog.Config Msg
 newFolderDialogConfig isBusy =
     let
         content =
-            case isBusy of
-                False ->
-                    input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new folder", onInput SetNewFolderName ] []
-
-                True ->
-                    spinner
+            if isBusy then
+                spinner
+            else
+                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new folder", onInput SetNewFolderName ] []
 
         footer =
             let
@@ -489,6 +530,39 @@ newFolderDialogConfig isBusy =
     , footer = Just footer
     }
 
+
+viewFileDialogConfig : String -> String -> Bool -> Maybe String -> Dialog.Config Msg
+viewFileDialogConfig path data isBusy errorMsg =
+    let
+        content =
+            if errorMsg /= Nothing then
+                div [ class "alert alert-danger" ] [ Maybe.withDefault "" errorMsg |> text ]
+            else if isBusy then
+                spinner
+            else
+                div [ style [("max-height","60vh"), ("overflow-y", "auto")] ]
+                    [ text path
+                    , pre [] [ text data ]
+                    ]
+
+        header =
+            h3 [] [ text "View File" ]
+
+        footer =
+            div []
+                [ if errorMsg == Nothing && not isBusy then
+                    em [ class "pull-left" ] [ "Showing first " ++ (toString maxViewFileSz) ++ " bytes only" |> text ]
+                  else
+                    text ""
+                , button [ class "btn btn-primary", onClick CloseViewFileDialog ] [ text "Close" ]
+                ]
+    in
+    { closeMessage = Nothing
+    , containerClass = Nothing
+    , header = Just header
+    , body = Just content
+    , footer = Just footer
+    }
 
 
 ---- HELPER FUNCTIONS ----

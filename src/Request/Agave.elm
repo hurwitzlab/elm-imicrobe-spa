@@ -165,21 +165,35 @@ getFileList token path =
         |> HttpBuilder.toRequest
 
 
-getFile : String -> String -> Http.Request String
-getFile token path =
+getFileRange : String -> String -> Maybe (Int, Int) -> Http.Request String
+getFileRange token path range =
     let
         url =
             -- Changed Agave endpoint after adding archive=True
             --agaveBaseUrl ++ "/jobs/v2/" ++ id ++ "/outputs/media/" ++ path
             agaveBaseUrl ++ "/files/v2/media/" ++ (removeTrailingSlash path)
 
+        authHeader =
+            ( "Authorization", token)
+
         headers =
-            [( "Authorization", token)]
+            case range of
+                Nothing ->
+                    [ authHeader ]
+                Just (start, end) ->
+                    [ authHeader
+                    , ( "Range", "bytes=" ++ (toString start) ++ "-" ++ (toString end) )
+                    ]
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
         |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
+
+
+getFile : String -> String -> Http.Request String
+getFile token path =
+    getFileRange token path Nothing
 
 
 getJobOutput : String -> String -> String -> String -> Http.Request String
