@@ -704,7 +704,7 @@ updatePage page msg model =
                 newSession =
                     { session | user = Just login.user }
             in
-            { model | session = newSession } => Cmd.batch [ Session.store newSession ]
+            { model | session = newSession } => Cmd.batch [ Session.store newSession, Navigation.modifyUrl session.url ]
 
         LoginRecorded (Err error) ->
             { model | pageState = Loaded (Error error) } => redirectLoadError error
@@ -1620,8 +1620,8 @@ init flags location =
             in
             { model | session = newSession } =>
                 Cmd.batch
-                    [ Session.store newSession
-                    , Navigation.modifyUrl url
+                    [ Session.store newSession -- Session "user" is null at this point, gets set in LoginRecorded
+                      --Navigation.modifyUrl url -- Moved to LoginRecorded
                     , Task.attempt LoginRecorded recordLogin
                     ]
 
