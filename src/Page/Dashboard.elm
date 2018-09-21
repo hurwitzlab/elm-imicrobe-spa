@@ -867,7 +867,14 @@ viewInfo model =
                 Storage ->
                     case FileBrowser.getSelected model.fileBrowser of
                         [] ->
-                            p [] [ text "Here are the contents of your CyVerse Data Store home directory.", br [] [], text "Double-click to open a directory." ]
+                            p []
+                                [ text "Here are the contents of your CyVerse Data Store home directory."
+                                , br [] []
+                                , br [] []
+                                , text "Click to select a file or directory."
+                                , br [] []
+                                , text "Double-click to open a file or directory."
+                                ]
 
                         file :: _ ->
                             viewFileInfo model.token file
