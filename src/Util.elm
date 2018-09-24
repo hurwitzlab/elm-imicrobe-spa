@@ -50,6 +50,12 @@ isUrl s =
         || String.startsWith "ftp://" s
 
 
+-- pretty inefficient
+dropFileName : String -> String
+dropFileName s =
+    String.split "/" s |> List.reverse |> List.drop 1 |> List.reverse |> String.join "/"
+
+
 -- toTuple
 (=>) : a -> b -> ( a, b )
 (=>) =

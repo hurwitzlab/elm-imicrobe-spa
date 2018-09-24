@@ -21,7 +21,7 @@ import Request.Sample
 import Request.User
 import Page.Error as Error exposing (PageLoadError)
 import Task exposing (Task)
-import Util exposing ((=>))
+import Util exposing ((=>), dropFileName)
 import View.FileBrowser as FileBrowser
 import View.Spinner exposing (spinner)
 import View.Project
@@ -915,7 +915,11 @@ viewFileInfo token file =
             FileBrowserMsg (FileBrowser.OpenConfirmationDialog deleteText (FileBrowser.DeletePath file.path))
 
         deUrl =
-            "https://de.cyverse.org/de/?type=data&folder=/iplant/home" ++ file.path --TODO move base url to config file
+            "https://de.cyverse.org/de/?type=data&folder=/iplant/home" ++ --TODO move base url to config file
+                (if file.type_ == "dir" then
+                     file.path
+                else
+                    dropFileName file.path)
     in
     div [ class "table-responsive" ]
         [ table [ class "table info-table" ]
@@ -945,16 +949,13 @@ viewFileInfo token file =
                 , tr []
                     [ td []
                         [ a [ type_ "button", class "btn btn-link btn-xs", href (apiBaseUrl ++ "/download" ++ file.path ++ "?token=" ++ token) ]
-                            [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download"
-                            ]
+                            [ span [ class "glyphicon glyphicon-cloud-download" ] [], text " Download" ]
                         ]
                     ]
                 , tr []
                     [ td []
-                        [ button [ class "btn btn-link btn-xs" ]
-                            [ a [ href deUrl, target "_blank" ]
-                                [ span [ class "glyphicon glyphicon-share-alt" ] [], text " View in CyVerse DE" ]
-                            ]
+                        [ a [ type_ "button", class "btn btn-link btn-xs", href deUrl, target "_blank" ]
+                            [ span [ class "glyphicon glyphicon-share-alt" ] [], text " View in CyVerse DE" ]
                         ]
                     ]
 --                , tr []
@@ -964,8 +965,7 @@ viewFileInfo token file =
                 , tr []
                     [ td []
                         [ button [ class "btn btn-link btn-xs", onClick deleteMsg ]
-                            [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete"
-                            ]
+                            [ span [ class "glyphicon glyphicon-trash" ] [], text " Delete" ]
                         ]
                     ]
                 ]
