@@ -217,7 +217,7 @@ type InfoMsg
     | RemoveProjectDomain Int
     | SetInvestigatorName String
     | SearchInvestigatorCompleted (Result Http.Error (List Data.Investigator.Investigator))
-    | SelectInvestigatorToAdd Int String
+    | SelectInvestigatorToAdd String String
     | RemoveInvestigator Int
     | UpdateProjectInfo
     | UpdateProjectInfoCompleted (Result Http.Error Project)
@@ -239,7 +239,7 @@ type ShareMsg
     | CloseShareDialogError
     | SetShareUserName String
     | SearchUsersAndGroupsCompleted (Result Http.Error (List Data.User.User, List Data.ProjectGroup.ProjectGroup))
-    | ShareWithUser String Int String --FIXME create new type for permission instead of using string
+    | ShareWithUser String String String --FIXME create new type for permission instead of using string
     | ShareWithUserCompleted (Result Http.Error Project)
     | AddToProjectGroupCompleted (Result Http.Error Data.ProjectGroup.ProjectGroup)
     | RemoveFromProjectGroup Int
@@ -490,7 +490,7 @@ updateInfo session msg model =
         SearchInvestigatorCompleted (Ok investigators) ->
             let
                 results =
-                    List.map (\i -> (i.investigator_id, i.investigator_name)) investigators
+                    List.map (\i -> (toString i.investigator_id, i.investigator_name)) investigators
 
                 dropdownState =
                     model.investigatorDropdownState
@@ -506,7 +506,7 @@ updateInfo session msg model =
                     model.investigatorDropdownState
 
                 tagState =
-                    View.Tags.add id name model.newInvestigatorTagState
+                    View.Tags.add (String.toInt id |> Result.withDefault 0) name model.newInvestigatorTagState
             in
             { model
                 | investigatorDropdownState = { dropdownState | value = "", results = [], selectedId = Just id }
@@ -693,8 +693,8 @@ updateShare session msg model =
 
                 results =
                     List.append
-                        (List.map (\u -> (u.user_id, userDisplayName u)) users)
-                        (List.map (\g -> (g.project_group_id, groupDisplayName g)) groups)
+                        (List.map (\u -> (toString u.user_id, userDisplayName u)) users)
+                        (List.map (\g -> (toString g.project_group_id, groupDisplayName g)) groups)
 
                 dropdownState =
                     model.shareDropdownState
@@ -718,10 +718,10 @@ updateShare session msg model =
             if String.startsWith "Group: " name then --FIXME total kludge
                 let
                     noChange =
-                        List.any (\g -> g.project_group_id == id) model.project.project_groups
+                        List.any (\g -> toString g.project_group_id == id) model.project.project_groups
 
                     addProjectToProjectGroup =
-                        Request.ProjectGroup.addProject session.token id model.project_id True |> Http.toTask
+                        Request.ProjectGroup.addProject session.token (String.toInt id |> Result.withDefault 0) model.project_id True |> Http.toTask
                 in
                 if noChange then
                     model => Cmd.none
@@ -730,13 +730,13 @@ updateShare session msg model =
             else
                 let
                     noChange =
-                        List.any (\u -> u.user_id == id && u.permconn.permission == permission) model.project.users
+                        List.any (\u -> toString u.user_id == id && u.permconn.permission == permission) model.project.users
 
                     isOwner =
-                        List.any (\u -> u.user_id == id && u.permconn.permission == "owner") model.project.users
+                        List.any (\u -> toString u.user_id == id && u.permconn.permission == "owner") model.project.users
 
                     addUserToProject =
-                        Request.Project.addUserToProject session.token model.project_id id permission |> Http.toTask
+                        Request.Project.addUserToProject session.token model.project_id (String.toInt id |> Result.withDefault 0) permission |> Http.toTask
                 in
                 if noChange || isOwner then
                     model => Cmd.none
@@ -1639,8 +1639,8 @@ viewPermissionDropdown user =
     div [ class "pull-right dropdown" ]
         [ button [ class "btn btn-default btn-xs dropdown-toggle", type_ "button", attribute "data-toggle" "dropdown" ] [ text (capitalize user.permconn.permission), text " ", span [ class "caret" ] [] ]
         , ul [ class "dropdown-menu nowrap" ]
-            [ li [] [ a [ onClick (ShareWithUser "read-only" user.user_id user.user_name |> ShareMsg) ] [ text "Read-only: can view but not modify" ] ]
-            , li [] [ a [ onClick (ShareWithUser "read-write" user.user_id user.user_name |> ShareMsg) ] [ text "Read-write: can view/edit but not delete" ] ]
+            [ li [] [ a [ onClick (ShareWithUser "read-only" (toString user.user_id) user.user_name |> ShareMsg) ] [ text "Read-only: can view but not modify" ] ]
+            , li [] [ a [ onClick (ShareWithUser "read-write" (toString user.user_id) user.user_name |> ShareMsg) ] [ text "Read-write: can view/edit but not delete" ] ]
             , li [] [ a [ onClick (UnshareWithUser user.user_id |> ShareMsg) ] [ text "Remove access" ] ]
             ]
         ]

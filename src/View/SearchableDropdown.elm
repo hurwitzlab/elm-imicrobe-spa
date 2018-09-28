@@ -7,8 +7,8 @@ import Html.Events exposing (onInput, onClick)
 
 type alias State =
     { value : String
-    , results : List (Int, String)
-    , selectedId : Maybe Int
+    , results : List (String, String)
+    , selectedId : Maybe String
     }
 
 
@@ -16,7 +16,7 @@ type alias Config msg1 msg2 =
         { placeholder : String
         , autofocus : Bool
         , inputMsg : String -> msg1
-        , selectMsg : Int -> String -> msg2
+        , selectMsg : String -> String -> msg2
         }
 
 

@@ -100,13 +100,13 @@ type Msg
     | SetUserName String
     | ToggleFileSharing Bool
     | SearchUsersCompleted (Result Http.Error (List Data.User.User))
-    | AddUser String Int String
+    | AddUser String String String
     | AddUserCompleted (Result Http.Error (List User))
     | RemoveUser Int
     | RemoveUserCompleted (Result Http.Error (List User))
     | SetProjectName String
     | SearchProjectsCompleted (Result Http.Error (List Data.Project.Project))
-    | AddProject Int String
+    | AddProject String String
     | AddProjectCompleted (Result Http.Error ProjectGroup)
     | RemoveProject Int
     | RemoveProjectCompleted (Result Http.Error ProjectGroup)
@@ -159,7 +159,7 @@ update session msg model =
                     user.first_name ++ " " ++ user.last_name ++ " (" ++ user.user_name ++ ")"
 
                 results =
-                    List.map (\u -> (u.user_id, userDisplayName u)) users
+                    List.map (\u -> (toString u.user_id, userDisplayName u)) users
 
                 dropdownState =
                     model.userDropdownState
@@ -178,7 +178,7 @@ update session msg model =
                     model.userDropdownState
 
                 addUser =
-                    Request.ProjectGroup.addUser session.token model.projectGroupId id permission model.shareFiles |> Http.toTask
+                    Request.ProjectGroup.addUser session.token model.projectGroupId (String.toInt id |> Result.withDefault 0) permission model.shareFiles |> Http.toTask
             in
             { model | showAddUserBusy = True, userDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt AddUserCompleted addUser
 
@@ -235,7 +235,7 @@ update session msg model =
         SearchProjectsCompleted (Ok projects) ->
             let
                 results =
-                    List.map (\p -> (p.project_id, p.project_name)) projects
+                    List.map (\p -> (toString p.project_id, p.project_name)) projects
 
                 dropdownState =
                     model.projectDropdownState
@@ -254,7 +254,7 @@ update session msg model =
                     model.projectDropdownState
 
                 addUser =
-                    Request.ProjectGroup.addProject session.token model.projectGroupId id model.shareFiles |> Http.toTask
+                    Request.ProjectGroup.addProject session.token model.projectGroupId (String.toInt id |> Result.withDefault 0) model.shareFiles |> Http.toTask
             in
             { model | showAddProjectBusy = True, projectDropdownState = { dropdownState | value = "", results = [] } } => Task.attempt AddProjectCompleted addUser
 
@@ -548,7 +548,7 @@ viewUser isEditable user =
 
         permissionDropdown =
             if isEditable && user.permconn.permission /= "owner" then
-                select [ onInput (\p -> AddUser p user.user_id user.user_name) ]
+                select [ onInput (\p -> AddUser p (toString user.user_id) user.user_name) ]
                     (List.map makeOption permissions)
             else
                 text (capitalize user.permconn.permission)
