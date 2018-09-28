@@ -957,7 +957,7 @@ viewFileInfo token file =
                     tr [] [])
                 , tr []
                     [ td []
-                        [ button [ class "btn btn-link btn-xs" ]
+                        [ button [ class "btn btn-link btn-xs", onClick (FileBrowserMsg (FileBrowser.OpenShareDialog file.path)) ]
                             [ span [ class "glyphicon glyphicon-user" ] [], text " Share" ]
                         ]
                     ]

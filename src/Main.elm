@@ -60,6 +60,7 @@ import Task exposing (Task)
 import Time exposing (Time)
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
+import View.FileBrowser as FileBrowser
 import Events exposing (onKeyDown)
 
 
@@ -1107,9 +1108,16 @@ updatePage page msg model =
                 Samples subModel ->
                     let
                         ( ( pageModel, cmd ), msgFromPage ) =
-                                Samples.update session (Samples.DelayedSearch time) subModel
+                            Samples.update session (Samples.DelayedSearch time) subModel
                     in
                     { model | pageState = Loaded (Samples pageModel) } => Cmd.map SamplesMsg cmd
+
+                Dashboard subModel ->
+                    let
+                        ( pageModel, cmd ) =
+                            Dashboard.update session (Dashboard.FileBrowserMsg (FileBrowser.SearchUsers time)) subModel
+                    in
+                    { model | pageState = Loaded (Dashboard pageModel) } => Cmd.map DashboardMsg cmd
 
                 _ ->
                     model => Cmd.none

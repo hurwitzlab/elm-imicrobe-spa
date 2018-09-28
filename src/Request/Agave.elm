@@ -46,7 +46,7 @@ getProfile token =
         headers =
             [ Http.header "Authorization" token ]
     in
-    Http.request
+    Http.request -- TODO convert to HttpBuilder
         { method = "GET"
         , headers = headers
         , url = url
@@ -55,6 +55,25 @@ getProfile token =
         , timeout = Nothing
         , withCredentials = False
         }
+
+
+searchProfiles : String -> String -> Http.Request (Response (List Profile))
+searchProfiles token username =
+    let
+        url =
+            agaveBaseUrl ++ "/profiles/v2"
+
+        headers =
+            [( "Authorization", token)]
+
+        queryParams =
+            [( "username", username )]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list decoderProfile)))
+        |> HttpBuilder.toRequest
 
 
 getApp : String -> String -> Http.Request (Response App)
@@ -297,6 +316,21 @@ delete token path =
         |> HttpBuilder.toRequest
 
 
+getFilePermission : String -> String -> Http.Request (Response (List PermissionResult))
+getFilePermission token path =
+    let
+        url =
+            agaveBaseUrl ++ "/files/v2/pems/system/data.iplantcollaborative.org/" ++ (removeTrailingSlash path)
+
+        headers =
+            [( "Authorization", token)]
+    in
+    HttpBuilder.get url
+        |> HttpBuilder.withHeaders headers
+        |> HttpBuilder.withExpect (Http.expectJson (responseDecoder (Decode.list decoderPermissionResult)))
+        |> HttpBuilder.toRequest
+
+
 setFilePermission : String -> String -> String -> String -> Http.Request EmptyResponse
 setFilePermission token username permission path =
         let
@@ -310,7 +344,7 @@ setFilePermission token username permission path =
             Encode.object
                 [ "username" => Encode.string username
                 , "permission" => Encode.string permission
-                , "recursive" => Encode.string "false"
+                , "recursive" => Encode.bool True
                 ]
     in
     HttpBuilder.post url

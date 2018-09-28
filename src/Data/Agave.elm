@@ -13,6 +13,7 @@ type alias Profile =
     , first_name : String
     , last_name : String
     , username : String
+    , uid : Int
     }
 
 
@@ -166,6 +167,20 @@ type alias UploadResult =
     }
 
 
+type alias PermissionResult =
+    { username : String
+    , permission : Permission
+    , recursive : Bool
+    }
+
+
+type alias Permission =
+    { read : Bool
+    , write : Bool
+    , execute : Bool
+    }
+
+
 
 -- SERIALIZATION --
 
@@ -177,6 +192,7 @@ decoderProfile =
         |> required "first_name" Decode.string
         |> required "last_name" Decode.string
         |> required "username" Decode.string
+        |> required "uid" Decode.int
 
 
 decoderApp : Decoder App
@@ -316,6 +332,22 @@ decoderUploadResult =
     decode UploadResult
         |> required "name" Decode.string
         |> required "path" Decode.string
+
+
+decoderPermissionResult : Decoder PermissionResult
+decoderPermissionResult =
+    decode PermissionResult
+        |> required "username" Decode.string
+        |> required "permission" decoderPermission
+        |> required "recursive" Decode.bool
+
+
+decoderPermission : Decoder Permission
+decoderPermission =
+    decode Permission
+        |> required "read" Decode.bool
+        |> required "write" Decode.bool
+        |> required "execute" Decode.bool
 
 
 encodeProfile : Profile -> Value
