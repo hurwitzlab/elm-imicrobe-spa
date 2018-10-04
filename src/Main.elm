@@ -340,7 +340,7 @@ setRoute maybeRoute model =
             transition SamplesLoaded (Samples.init model.session)
 
         Just (Route.Search query) ->
-            transition (SearchLoaded query) (Search.init query)
+            transition (SearchLoaded query) (Search.init model.session query)
 
         Just (Route.TaxonomySearch query) ->
             transition (TaxonomySearchLoaded query) (TaxonomySearch.init model.session query)

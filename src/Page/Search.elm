@@ -1,6 +1,7 @@
 module Page.Search exposing (Model, Msg, init, update, view)
 
 import Data.Search
+import Data.Session as Session exposing (Session)
 import List.Extra
 import Http
 import Html exposing (..)
@@ -28,11 +29,11 @@ type alias Model =
     }
 
 
-init : String -> Task PageLoadError Model
-init query =
+init : Session -> String -> Task PageLoadError Model
+init session query =
     let
         doSearch =
-            Request.Search.get query |> Http.toTask
+            Request.Search.get session.token query |> Http.toTask
 --            Request.Search.get model.query
 --                |> RemoteData.sendRequest
 --                |> Cmd.map UpdateSearchResults
