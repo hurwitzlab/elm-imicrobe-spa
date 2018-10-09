@@ -73,6 +73,7 @@ type alias Config =
     , showUploadFileButton : Bool
     , allowDirSelection : Bool
     , allowMultiSelection : Bool
+    , allowFileViewing : Bool
     , homePath : Maybe String
     }
 
@@ -84,6 +85,7 @@ defaultConfig =
     , showUploadFileButton = True
     , allowDirSelection = True
     , allowMultiSelection = False
+    , allowFileViewing = True
     , homePath = Nothing
     }
 
@@ -601,7 +603,7 @@ toRowAttrs config selectedPaths data =
     |> List.append
         (if data.type_ == "dir" then
             [ onDoubleClick (LoadPath data.path) ]
-        else if data.type_ == "file" then
+        else if data.type_ == "file" && config.allowFileViewing then
             [ onDoubleClick (OpenPath data.path data.length) ]
         else
             []

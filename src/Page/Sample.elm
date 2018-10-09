@@ -112,6 +112,16 @@ init session id =
 
                 Just userId ->
                     List.filter (\u -> u.user_id == userId) (allUsers sample) |> List.head
+
+        fileBrowserConfig =
+            { showMenuBar = True
+            , showNewFolderButton = False
+            , showUploadFileButton = False
+            , allowDirSelection = False
+            , allowMultiSelection = True
+            , allowFileViewing = False
+            , homePath = Nothing
+            }
     in
     loadSample
         |> Task.andThen
@@ -171,7 +181,7 @@ init session id =
                     , sampleCode = ""
                     , sampleType = ""
                     , dialogError = Nothing
-                    , fileBrowser = FileBrowser.init session (Just (FileBrowser.Config True False False False True Nothing))
+                    , fileBrowser = FileBrowser.init session (Just fileBrowserConfig)
                     , filesBusy = False
                     }
             )
@@ -425,7 +435,7 @@ update session msg model =
                 (subModel, subCmd) =
                     FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
             in
-            { model | showAddFilesDialog = True, fileBrowser = subModel  } => Cmd.map FileBrowserMsg subCmd => NoOp
+            { model | showAddFilesDialog = True, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd => NoOp
 
         CloseAddFilesDialog ->
             { model | showAddFilesDialog = False } => Cmd.none => NoOp
