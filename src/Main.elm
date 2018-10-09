@@ -4,7 +4,6 @@ import Config as Config
 import Data.Session as Session exposing (Session)
 import Data.User as User
 import Data.Agave as Agave
-import Data.App
 import Data.Cart
 import Data.ORCID as ORCID
 import Debug exposing (log)
@@ -198,7 +197,7 @@ type Msg
     | ProteinSearchMsg ProteinSearch.Msg
     | SetRoute (Maybe Route)
     | SetSession (Maybe Session)
-    | SelectFile Data.App.FileBrowser
+--    | SelectFile Data.App.FileBrowser
     | FileUploadFileSelected (Maybe Ports.FileToUpload)
     | FileUploadDone (Maybe (Request.Agave.Response Agave.UploadResult))
     | JobPollTimerTick Time
@@ -1002,20 +1001,18 @@ updatePage page msg model =
                 Nothing ->
                     model => Cmd.none
 
-        SelectFile selection ->
-            let
-                _ = Debug.log "Main.SelectFile" (toString selection)
-            in
-            case page of
-                App id subModel ->
-                    let
-                        (pageModel, cmd) =
-                            App.update session (App.SetInput selection.source selection.id selection.path) subModel
-                    in
-                    { model | pageState = Loaded (App id pageModel) } => Cmd.map AppMsg cmd
-
-                _ ->
-                    model => Cmd.none
+-- mdb removed 10/9/18 -- Syndicate feature removed, JS file browser replaced with FileBrowser.elm
+--        SelectFile selection ->
+--            case page of
+--                App id subModel ->
+--                    let
+--                        (pageModel, cmd) =
+--                            App.update session (App.SetInput selection.source selection.id selection.path) subModel
+--                    in
+--                    { model | pageState = Loaded (App id pageModel) } => Cmd.map AppMsg cmd
+--
+--                _ ->
+--                    model => Cmd.none
 
         FileUploadFileSelected file ->
             case page of
@@ -1551,7 +1548,7 @@ subscriptions model =
     Sub.batch
         [--pageSubscriptions (getPage model.pageState)
           Sub.map SetSession (Ports.onSessionChange (Decode.decodeString Session.decoder >> Result.toMaybe))
-        , Ports.onFileSelect SelectFile
+--        , Ports.onFileSelect SelectFile
         , Sub.map FileUploadFileSelected (Ports.fileUploadFileSelected (Decode.decodeString Ports.fileDecoder >> Result.toMaybe))
         , Sub.map FileUploadDone (Ports.fileUploadDone (Decode.decodeString (Request.Agave.responseDecoder Agave.decoderUploadResult) >> Result.toMaybe))
         , Time.every (10 * Time.second) JobPollTimerTick

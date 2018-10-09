@@ -17,11 +17,11 @@ import Request.PlanB
 import Request.Sample
 import Request.SampleGroup
 import Route
-import Ports
 import Json.Decode as Decode
 import Task exposing (Task)
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
+import View.FileBrowser as FileBrowser
 import DictList exposing (DictList)
 import List.Extra
 import String.Extra
@@ -51,6 +51,8 @@ type alias Model =
     , cartDialogInputId : Maybe String
     , dialogError : Maybe String
     , filterFileType : String
+    , inputId : Maybe String
+    , fileBrowser : FileBrowser.Model
     }
 
 
@@ -91,6 +93,16 @@ init session id =
 
         cart =
             Cart.init session.cart Cart.Selectable
+
+        fileBrowserConfig =
+            { showMenuBar = True
+            , showNewFolderButton = False
+            , showUploadFileButton = False
+            , allowDirSelection = True
+            , allowMultiSelection = True
+            , allowFileViewing = False
+            , homePath = Nothing
+            }
     in
     loadApp |> Task.andThen
         (\app ->
@@ -114,6 +126,8 @@ init session id =
                             , cartDialogInputId = Nothing
                             , dialogError = Nothing
                             , filterFileType = "All Types"
+                            , inputId = Nothing
+                            , fileBrowser = FileBrowser.init session (Just fileBrowserConfig)
                         }
                     )
             )
@@ -133,7 +147,8 @@ type Msg
     | ShareJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
     | AppRunCompleted (Result Http.Error AppRun)
     | CloseRunDialog
-    | OpenFileBrowser String String
+    | OpenFileBrowserDialog String
+    | CloseFileBrowserDialog
     | OpenCart String
     | LoadCartCompleted (Result Http.Error ((List Sample), (List SampleFile), (List SampleGroup)))
     | SelectCart (Maybe Int)
@@ -141,6 +156,7 @@ type Msg
     | CancelCartDialog
     | FilterByFileType String
     | CartMsg Cart.Msg
+    | FileBrowserMsg FileBrowser.Msg
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -153,12 +169,12 @@ update session msg model =
         SetInput source id value ->
             let
                 newValue =
-                    if source == "syndicate" then
-                        if model.app.provider_name == "plan-b" then
-                            String.split ";" value |> List.map (\s -> "hsyn:///gbmetagenomes/" ++ s) |> String.join ";" --FIXME hardcoded
-                        else
-                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/gbmetagenomes/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
-                    else --"agave"
+--                    if source == "syndicate" then
+--                        if model.app.provider_name == "plan-b" then
+--                            String.split ";" value |> List.map (\s -> "hsyn:///gbmetagenomes/" ++ s) |> String.join ";" --FIXME hardcoded
+--                        else
+--                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/gbmetagenomes/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
+--                    else --"agave"
                         if String.startsWith "/iplant/home" value then
                             String.Extra.replace "/iplant/home" "" value
                         else
@@ -189,7 +205,7 @@ update session msg model =
 --
 --                _ = Debug.log "ext" exts
             in
-            { model | inputs = newInputs } => Cmd.none
+            { model | inputs = newInputs, inputId = Nothing } => Cmd.none
 
         SetParameter id value ->
             let
@@ -319,12 +335,15 @@ update session msg model =
         CancelCartDialog ->
             { model | cartDialogInputId = Nothing } => Cmd.none
 
-        OpenFileBrowser source inputId ->
+        OpenFileBrowserDialog inputId ->
             let
-                username =
-                    session.user |> Maybe.map .user_name |> Maybe.withDefault ""
+                (subModel, subCmd) =
+                    FileBrowser.update session FileBrowser.RefreshPath model.fileBrowser
             in
-            model => Ports.createFileBrowser (App.FileBrowser inputId username session.token "" source)
+            { model | inputId = Just inputId, fileBrowser = subModel } => Cmd.map FileBrowserMsg subCmd
+
+        CloseFileBrowserDialog ->
+            { model | inputId = Nothing } => Cmd.none
 
         OpenCart inputId ->
             let
@@ -392,6 +411,13 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd
 
+        FileBrowserMsg subMsg ->
+            let
+                ( newFileBrowser, subCmd ) =
+                    FileBrowser.update session subMsg model.fileBrowser
+            in
+            { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd
+
 
 
 -- VIEW --
@@ -432,6 +458,8 @@ view model =
                     Just (runDialogConfig model)
                  else if model.cartDialogInputId /= Nothing then
                     Just (cartDialogConfig model)
+                 else if model.inputId /= Nothing then
+                    Just (fileBrowserDialogConfig model.fileBrowser (model.inputId |> Maybe.withDefault "") False)
                  else
                     Nothing
                 )
@@ -518,10 +546,10 @@ viewAppInput input =
                 , text (" " ++ label)
                 ]
 
-        syndicateButton =
+--        syndicateButton =
             -- mdb changed 6/27/18 -- show RefSeq button in all apps, not just Libra
 --            if List.member "syndicate" agaveAppInput.semantics.ontology then
-                browserButton "GenBank" (OpenFileBrowser "syndicate" id)
+--                browserButton "GenBank" (OpenFileBrowser "syndicate" id)
 --            else
 --                text ""
     in
@@ -530,8 +558,8 @@ viewAppInput input =
     , td []
         [ div [ style [("display","flex")] ]
             [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput "agave" id) ] []
-            , browserButton "Data Store" (OpenFileBrowser "agave" id)
-            , syndicateButton
+            , browserButton "Data Store" (OpenFileBrowserDialog id)
+--            , syndicateButton
             , button [ class "btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenCart id) ]
                 [ span [ class "gray glyphicon glyphicon-shopping-cart" ] []
                 , text " Cart"
@@ -786,3 +814,31 @@ viewFileTypeSelector model =
         , ul [ class "dropdown-menu", style [("overflow-y","scroll"),("max-height","200px")], attribute "aria-labelledby" "dropdownMenu1" ]
             (lia "All Types" :: List.map (\t -> lia t) types)
         ]
+
+
+fileBrowserDialogConfig : FileBrowser.Model -> String -> Bool -> Dialog.Config Msg
+fileBrowserDialogConfig fileBrowser inputId isBusy =
+    let
+        content =
+            if isBusy then
+                spinner
+            else
+                div [ class "scrollable", style [ ("min-height","50vh"),("max-height","50vh") ] ]
+                    [ FileBrowser.view fileBrowser |> Html.map FileBrowserMsg ]
+
+        footer =
+            let
+                selectedFilepaths =
+                    FileBrowser.getSelected fileBrowser |> List.map .path |> String.join ";"
+            in
+            div []
+                [ button [ class "btn btn-default pull-left", onClick CloseFileBrowserDialog ] [ text "Cancel" ]
+                , button [ class "btn btn-primary", onClick (SetInput "agave" inputId selectedFilepaths) ] [ text "Select" ]
+                ]
+    in
+    { closeMessage = Just CloseFileBrowserDialog
+    , containerClass = Just "wide-modal-container"
+    , header = Just (h3 [] [ text "Add Files" ])
+    , body = Just content
+    , footer = Just footer
+    }
