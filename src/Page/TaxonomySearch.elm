@@ -202,6 +202,13 @@ view model =
                 , input [ value model.taxId, size 20, onInput SetTaxId, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
+                , text " "
+                , span [ class "gray", style [("padding-left", "1.5em")] ]
+                    [ text " Example: "
+                    , a [ href "#/taxonomy_search/Prochlorococcus" ] [ text "Prochlorococcus" ]
+                    , text ", "
+                    , a [ href "#/taxonomy_search/Staphylococcus" ] [ text "Staphylococcus" ]
+                    ]
                 ]
             , filters
             , display

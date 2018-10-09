@@ -264,6 +264,13 @@ view model =
                 , input [ value model.accession, size 10, onInput SetAccession, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
+                , text " "
+                , span [ class "gray", style [("padding-left", "1.5em")] ]
+                    [ text " Examples: "
+                    , a [ href "#/protein_search/nifz" ] [ text "nfiz" ]
+                    , text ", "
+                    , a [ href "#/protein_search/K02584" ] [ text "K02584" ]
+                    ]
                 ]
             , filters
             , filterBar
