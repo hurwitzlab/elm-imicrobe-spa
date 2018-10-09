@@ -1383,7 +1383,7 @@ viewHeader page isLoading session =
 
         loginMenuItem =
             if user == Nothing then
-                li [] [ a [ Route.href Route.Login ] [ text "Login" ] ]
+                li [] [ a [ Route.href Route.Login ] [ text "Sign-in to CyVerse" ] ]
             else
                 li [ class "dropdown" ]
                     [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
