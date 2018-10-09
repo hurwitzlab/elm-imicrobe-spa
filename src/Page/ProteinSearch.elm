@@ -25,10 +25,11 @@ import Events exposing (onKeyDown)
 
 type alias Model =
     { pageTitle : String
+    , pageLoaded : Bool
+    , resultsLoaded : Bool
     , searchTerm : String
     , query : String
     , accession : String
-    , isSearching : Bool
     , minReadCount : Int
     , proteinFilterType : String
     , tableState : Table.State
@@ -40,36 +41,24 @@ type alias Model =
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
-    doSearch session.token searchTerm
-        |> Task.andThen
-            (\(pfamResults, keggResults) ->
-                Task.succeed
-                    { pageTitle = "Protein Search"
-                    , searchTerm = searchTerm
-                    , query = ""
-                    , accession = searchTerm
-                    , isSearching = False
-                    , minReadCount = 0
-                    , proteinFilterType = autoFilterType pfamResults keggResults
-                    , tableState = Table.initialSort "Reads"
-                    , cart = (Cart.init session.cart Cart.Editable)
-                    , pfamResults = pfamResults
-                    , keggResults = keggResults
-                    }
-            )
-        |> Task.mapError Error.handleLoadError
-
-
-doSearch : String -> String -> Task Http.Error ((List PFAMProtein), (List KEGGProtein))
-doSearch token searchTerm =
-    case searchTerm of
-        "" ->
-            Task.succeed ([], [])
-
-        _ ->
-            Task.map2 (\pfamResults keggResults -> (pfamResults, keggResults))
-                (Request.Sample.protein_pfam_search token searchTerm |> Http.toTask)
-                (Request.Sample.protein_kegg_search token searchTerm |> Http.toTask)
+    let
+        noSearch =
+            searchTerm == ""
+    in
+    Task.succeed
+        { pageTitle = "Protein Search"
+        , pageLoaded = noSearch
+        , resultsLoaded = noSearch
+        , searchTerm = searchTerm
+        , query = ""
+        , accession = searchTerm
+        , minReadCount = 0
+        , proteinFilterType = ""
+        , tableState = Table.initialSort "Reads"
+        , cart = (Cart.init session.cart Cart.Editable)
+        , pfamResults = []
+        , keggResults = []
+        }
 
 
 
@@ -77,15 +66,17 @@ doSearch token searchTerm =
 
 
 type Msg
-    = CartMsg Cart.Msg
-    | SetQuery String
+    = SetQuery String
     | SetAccession String
+    | DelayedInit
+    | InitCompleted (Result PageLoadError ((List PFAMProtein), (List KEGGProtein)))
     | Search
     | SearchKeyDown Int
     | SetReadCountThreshold String
     | FilterProteinType String
     | SetTableState Table.State
     | SetSession Session
+    | CartMsg Cart.Msg
 
 
 type ExternalMsg
@@ -96,14 +87,24 @@ type ExternalMsg
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
-        CartMsg subMsg ->
-            let
-                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+        DelayedInit ->
+            if model.pageLoaded then
+                model => Cmd.none => NoOp
+            else
+                let
+                    search =
+                        Task.map2 (\pfamResults keggResults -> (pfamResults, keggResults))
+                            (Request.Sample.protein_pfam_search session.token model.searchTerm |> Http.toTask)
+                            (Request.Sample.protein_kegg_search session.token model.searchTerm |> Http.toTask)
+                                |> Task.mapError Error.handleLoadError
+                in
+                { model | pageLoaded = True } => Task.attempt InitCompleted search => NoOp
 
-                ( ( newCart, subCmd ), msgFromPage ) =
-                    Cart.update session subMsg model.cart
-            in
-            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+        InitCompleted (Ok (pfamResults, keggResults)) ->
+            { model | resultsLoaded = True, pfamResults = pfamResults, keggResults = keggResults, proteinFilterType = autoFilterType pfamResults keggResults } => Cmd.none => NoOp
+
+        InitCompleted (Err error) ->
+            model => Cmd.none => NoOp -- TODO
 
         SetQuery newQuery ->
             { model | query = newQuery } => Cmd.none => NoOp
@@ -112,7 +113,7 @@ update session msg model =
             { model | accession = strValue } => Cmd.none => NoOp
 
         Search ->
-            { model | isSearching = True } => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
+            model => Route.modifyUrl (Route.ProteinSearch model.accession) => NoOp
 
         SearchKeyDown key ->
             if key == 13 then -- enter key
@@ -148,6 +149,15 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.none => NoOp
 
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
 
 autoFilterType : List PFAMProtein -> List KEGGProtein -> String
 autoFilterType pfamResults keggResults =
@@ -166,39 +176,6 @@ view model =
     let
         lowerQuery =
             String.toLower model.query
-
-        searchBar =
-            case model.searchTerm of
-                "" -> text ""
-
-                _ ->
-                    small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
-
-        filters =
-            case model.searchTerm of
-                "" -> text ""
-
-                _ ->
-                    div [ style [("padding-bottom", "0.5em")] ]
-                        [ text "Filter: Read Count >= "
-                        , input [ size 8, onInput SetReadCountThreshold ] []
-                        ]
-
-        filterButton label =
-            let
-                classes =
-                    if label == model.proteinFilterType then
-                        "btn btn-default active"
-                    else
-                        "btn btn-default"
-            in
-            button [ class classes, onClick (FilterProteinType label) ] [ text label ]
-
-        filterBar =
-            div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
-                [ filterButton "PFAM"
-                , filterButton "KEGG"
-                ]
 
         (resultTable, resultCount) =
             case model.proteinFilterType of
@@ -242,14 +219,54 @@ view model =
 
                 _ -> (text "", 0)
 
-        body =
-            if model.isSearching then
-                spinner
+        combinedResultCount =
+            (List.length model.pfamResults) + (List.length model.keggResults)
+
+        searchBar =
+            if model.resultsLoaded && combinedResultCount > 0 then
+                small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
             else
-                if resultCount == 0 then
-                    div [] [ text "No results" ]
+                text ""
+
+        filters =
+            if model.resultsLoaded && combinedResultCount > 0 then
+                div [ style [("padding-bottom", "0.5em")] ]
+                    [ text "Filter: Read Count >= "
+                    , input [ size 8, onInput SetReadCountThreshold ] []
+                    ]
+            else
+                text ""
+
+        filterButton label =
+            let
+                classes =
+                    if label == model.proteinFilterType then
+                        "btn btn-default active"
+                    else
+                        "btn btn-default"
+            in
+            button [ class classes, onClick (FilterProteinType label) ] [ text label ]
+
+        filterBar =
+            if model.resultsLoaded && combinedResultCount > 0 then
+                div [ class "btn-group margin-top-bottom", attribute "role" "group", attribute "aria-label" "..."]
+                    [ filterButton "PFAM"
+                    , filterButton "KEGG"
+                    ]
+            else
+                text ""
+
+        body =
+            if model.resultsLoaded then
+                if model.searchTerm == "" then
+                    text ""
                 else
-                    resultTable
+                    if resultCount == 0 then
+                        div [] [ text "No results" ]
+                    else
+                        resultTable
+            else
+                spinner
     in
     div [ class "container" ]
         [ div [ class "row" ]
@@ -261,7 +278,7 @@ view model =
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
                 [ text "Protein Name or Accession: "
-                , input [ value model.accession, size 10, onInput SetAccession, onKeyDown SearchKeyDown ] []
+                , input [ value model.accession, size 20, onInput SetAccession, onKeyDown SearchKeyDown ] []
                 , text " "
                 , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
                 , text " "

@@ -1131,6 +1131,20 @@ updatePage page msg model =
                     in
                     { model | pageState = Loaded (Jobs pageModel) } => Cmd.map JobsMsg cmd
 
+                TaxonomySearch query subModel ->
+                    let
+                        ( ( pageModel, cmd ), extCmd ) =
+                            TaxonomySearch.update session TaxonomySearch.DelayedInit subModel
+                    in
+                    { model | pageState = Loaded (TaxonomySearch query pageModel) } => Cmd.map TaxonomySearchMsg cmd
+
+                ProteinSearch query subModel ->
+                    let
+                        ( ( pageModel, cmd ), extCmd ) =
+                            ProteinSearch.update session ProteinSearch.DelayedInit subModel
+                    in
+                    { model | pageState = Loaded (ProteinSearch query pageModel) } => Cmd.map ProteinSearchMsg cmd
+
                 _ ->
                     model => Cmd.none
 

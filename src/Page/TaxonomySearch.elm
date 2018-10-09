@@ -25,10 +25,11 @@ import Events exposing (onKeyDown)
 
 type alias Model =
     { pageTitle : String
+    , pageLoaded : Bool
+    , resultsLoaded : Bool
     , searchTerm : String
     , query : String
     , taxId : String
-    , isSearching : Bool
     , minAbundance : Float
     , tableState : Table.State
     , cart : Cart.Model
@@ -38,30 +39,22 @@ type alias Model =
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
-    doSearch session.token searchTerm
-        |> Task.andThen
-            (\results ->
-                Task.succeed
-                    { pageTitle = "Taxonomy Search"
-                    , searchTerm = searchTerm
-                    , query = ""
-                    , taxId = searchTerm
-                    , isSearching = False
-                    , minAbundance = 0
-                    , tableState = Table.initialSort "Abundance"
-                    , cart = (Cart.init session.cart Cart.Editable)
-                    , results = results
-                    }
-            )
-        |> Task.mapError Error.handleLoadError
-
-
-doSearch : String -> String -> Task Http.Error (List Centrifuge2)
-doSearch token searchTerm =
-    if searchTerm == "" then
-        Task.succeed []
-    else
-        Request.Sample.taxonomy_search token searchTerm |> Http.toTask
+    let
+        noSearch =
+            searchTerm == ""
+    in
+    Task.succeed
+        { pageTitle = "Taxonomy Search"
+        , pageLoaded = noSearch
+        , resultsLoaded = noSearch
+        , searchTerm = searchTerm
+        , query = ""
+        , taxId = searchTerm
+        , minAbundance = 0
+        , tableState = Table.initialSort "Abundance"
+        , cart = (Cart.init session.cart Cart.Editable)
+        , results = []
+        }
 
 
 
@@ -69,14 +62,16 @@ doSearch token searchTerm =
 
 
 type Msg
-    = CartMsg Cart.Msg
-    | SetQuery String
+    = SetQuery String
     | SetTaxId String
     | Search
+    | DelayedInit
+    | InitCompleted (Result PageLoadError (List Centrifuge2))
     | SearchKeyDown Int
     | SetAbundanceThreshold String
     | SetTableState Table.State
     | SetSession Session
+    | CartMsg Cart.Msg
 
 
 type ExternalMsg
@@ -87,14 +82,21 @@ type ExternalMsg
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
     case msg of
-        CartMsg subMsg ->
-            let
-                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+        DelayedInit ->
+            if model.pageLoaded then
+                model => Cmd.none => NoOp
+            else
+                let
+                    search =
+                        Request.Sample.taxonomy_search session.token model.searchTerm |> Http.toTask |> Task.mapError Error.handleLoadError
+                in
+                { model | pageLoaded = True } => Task.attempt InitCompleted search => NoOp
 
-                ( ( newCart, subCmd ), msgFromPage ) =
-                    Cart.update session subMsg model.cart
-            in
-            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+        InitCompleted (Ok results) ->
+            { model | resultsLoaded = True, results = results } => Cmd.none => NoOp
+
+        InitCompleted (Err error) ->
+            model => Cmd.none => NoOp -- TODO
 
         SetQuery newQuery ->
             { model | query = newQuery } => Cmd.none => NoOp
@@ -103,7 +105,7 @@ update session msg model =
             { model | taxId = strValue } => Cmd.none => NoOp
 
         Search ->
-            { model | isSearching = True } => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
+            model => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
 
         SearchKeyDown key ->
             if key == 13 then -- enter key
@@ -136,6 +138,16 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.none => NoOp
 
+        CartMsg subMsg ->
+            let
+                _ = Debug.log "Samples.CartMsg" (toString subMsg)
+
+                ( ( newCart, subCmd ), msgFromPage ) =
+                    Cart.update session subMsg model.cart
+            in
+            { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
+
+
 
 -- VIEW --
 
@@ -148,6 +160,9 @@ view model =
                 Nothing -> []
 
                 Just result -> result.samples
+
+        resultCount =
+            List.length model.results
 
         lowerQuery =
             String.toLower model.query
@@ -162,25 +177,23 @@ view model =
             List.filter filter samples
 
         searchBar =
-            if model.searchTerm == "" then
-                text ""
-            else
+            if model.resultsLoaded && resultCount > 0 then
                 small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
+            else
+                text ""
 
         filters =
-            if model.searchTerm == "" then
-                text ""
-            else
+            if model.resultsLoaded && resultCount > 0 then
                 div [ style [("padding-bottom", "0.5em")] ]
                     [ text "Filter: Abundance >= "
                     , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
                     , text " (value between 0 and 1)"
                     ]
+            else
+                text ""
 
         display =
-            if model.isSearching then
-                spinner
-            else
+            if model.resultsLoaded then
                 if model.searchTerm == "" then
                     text ""
                 else
@@ -188,6 +201,8 @@ view model =
                         text "No results"
                     else
                         Table.view (tableConfig model.cart) model.tableState acceptableSamples
+            else
+                spinner
     in
     div [ class "container" ]
         [ div [ class "row" ]
