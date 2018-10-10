@@ -877,7 +877,10 @@ viewInfo model =
                                 ]
 
                         file :: _ ->
-                            viewFileInfo model.token file
+                            if file.name == ".. (previous)" then -- FIXME
+                                text ""
+                            else
+                                viewFileInfo model.token file
 
                 Activity ->
                     case List.filter (\entry -> entry.id == model.selectedActivityRowId) model.user.log of
