@@ -8,7 +8,7 @@ before_install:
 - sudo apt install -y nodejs
 - sudo npm uninstall --save node-uuid
 - sudo npm install --save uuid
-- sudo npm install -g elm
+- sudo npm install -g elm@~0.18.0
 install:
 - pwd
 - cd /home/travis/build/hurwitzlab/elm-imicrobe-spa
