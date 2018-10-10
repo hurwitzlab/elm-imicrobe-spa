@@ -803,7 +803,7 @@ attrDropdownContents : Dict String String -> Dict String String -> List ( String
 attrDropdownContents allParams restrictedParams selectedParams filterTerm =
     let
         params =
-            if Dict.isEmpty restrictedParams then --|| model.selectedParams == [] then
+            if Dict.isEmpty restrictedParams || selectedParams == [] then
                 allParams
             else
                 restrictedParams
@@ -825,7 +825,7 @@ attrDropdownContents allParams restrictedParams selectedParams filterTerm =
                 |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
 --              |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
     in
-    filteredParams |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+    attrDropdownInit filteredParams
 
 
 prettyName : String -> String
