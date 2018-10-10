@@ -103,28 +103,29 @@ init session =
         |> Task.mapError Error.handleLoadError
 
 
+
 -- UPDATE --
 
 
 type Msg
     = CartMsg Cart.Msg
+    | SetSession Session
     | SetQuery String
     | SelectType String Bool
+    | FilterPermType String
     | SetTableState Table.State
-    | SetSession Session
+    | SetStartTime Time
+    | DelayedSearch Time
+    | UpdateSamples (Result Http.Error (List Sample))
+    | UpdateSearchResults (Result Http.Error (List SearchResult))
     | AddParamOption String
     | RemoveOption String
     | UpdateOptionValue String String
     | UpdateMultiOptionValue String (List String)
     | UpdatePossibleOptionValues (Result Http.Error SearchParamsResult)
-    | SetStartTime Time
-    | DelayedSearch Time
-    | UpdateSearchResults (Result Http.Error (List SearchResult))
-    | UpdateSamples (Result Http.Error (List Sample))
     | SetAttrName String
     | SelectAttr String String
     | ToggleAttr
-    | FilterPermType String
     | OpenInfoDialog Int
     | CloseInfoDialog
 
@@ -151,6 +152,16 @@ update session msg model =
             in
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
+        SetSession newSession ->
+            let
+                newCart =
+                    Cart.init newSession.cart Cart.Editable
+
+                (subModel, cmd) =
+                    Cart.update newSession (Cart.SetSession newSession) model.cart
+            in
+            { model | cart = newCart } => Cmd.none => NoOp
+
         SetQuery newQuery ->
             { model | query = newQuery } => Cmd.none => NoOp
 
@@ -172,31 +183,8 @@ update session msg model =
             in
             { model | sampleTypeRestriction = newOpts } => Cmd.none => NoOp
 
-        SetSession newSession ->
-            let
-                newCart =
-                    Cart.init newSession.cart Cart.Editable
-
-                (subModel, cmd) =
-                    Cart.update newSession (Cart.SetSession newSession) model.cart
-            in
-            { model | cart = newCart } => Cmd.none => NoOp
-
-        AddParamOption opt ->
-            let
-                req =
-                    Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.params |> Http.toTask
-            in
-            { model | selectedParams = addSelectedParam model opt, isSearching = True }
-            => Task.attempt UpdatePossibleOptionValues req
-            => NoOp
-
-        RemoveOption opt ->
-            { model
-                | selectedParams = rmParam model.selectedParams opt
-                , optionValues = rmOptionValue model.optionValues opt
-                , doSearch = True, isSearching = True
-            } => Cmd.none => NoOp
+        FilterPermType filterType ->
+            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
 
         SetStartTime time ->
             { model | searchStartTime = time } => Cmd.none => NoOp
@@ -211,7 +199,6 @@ update session msg model =
                 else if time - model.searchStartTime >= 500 * Time.millisecond then
                     let
                         search =
---                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Cmd.map UpdateSearchResults
                             Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Http.toTask
                     in
                     { model | doSearch = False, isSearching = True } => Task.attempt UpdateSearchResults search => NoOp
@@ -219,6 +206,71 @@ update session msg model =
                     model => Cmd.none => NoOp
             else
                 model => Cmd.none => NoOp
+
+        UpdateSamples (Ok samples) ->
+            { model | samples = samples, isSearching = False } => Cmd.none => NoOp
+
+        UpdateSamples (Err error) ->
+            model => Cmd.none => NoOp
+
+        UpdateSearchResults (Ok response) ->
+            let
+                restrictedParams =
+                    mkRestrictedParams model.params response
+
+                attrDropdownState =
+                    { dropdownState | results = attrDropdownContents model.params restrictedParams model.selectedParams dropdownState.value }
+            in
+            { model
+                | searchResults = response
+                , restrictedParams = restrictedParams
+                , attrDropdownState = attrDropdownState
+                -- , restrictedOptionValues = mkRestrictedOptionValues response
+                , isSearching = False
+            }
+            => Cmd.none
+            => NoOp
+
+        UpdateSearchResults (Err error) ->
+            let
+                msg =
+                    "An error occurred: " ++ (toString error)
+            in
+            { model | error = Just error } => Cmd.none => NoOp
+
+        AddParamOption opt ->
+            let
+                getParamValues =
+                    Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.params |> Http.toTask
+
+                selectedParams =
+                    addSelectedParam model opt
+
+                attrDropdownState =
+                    { dropdownState | results = attrDropdownContents model.params model.restrictedParams selectedParams dropdownState.value }
+            in
+            { model
+                | selectedParams = selectedParams
+                , attrDropdownState = attrDropdownState
+                , isSearching = True
+            }
+            => Task.attempt UpdatePossibleOptionValues getParamValues
+            => NoOp
+
+        RemoveOption opt ->
+            let
+                selectedParams =
+                    rmParam model.selectedParams opt
+
+                attrDropdownState =
+                    { dropdownState | results = attrDropdownContents model.params model.restrictedParams selectedParams dropdownState.value }
+            in
+            { model
+                | selectedParams = selectedParams
+                , optionValues = rmOptionValue model.optionValues opt
+                , attrDropdownState = attrDropdownState
+                , doSearch = True, isSearching = True
+            } => Cmd.none => NoOp
 
         UpdateOptionValue opt val ->
             { model
@@ -235,29 +287,6 @@ update session msg model =
             }
             => setStartTime
             => NoOp
-
-        UpdateSearchResults (Ok response) ->
-            { model
-                | searchResults = response
-                , restrictedParams = mkRestrictedParams model.params response
-                -- , restrictedOptionValues = mkRestrictedOptionValues response
-                , isSearching = False
-            }
-            => Cmd.none
-            => NoOp
-
-        UpdateSearchResults (Err error) ->
-            let
-                msg =
-                    "An error occurred: " ++ (toString error)
-            in
-            { model | error = Just error } => Cmd.none => NoOp
-
-        UpdateSamples (Ok samples) ->
-            { model | samples = samples, isSearching = False } => Cmd.none => NoOp
-
-        UpdateSamples (Err error) ->
-            model => Cmd.none => NoOp
 
         UpdatePossibleOptionValues (Ok response) ->
             let
@@ -298,48 +327,26 @@ update session msg model =
 
         SetAttrName name ->
             let
-                params =
-                    if Dict.isEmpty model.restrictedParams || model.selectedParams == [] then
-                        model.params
-                    else
-                        model.restrictedParams
-
-                alreadySelected =
-                    List.map Tuple.first model.selectedParams |> Set.fromList
-
-                -- mdb added 2/14/18 - list of curated metadata terms from Alise
---              curated =
---                  Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
-
-                attrValue =
-                    String.toLower dropdownState.value
-
-                filteredParams =
-                    if attrValue == "" then
-                        params
-                    else
-                        params
-                            |> Dict.filter (\k v -> String.contains attrValue (String.toLower k)) -- filter on search string
-                            |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
---                          |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
+                show =
+                    name /= ""
 
                 results =
-                    filteredParams |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+                    attrDropdownContents model.params model.restrictedParams model.selectedParams name
             in
-            { model | attrDropdownState = { dropdownState | value = name, results = results } } => Cmd.none => NoOp
+            { model | attrDropdownState = { dropdownState | value = name, results = results, show = show  } } => Cmd.none => NoOp
 
         SelectAttr id name ->
             let
                 ((newModel, newCmd), extMsg) =
                     update session (AddParamOption id) model
+
+                ((newModel2, _), _) =
+                    update session (SetAttrName "") newModel
             in
-            { newModel | attrDropdownState = { dropdownState | value = "", show = False } } => newCmd => extMsg
+            newModel2 => newCmd => extMsg
 
         ToggleAttr ->
             { model | attrDropdownState = { dropdownState | show = not dropdownState.show } } => Cmd.none => NoOp
-
-        FilterPermType filterType ->
-            { model | permFilterType = filterType, selectedRowId = 0 } => Cmd.none => NoOp
 
         OpenInfoDialog id ->
             { model | showInfoDialog = True, selectedRowId = id } => Cmd.none => NoOp
@@ -790,6 +797,35 @@ attrDropdownConfig =
 attrDropdownInit : Dict String String -> List (String, String)
 attrDropdownInit params =
     params |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+
+
+attrDropdownContents : Dict String String -> Dict String String -> List ( String, String ) -> String -> List (String, String)
+attrDropdownContents allParams restrictedParams selectedParams filterTerm =
+    let
+        params =
+            if Dict.isEmpty restrictedParams then --|| model.selectedParams == [] then
+                allParams
+            else
+                restrictedParams
+
+        alreadySelected =
+            List.map Tuple.first selectedParams |> Set.fromList
+
+        -- mdb added 2/14/18 - list of curated metadata terms from Alise
+--      curated =
+--          Set.fromList ["environment__biome", "specimen__domain_of_life", "location__latitude", "location__longitude", "miscellaneous__principle_investigator", "miscellaneous__project_id"]
+
+        filteredParams =
+            (if filterTerm == "" then
+                params
+            else
+                params
+                    |> Dict.filter (\k v -> String.contains filterTerm (String.toLower k)) -- filter on search string
+            )
+                |> Dict.filter (\k v -> not (Set.member k alreadySelected)) -- filter on already selected
+--              |> Dict.filter (\k v -> (Set.member k curated)) -- mdb added 2/14/18 - only show curated terms
+    in
+    filteredParams |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
 
 
 prettyName : String -> String
