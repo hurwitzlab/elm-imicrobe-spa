@@ -42,7 +42,7 @@ type alias Model =
     , query : String
     , sampleTypeRestriction : List String
     , cart : Cart.Model
-    , params : Dict String String
+    , allParams : Dict String String
     , restrictedParams : Dict String String
     , selectedParams : List ( String, String )
     , possibleOptionValues : Dict String (List JsonType)
@@ -73,7 +73,7 @@ init session =
         (\params ->
             let
                 dropdownResults =
-                    params |> Dict.toList |> List.map (\(k,v) -> (k, prettyName k))
+                    attrDropdownInit params
             in
             Task.succeed
             { pageTitle = "Samples"
@@ -83,7 +83,7 @@ init session =
             , query = ""
             , sampleTypeRestriction = []
             , cart = (Cart.init session.cart Cart.Editable)
-            , params = params
+            , allParams = params
             , restrictedParams = Dict.empty
             , selectedParams = []
             , possibleOptionValues = Dict.empty
@@ -199,7 +199,7 @@ update session msg model =
                 else if time - model.searchStartTime >= 500 * Time.millisecond then
                     let
                         search =
-                            Request.Sample.search model.optionValues model.possibleOptionValues model.params |> Http.toTask
+                            Request.Sample.search model.optionValues model.possibleOptionValues model.allParams |> Http.toTask
                     in
                     { model | doSearch = False, isSearching = True } => Task.attempt UpdateSearchResults search => NoOp
                 else
@@ -216,10 +216,10 @@ update session msg model =
         UpdateSearchResults (Ok response) ->
             let
                 restrictedParams =
-                    mkRestrictedParams model.params response
+                    mkRestrictedParams model.allParams response
 
                 attrDropdownState =
-                    { dropdownState | results = attrDropdownContents model.params restrictedParams model.selectedParams dropdownState.value }
+                    { dropdownState | results = attrDropdownContents model.allParams restrictedParams model.selectedParams dropdownState.value }
             in
             { model
                 | searchResults = response
@@ -241,13 +241,13 @@ update session msg model =
         AddParamOption opt ->
             let
                 getParamValues =
-                    Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.params |> Http.toTask
+                    Request.Sample.getParamValues opt model.optionValues model.possibleOptionValues model.allParams |> Http.toTask
 
                 selectedParams =
                     addSelectedParam model opt
 
                 attrDropdownState =
-                    { dropdownState | results = attrDropdownContents model.params model.restrictedParams selectedParams dropdownState.value }
+                    { dropdownState | results = attrDropdownContents model.allParams model.restrictedParams selectedParams dropdownState.value }
             in
             { model
                 | selectedParams = selectedParams
@@ -263,7 +263,7 @@ update session msg model =
                     rmParam model.selectedParams opt
 
                 attrDropdownState =
-                    { dropdownState | results = attrDropdownContents model.params model.restrictedParams selectedParams dropdownState.value }
+                    { dropdownState | results = attrDropdownContents model.allParams model.restrictedParams selectedParams dropdownState.value }
             in
             { model
                 | selectedParams = selectedParams
@@ -331,7 +331,7 @@ update session msg model =
                     name /= ""
 
                 results =
-                    attrDropdownContents model.params model.restrictedParams model.selectedParams name
+                    attrDropdownContents model.allParams model.restrictedParams model.selectedParams name
             in
             { model | attrDropdownState = { dropdownState | value = name, results = results, show = show  } } => Cmd.none => NoOp
 
@@ -769,7 +769,7 @@ addToCartButton cart sample =
 
 addSelectedParam : Model -> String -> List ( String, String )
 addSelectedParam model optionName =
-    case Dict.get optionName model.params of
+    case Dict.get optionName model.allParams of
         Just dataType ->
             model.selectedParams ++ [ ( optionName, dataType ) ]
 
