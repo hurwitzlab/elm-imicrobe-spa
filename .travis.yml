@@ -16,6 +16,7 @@ install:
 - cp config.json.default config.json
 - cp src/ConfigDefault.elm src/Config.elm
 - elm package install -y
+- rm package-lock.json
 - npm install
 - npm run build
 script:
