@@ -326,11 +326,14 @@ updateInternal session msg model =
             { model | showNewFolderDialog = False, errorMessage = Just (toString error) } => Cmd.none
 
         DeletePath path ->
-            let
-                delete =
-                    Request.Agave.delete session.token path |> Http.toTask
-            in
-            { model | isBusy = True, confirmationDialog = Nothing } => Task.attempt DeletePathCompleted delete
+            if path == "" || path == "/" || path == model.homePath then -- don't let them try something stupid
+                { model | confirmationDialog = Nothing } => Cmd.none
+            else
+                let
+                    delete =
+                        Request.Agave.delete session.token path |> Http.toTask
+                in
+                { model | isBusy = True, confirmationDialog = Nothing } => Task.attempt DeletePathCompleted delete
 
         DeletePathCompleted (Ok _) ->
             updateInternal session RefreshPath model
