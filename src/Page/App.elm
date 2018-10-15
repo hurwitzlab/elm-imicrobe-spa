@@ -140,7 +140,7 @@ init session id =
 
 
 type Msg
-    = SetInput String String String --FIXME change source (1st arg) to union type
+    = SetInput InputSource String String --FIXME change source (1st arg) to union type
     | SetParameter String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
@@ -168,17 +168,19 @@ update session msg model =
     case msg of
         SetInput source id value ->
             let
+                curValue =
+                    DictList.get id model.inputs |> Maybe.withDefault ""
+
                 newValue =
 --                    if source == "syndicate" then
 --                        if model.app.provider_name == "plan-b" then
 --                            String.split ";" value |> List.map (\s -> "hsyn:///gbmetagenomes/" ++ s) |> String.join ";" --FIXME hardcoded
 --                        else
 --                            String.split ";" value |> List.map (\s -> "https://www.imicrobe.us/syndicate/download/gbmetagenomes/fs/" ++ s) |> String.join ";" --FIXME hardcoded and duplicated in config.json
---                    else --"agave"
-                        if String.startsWith "/iplant/home" value then
-                            String.Extra.replace "/iplant/home" "" value
-                        else
-                            value
+                    if source == CYVERSE && curValue /= "" then
+                        curValue ++ ";" ++ value
+                    else
+                        value
 
                 newInputs =
                     DictList.insert id newValue model.inputs
@@ -215,8 +217,16 @@ update session msg model =
 
         RunJob ->
             let
+                irodsToAgave path = -- convert IRODS paths to Agave paths
+                    if String.contains "/iplant/home" path then
+                        String.Extra.replace "/iplant/home" "" path -- replace all instances (multiple paths separated by semicolon)
+                    else
+                        path
+
                 jobInputs =
-                    DictList.toList model.inputs |> List.map (\(k, v) -> Agave.JobInput k v)
+                    DictList.toList model.inputs
+                        |> List.map (\(k, v) -> (k, irodsToAgave v))
+                        |> List.map (\(k, v) -> Agave.JobInput k v)
 
                 jobParameters =
                     DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
@@ -328,7 +338,7 @@ update session msg model =
                                 |> String.join ";"
 
                 msg =
-                    SetInput "agave" (withDefault "" model.cartDialogInputId) filesStr
+                    SetInput CYVERSE (withDefault "" model.cartDialogInputId) filesStr
             in
             update session msg { model | cartDialogInputId = Nothing }
 
@@ -417,6 +427,12 @@ update session msg model =
                     FileBrowser.update session subMsg model.fileBrowser
             in
             { model | fileBrowser = newFileBrowser } => Cmd.map FileBrowserMsg subCmd
+
+
+type InputSource
+    = CYVERSE
+    | SYNDICATE
+    | UI
 
 
 
@@ -557,7 +573,7 @@ viewAppInput input =
     [ th [ class "col-md-3" ] [ text label ]
     , td []
         [ div [ style [("display","flex")] ]
-            [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput "agave" id) ] []
+            [ textarea [ class "form-control margin-right", style [("width","30em"),("min-height","2.5em")], rows 1, name id, value val, onInput (SetInput UI id) ] []
             , browserButton "Data Store" (OpenFileBrowserDialog id)
 --            , syndicateButton
             , button [ class "btn btn-default btn-sm", style [("max-height","2.8em")], onClick (OpenCart id) ]
@@ -833,7 +849,7 @@ fileBrowserDialogConfig fileBrowser inputId isBusy =
             in
             div []
                 [ button [ class "btn btn-default pull-left", onClick CloseFileBrowserDialog ] [ text "Cancel" ]
-                , button [ class "btn btn-primary", onClick (SetInput "agave" inputId selectedFilepaths) ] [ text "Select" ]
+                , button [ class "btn btn-primary", onClick (SetInput CYVERSE inputId selectedFilepaths) ] [ text "Select" ]
                 ]
     in
     { closeMessage = Just CloseFileBrowserDialog
