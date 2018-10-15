@@ -1,4 +1,4 @@
-module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, redirectLoadError, errorMessage, view)
+module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, redirectLoadError, errorString, errorMessage, view)
 
 {-| The page that renders when there was an error trying to load another page,
 for example a Page Not Found error.
@@ -9,6 +9,8 @@ import Html.Attributes exposing (alt, class, id, tabindex)
 import View.Page as Page exposing (ActivePage)
 import Route
 import Http
+import Json.Decode as Decode
+import Data.Agave exposing (decoderJobError)
 
 
 
@@ -47,17 +49,40 @@ redirectLoadError (PageLoadError model) =
         _ -> Cmd.none
 
 
-errorMessage : Http.Error -> Html msg
-errorMessage error =
+errorString : Http.Error -> String
+errorString error =
     case error of
         Http.NetworkError ->
-            text "Cannot connect to remote host"
+            "Cannot connect to remote host"
 
         Http.BadStatus response ->
             case response.status.code of
                 401 ->
-                    text "Unauthorized"
+                    "Unauthorized"
 
+                403 ->
+                    "Permission denied"
+
+                _ ->
+                    if String.length response.body == 0 then
+                        "Bad status"
+                    else
+                        case Decode.decodeString decoderJobError response.body of
+                            Ok result ->
+                                result.message
+
+                            _ ->
+                                response.body
+
+        _ ->
+            toString error
+
+
+errorMessage : Http.Error -> Html msg
+errorMessage error =
+    case error of
+        Http.BadStatus response ->
+            case response.status.code of
                 403 ->
                     div []
                         [ text "You do not have access to this resource.  Please make sure you are "
@@ -66,15 +91,10 @@ errorMessage error =
                         ]
 
                 _ ->
-                    case String.length response.body of
-                        0 ->
-                            text "Bad status"
-
-                        _ ->
-                            text response.body
+                    errorString error |> text
 
         _ ->
-            toString error |> text
+            errorString error |> text
 
 
 

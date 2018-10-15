@@ -8,7 +8,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Dialog
 import Http
-import Page.Error as Error exposing (PageLoadError)
+import Page.Error as Error exposing (PageLoadError, errorString)
 import Request.Agave
 import Request.PlanB
 import Request.App
@@ -316,7 +316,7 @@ update session msg model =
             { model | cancelDialogMessage = Just msg, job = job } => Cmd.none
 
         CancelJobCompleted (Err error) ->
-            { model | cancelDialogMessage = Just (toString error) }  => Cmd.none
+            { model | cancelDialogMessage = Just (errorString error) }  => Cmd.none
 
         CloseCancelDialog ->
             { model | showCancelDialog = False } => Cmd.none
