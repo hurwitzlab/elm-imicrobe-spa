@@ -243,16 +243,19 @@ view model =
                     ]
 
         pageControls =
-            div [ class "pull-right" ]
-                [ text "Showing "
-                , pageSz |> toString |> text
-                , text " results starting at #"
-                , (model.pageNum * pageSz) |> Basics.max 1 |> toString |> text
-                , text ". "
-                , a [ onClick Previous, classList [("disabled", model.pageNum == 0)]  ] [ text "Previous" ]
-                , text " / "
-                , a [ onClick Next ] [ text "Next" ]
-                ]
+            if count == 0 then
+                text ""
+            else
+                div [ class "pull-right" ]
+                    [ text "Showing "
+                    , pageSz |> toString |> text
+                    , text " results starting at #"
+                    , (model.pageNum * pageSz) |> Basics.max 1 |> toString |> text
+                    , text ". "
+                    , a [ onClick Previous, classList [("disabled", model.pageNum == 0)]  ] [ text "Previous" ]
+                    , text " / "
+                    , a [ onClick Next ] [ text "Next" ]
+                    ]
 
         display =
             if model.errorMsg /= Nothing then
