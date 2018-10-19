@@ -268,6 +268,7 @@ type alias Centrifuge2 =
     { centrifuge_id : Int
     , tax_id : Int
     , name : String
+    , sample_count : Int
     , samples : List CentrifugeSample
     }
 
@@ -595,9 +596,10 @@ decoderCentrifuge =
 decoderCentrifuge2 : Decoder Centrifuge2
 decoderCentrifuge2 =
     decode Centrifuge2
-        |> required "centrifuge_id" Decode.int
-        |> required "tax_id" Decode.int
-        |> required "name" Decode.string
+        |> optional "centrifuge_id" Decode.int 0
+        |> optional "tax_id" Decode.int 0
+        |> optional "name" Decode.string ""
+        |> required "sample_count" Decode.int
         |> optional "samples" (Decode.list decoderCentrifugeSample) []
 
 

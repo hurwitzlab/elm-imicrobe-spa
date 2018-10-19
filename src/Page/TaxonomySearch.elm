@@ -12,6 +12,7 @@ import Route
 import Request.Sample
 import Table exposing (defaultCustomizations)
 import Task exposing (Task)
+import Time exposing (Time)
 import Util exposing ((=>))
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
@@ -25,36 +26,46 @@ import Events exposing (onKeyDown)
 
 type alias Model =
     { pageTitle : String
-    , pageLoaded : Bool
-    , resultsLoaded : Bool
+    , doSearch : Bool
+    , isSearching : Bool
+    , searchStartTime : Time
     , searchTerm : String
     , query : String
     , taxId : String
     , minAbundance : Float
     , tableState : Table.State
+    , pageNum : Int
     , cart : Cart.Model
-    , results : List Centrifuge2
+    , results : Maybe Centrifuge2
+    , errorMsg : Maybe String
     }
 
 
 init : Session -> String -> Task PageLoadError Model
 init session searchTerm =
     let
-        noSearch =
-            searchTerm == ""
+        doSearch =
+            searchTerm /= ""
     in
     Task.succeed
         { pageTitle = "Taxonomy Search"
-        , pageLoaded = noSearch
-        , resultsLoaded = noSearch
+        , doSearch = doSearch
+        , isSearching = doSearch
+        , searchStartTime = 0
         , searchTerm = searchTerm
         , query = ""
         , taxId = searchTerm
         , minAbundance = 0
         , tableState = Table.initialSort "Abundance"
+        , pageNum = 0
         , cart = (Cart.init session.cart Cart.Editable)
-        , results = []
+        , results = Nothing
+        , errorMsg = Nothing
         }
+
+
+pageSz : Int
+pageSz = 20
 
 
 
@@ -62,13 +73,16 @@ init session searchTerm =
 
 
 type Msg
-    = SetQuery String
-    | SetTaxId String
-    | Search
-    | DelayedInit
-    | InitCompleted (Result PageLoadError (List Centrifuge2))
+    = SetStartTime Time
+    | DelayedSearch Time
+    | SearchCompleted (Result PageLoadError Centrifuge2)
+    | NewSearch
     | SearchKeyDown Int
+    | SetQuery String
+    | SetTaxId String
     | SetAbundanceThreshold String
+    | Next
+    | Previous
     | SetTableState Table.State
     | SetSession Session
     | CartMsg Cart.Msg
@@ -81,50 +95,73 @@ type ExternalMsg
 
 update : Session -> Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update session msg model =
+    let
+        setStartTime =
+            Task.perform SetStartTime Time.now
+    in
     case msg of
-        DelayedInit ->
-            if model.pageLoaded then
-                model => Cmd.none => NoOp
+        SetStartTime time ->
+            { model | searchStartTime = time } => Cmd.none => NoOp
+
+        DelayedSearch time ->
+            if model.doSearch then
+                if time - model.searchStartTime >= 500 * Time.millisecond then
+                    let
+                        search =
+                            Request.Sample.taxonomy_search session.token model.searchTerm model.query (model.pageNum * pageSz) pageSz "abundance" "DESC" model.minAbundance
+                                |> Http.toTask
+                                |> Task.mapError Error.handleLoadError
+                    in
+                    { model | doSearch = False, isSearching = True, errorMsg = Nothing } => Task.attempt SearchCompleted search => NoOp
+                else
+                    model => Cmd.none => NoOp
             else
-                let
-                    search =
-                        Request.Sample.taxonomy_search session.token model.searchTerm |> Http.toTask |> Task.mapError Error.handleLoadError
-                in
-                { model | pageLoaded = True } => Task.attempt InitCompleted search => NoOp
+                model => Cmd.none => NoOp
 
-        InitCompleted (Ok results) ->
-            { model | resultsLoaded = True, results = results } => Cmd.none => NoOp
+        SearchCompleted (Ok results) ->
+            { model | results = Just results, isSearching = False } => Cmd.none => NoOp
 
-        InitCompleted (Err error) ->
-            model => Cmd.none => NoOp -- TODO
+        SearchCompleted (Err error) ->
+            { model | errorMsg = Just (toString error) } => Cmd.none => NoOp
 
-        SetQuery newQuery ->
-            { model | query = newQuery } => Cmd.none => NoOp
-
-        SetTaxId strValue ->
-            { model | taxId = strValue } => Cmd.none => NoOp
-
-        Search ->
+        NewSearch ->
             model => Route.modifyUrl (Route.TaxonomySearch model.taxId) => NoOp
 
         SearchKeyDown key ->
             if key == 13 then -- enter key
-                update session Search model
+                update session NewSearch model
             else
                 model => Cmd.none => NoOp
+
+        SetQuery newQuery ->
+            { model | query = newQuery, doSearch = True } => setStartTime => NoOp
+
+        SetTaxId strValue ->
+            { model | taxId = strValue } => Cmd.none => NoOp
 
         SetAbundanceThreshold strValue ->
             let
                 threshold =
-                    case String.toFloat strValue of
-                        Ok value -> value
-
-                        Err _ -> 0
+                    String.toFloat strValue |> Result.withDefault 0
             in
-            { model | minAbundance = threshold } => Cmd.none => NoOp
+            { model | minAbundance = threshold, doSearch = True } => setStartTime => NoOp
+
+        Next ->
+            let
+                pageNum =
+                    model.pageNum + 1
+            in
+            { model | pageNum = pageNum, doSearch = True } => Cmd.none => NoOp
+
+        Previous ->
+            let
+                pageNum =
+                    model.pageNum - 1 |> Basics.max 0
+            in
+            { model | pageNum = pageNum, doSearch = True } => Cmd.none => NoOp
 
         SetTableState newState ->
-            { model | tableState = newState } => Cmd.none => NoOp
+            { model | tableState = newState, doSearch = True, isSearching = True } => setStartTime => NoOp
 
         SetSession newSession ->
             let
@@ -148,6 +185,32 @@ update session msg model =
             { model | cart = newCart } => Cmd.map CartMsg subCmd => SetCart newCart.cart
 
 
+--toSearchParams : Table.State -> (String, String)
+--toSearchParams { sortName, isReversed } =
+--    let
+--        order =
+--            if isReversed then
+--                "DESC"
+--            else
+--                "ASC"
+--
+--        colName =
+--            case sortName of
+--                "Project" -> "project_name"
+--
+--                "Sample" -> "sample_name"
+--
+--                "Reads" -> "num_reads"
+--
+--                "Unique Reads" -> "num_unique_reads"
+--
+--                "Abundance" -> "abundance"
+--
+--                _ -> ""
+--    in
+--    (colName, order)
+
+
 
 -- VIEW --
 
@@ -155,77 +218,78 @@ update session msg model =
 view : Model -> Html Msg
 view model =
     let
-        samples =
-            case List.head model.results of
-                Nothing -> []
+        (count, samples) =
+            case model.results of
+                Nothing ->
+                    (0, [])
 
-                Just result -> result.samples
-
-        resultCount =
-            List.length model.results
-
-        lowerQuery =
-            String.toLower model.query
-
-        filter sample =
-            ( String.contains lowerQuery (String.toLower sample.sample_name)
-                || String.contains lowerQuery (String.toLower sample.project.project_name)
-                || String.contains lowerQuery (toString sample.sample_to_centrifuge.abundance) )
-              && sample.sample_to_centrifuge.abundance >= model.minAbundance
-
-        acceptableSamples =
-            List.filter filter samples
+                Just result ->
+                    (result.sample_count, result.samples)
 
         searchBar =
-            if model.resultsLoaded && resultCount > 0 then
-                small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
-            else
+            if model.searchTerm == "" then
                 text ""
+            else
+                small [ class "right" ] [ input [ placeholder "Search", onInput SetQuery ] [] ]
 
         filters =
-            if model.resultsLoaded && resultCount > 0 then
+            if model.searchTerm == "" then
+                text ""
+            else
                 div [ style [("padding-bottom", "0.5em")] ]
-                    [ text "Filter: Abundance >= "
+                    [ text "Filter: Abundance > "
                     , input [ placeholder "0", size 4, onInput SetAbundanceThreshold ] []
                     , text " (value between 0 and 1)"
                     ]
-            else
-                text ""
+
+        pageControls =
+            div [ class "pull-right" ]
+                [ text "Showing "
+                , pageSz |> toString |> text
+                , text " results starting at #"
+                , (model.pageNum * pageSz) |> Basics.max 1 |> toString |> text
+                , text ". "
+                , a [ onClick Previous, classList [("disabled", model.pageNum == 0)]  ] [ text "Previous" ]
+                , text " / "
+                , a [ onClick Next ] [ text "Next" ]
+                ]
 
         display =
-            if model.resultsLoaded then
-                if model.searchTerm == "" then
-                    text ""
-                else
-                    if acceptableSamples == [] then
-                        text "No results"
-                    else
-                        Table.view (tableConfig model.cart) model.tableState acceptableSamples
-            else
+            if model.errorMsg /= Nothing then
+                div [ class "alert alert-danger" ] [ model.errorMsg |> Maybe.withDefault "" |> text ]
+            else if model.isSearching then
                 spinner
+            else if model.searchTerm == "" then
+                text ""
+            else if count == 0 then
+                p [ class "gray bold lead" ] [ text "No results" ]
+            else
+                Table.view (tableConfig model.cart) model.tableState samples
     in
     div [ class "container" ]
         [ div [ class "row" ]
             [ h2 []
                 [ text model.pageTitle
                 , text " "
-                , View.Widgets.counter (List.length acceptableSamples)
+                , View.Widgets.counter count
                 , searchBar
                 ]
             , div [ style [("padding-bottom", "0.5em")] ]
                 [ text "Species Name or NCBI Tax ID: "
                 , input [ value model.taxId, size 20, onInput SetTaxId, onKeyDown SearchKeyDown ] []
                 , text " "
-                , button [ class "btn btn-default btn-xs", onClick Search ] [ text "Search" ]
+                , button [ class "btn btn-default btn-xs", onClick NewSearch ] [ text "Search" ]
                 , text " "
                 , span [ class "gray", style [("padding-left", "1.5em")] ]
-                    [ text " Example: "
+                    [ text " Examples: "
                     , a [ href "#/taxonomy_search/Prochlorococcus" ] [ text "Prochlorococcus" ]
                     , text ", "
                     , a [ href "#/taxonomy_search/Staphylococcus" ] [ text "Staphylococcus" ]
                     ]
                 ]
             , filters
+            , pageControls
+            , br [] []
             , display
             ]
         ]
@@ -276,7 +340,7 @@ projectColumn =
     Table.veryCustomColumn
         { name = "Project"
         , viewData = projectLink
-        , sorter = Table.increasingOrDecreasingBy (.project_name << .project)
+        , sorter = Table.unsortable --Table.increasingOrDecreasingBy (.project_name << .project)
         }
 
 
@@ -292,7 +356,7 @@ abundanceColumn =
     Table.veryCustomColumn
         { name = "Abundance"
         , viewData = nowrapColumn 7 << toString << .abundance << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (.abundance << .sample_to_centrifuge)
+        , sorter = Table.unsortable --Table.decreasingOrIncreasingBy (.abundance << .sample_to_centrifuge)
         }
 
 
@@ -301,7 +365,7 @@ numReadsColumn =
     Table.veryCustomColumn
         { name = "Reads"
         , viewData = nowrapColumn 4 << toString << .num_reads << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (.num_reads << .sample_to_centrifuge)
+        , sorter = Table.unsortable --Table.decreasingOrIncreasingBy (.num_reads << .sample_to_centrifuge)
         }
 
 
@@ -310,7 +374,7 @@ numUniqueReadsColumn =
     Table.veryCustomColumn
         { name = "Unique Reads"
         , viewData = nowrapColumn 8 << toString << .num_unique_reads << .sample_to_centrifuge
-        , sorter = Table.decreasingOrIncreasingBy (.num_unique_reads << .sample_to_centrifuge)
+        , sorter = Table.unsortable --Table.decreasingOrIncreasingBy (.num_unique_reads << .sample_to_centrifuge)
         }
 
 

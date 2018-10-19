@@ -208,18 +208,28 @@ centrifuge_results token id =
         |> HttpBuilder.toRequest
 
 
-taxonomy_search : String -> String -> Http.Request (List Centrifuge2)
-taxonomy_search token query =
+taxonomy_search : String -> String -> String -> Int -> Int -> String -> String -> Float -> Http.Request Centrifuge2
+taxonomy_search token query searchTerm offset limit sortCol order abundance = --FIXME "query" and "searchTerm" not descriptive enough
     let
         url =
             apiBaseUrl ++ "/samples/taxonomy_search/" ++ query
 
         headers =
-            [( "Authorization", token)]
+            [("Authorization", token)]
+
+        queryParams =
+            [ ("offset", toString offset)
+            , ("limit", toString limit)
+            , ("searchTerm", searchTerm)
+            , ("sortCol", sortCol)
+            , ("order", order)
+            , ("abundance", toString abundance)
+            ]
     in
     HttpBuilder.get url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withExpect (Http.expectJson (Decode.list decoderCentrifuge2))
+        |> HttpBuilder.withQueryParams queryParams
+        |> HttpBuilder.withExpect (Http.expectJson decoderCentrifuge2)
         |> HttpBuilder.toRequest
 
 
