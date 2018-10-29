@@ -327,7 +327,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Sample"
         , viewData = nameLink
-        , sorter = Table.increasingOrDecreasingBy .sample_name
+        , sorter = Table.unsortable --Table.increasingOrDecreasingBy .sample_name
         }
 
 
