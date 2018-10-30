@@ -114,9 +114,6 @@ init session id =
                     allUsers project
                         |> List.any (\u -> u.user_id == userId && (u.permconn.permission == "owner" || u.permconn.permission == "read-write"))
             )
-
-        isBetaUser =
-            (session.user |> Maybe.map .role |> Maybe.withDefault 0) > 0
     in
     loadProject
         |> Task.andThen
@@ -137,7 +134,7 @@ init session id =
                     , combinedAssemblyTableState = Table.initialSort "Name"
                     , combinedAssemblyQuery = ""
                     , isEditable = isEditable project
-                    , isBetaUser = isBetaUser
+                    , isBetaUser = Data.User.isBetaUser session.user
                     , currentUserId = userId
                     , confirmationDialog = Nothing
                     , showShareDialog = False

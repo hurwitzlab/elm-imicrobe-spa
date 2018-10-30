@@ -297,3 +297,17 @@ encode user =
         , "orcid" => Encode.string user.orcid
         , "role" => Encode.int user.role
         ]
+
+
+
+-- UTILITY FUNCTIONS --
+
+
+isBetaUser : Maybe User -> Bool
+isBetaUser user =
+    (user |> Maybe.map .role |> Maybe.withDefault 0) > 0
+
+
+isAdminUser : Maybe User -> Bool
+isAdminUser user =
+    (user |> Maybe.map .role |> Maybe.withDefault 0) >= 127

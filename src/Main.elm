@@ -1398,7 +1398,8 @@ viewHeader page isLoading session =
             else
                 li [ class "dropdown" ]
                     [ a [ class "dropdown-toggle", attribute "data-toggle" "dropdown", attribute "role" "button", attribute "aria-expanded" "false" ]
-                        [ text "My Account"
+                        [ text "My Account "
+                        , userBadge
                         , span [ class "caret" ] []
                         ]
                     , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
@@ -1407,6 +1408,14 @@ viewHeader page isLoading session =
                         , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                         ]
                     ]
+
+        userBadge =
+            if User.isAdminUser user then
+                span [ class "label label-warning" ] [ text "ADMIN" ]
+            else if User.isBetaUser user then
+                span [ class "label label-info" ] [ text "BETA" ]
+            else
+                text ""
 
         numItemsInCart =
             Data.Cart.size session.cart
