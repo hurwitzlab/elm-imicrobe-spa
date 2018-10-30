@@ -1012,7 +1012,7 @@ newProjectDialogConfig model =
             if model.showNewProjectBusy then
                 spinner
             else
-                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project", onInput SetNewProjectName ] []
+                input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name of the new project", onInput SetNewProjectName ] []
 
         footer =
             let
@@ -1039,7 +1039,7 @@ newProjectGroupDialogConfig model =
             if model.showNewProjectGroupBusy then
                 spinner
             else
-                input [ class "form-control", type_ "text", size 20, placeholder "Enter the name of the new project group", onInput SetNewProjectGroupName ] []
+                input [ class "form-control", type_ "text", size 20, autofocus True, placeholder "Enter the name of the new project group", onInput SetNewProjectGroupName ] []
 
         footer =
             let
