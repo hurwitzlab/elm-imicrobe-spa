@@ -1,4 +1,4 @@
-module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, redirectLoadError, errorString, errorMessage, view)
+module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, handleLoadErrorWithLogin, redirectLoadError, errorString, errorMessage, view)
 
 {-| The page that renders when there was an error trying to load another page,
 for example a Page Not Found error.
@@ -24,17 +24,23 @@ type PageLoadError
 type alias Model =
     { activePage : ActivePage
     , error : Http.Error
+    , isLoggedIn : Bool
     }
 
 
-pageLoadError : ActivePage -> Http.Error -> PageLoadError
-pageLoadError activePage error =
-    PageLoadError { activePage = activePage, error = error }
+pageLoadError : ActivePage -> Http.Error -> Bool -> PageLoadError
+pageLoadError activePage error isLoggedIn =
+    PageLoadError { activePage = activePage, error = error, isLoggedIn = isLoggedIn }
 
 
 handleLoadError : Http.Error -> PageLoadError
 handleLoadError error =
-    pageLoadError Page.Home error
+    pageLoadError Page.Home error False
+
+
+handleLoadErrorWithLogin : Bool -> Http.Error -> PageLoadError
+handleLoadErrorWithLogin isLoggedIn error =
+    pageLoadError Page.Home error isLoggedIn
 
 
 redirectLoadError : PageLoadError -> Cmd msg
@@ -78,23 +84,34 @@ errorString error =
             toString error
 
 
-errorMessage : Http.Error -> Html msg
-errorMessage error =
-    case error of
+errorMessage : Model -> Html msg
+errorMessage model =
+    let
+        loginMessage =
+            if model.isLoggedIn then
+                text ""
+            else
+                p []
+                    [ text "Please "
+                    , a [ Route.href Route.Login ] [ text "sign-in"]
+                    , text " and try again."
+                    ]
+    in
+    case model.error of
         Http.BadStatus response ->
             case response.status.code of
                 403 ->
                     div []
-                        [ text "You do not have access to this resource.  Please make sure you are "
-                        , a [ Route.href Route.Login ] [ text "logged-in"]
-                        , text " and try again."
+                        [ p []
+                            [ text "You do not have permission to access this resource." ]
+                        , loginMessage
                         ]
 
                 _ ->
-                    errorString error |> text
+                    errorString model.error |> text
 
         _ ->
-            errorString error |> text
+            errorString model.error |> text
 
 
 
@@ -107,5 +124,5 @@ view (PageLoadError model) =
         [ div [ class "page-header" ]
             [ h1 [] [ text "Error" ] ]
         , div [ class "row" ]
-            [ div [ class "alert alert-danger" ] [ (errorMessage model.error) ] ]
+            [ div [ class "alert alert-danger" ] [ (errorMessage model) ] ]
         ]

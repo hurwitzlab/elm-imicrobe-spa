@@ -1,7 +1,7 @@
 module Page.Sample exposing (Model, Msg(..), ExternalMsg(..), init, update, view)
 
 import Data.Sample as Sample exposing (..)
-import Data.Session as Session exposing (Session)
+import Data.Session as Session exposing (Session, isLoggedIn)
 import Data.Cart
 import Json.Encode as Encode exposing (Value)
 import Html exposing (..)
@@ -185,7 +185,7 @@ init session id =
                     , filesBusy = False
                     }
             )
-        |> Task.mapError Error.handleLoadError
+        |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
 

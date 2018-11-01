@@ -5,7 +5,7 @@ import Data.ProjectGroup
 import Data.Sample
 import Data.Investigator
 import Data.User
-import Data.Session exposing (Session)
+import Data.Session exposing (Session, isLoggedIn)
 import Data.Cart
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -169,7 +169,7 @@ init session id =
                     , publicationDOI = ""
                     }
             )
-        |> Task.mapError Error.handleLoadError
+        |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
 

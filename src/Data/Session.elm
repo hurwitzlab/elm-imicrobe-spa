@@ -39,6 +39,11 @@ expired session =
     { session | expiresAt = Nothing, expiresIn = Nothing, token = "", user = Nothing }
 
 
+isLoggedIn : Session -> Bool
+isLoggedIn session =
+    session.token /= ""
+
+
 decoder : Decoder Session
 decoder =
     decode Session

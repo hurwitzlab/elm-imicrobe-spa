@@ -1,6 +1,6 @@
 module Page.App exposing (Model, Msg(..), init, update, view)
 
-import Data.Session as Session exposing (Session)
+import Data.Session as Session exposing (Session, isLoggedIn)
 import Data.App as App exposing (App, AppRun)
 import Data.Agave as Agave
 import Data.Sample as Sample exposing (Sample, SampleFile, SampleGroup)
@@ -132,7 +132,7 @@ init session id =
                     )
             )
         )
-        |> Task.mapError Error.handleLoadError
+        |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
 

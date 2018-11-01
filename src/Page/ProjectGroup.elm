@@ -1,7 +1,7 @@
 module Page.ProjectGroup exposing (Model, Msg, init, update, view)
 
 import Data.ProjectGroup exposing (ProjectGroup, Project, User)
-import Data.Session exposing (Session)
+import Data.Session exposing (Session, isLoggedIn)
 import Data.User
 import Data.Project
 import Html exposing (..)
@@ -85,7 +85,7 @@ init session id =
                     , projectGroupURL = ""
                     }
             )
-        |> Task.mapError Error.handleLoadError
+        |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
 
