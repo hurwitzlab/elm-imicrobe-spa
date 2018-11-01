@@ -1048,22 +1048,26 @@ viewShareButton project =
 viewPublishButton : Project -> Html Msg
 viewPublishButton project =
     let
-        viewBtn btnClass label =
-            button [ class ("pull-right margin-left btn " ++ btnClass), onClick OpenPublishDialog ] [ text label ] |> Html.map PublishMsg
+        viewBtn btnClass inner =
+            button [ class ("pull-right margin-left btn " ++ btnClass), onClick OpenPublishDialog ] inner |> Html.map PublishMsg
     in
     case project.ebi_status of
         Nothing ->
-            viewBtn "btn-default" "Publish Project"
+            viewBtn "btn-default"
+                [ text "Publish Project"
+                , br [] []
+                , span [ class "label label-info pull-right" ] [ text "BETA" ]
+                ]
 
         Just "FINISHED" ->
-            viewBtn "btn-default" "Source: EBI"
+            viewBtn "btn-default" [ text "Source: EBI" ]
 
         Just "FAILED" ->
-            viewBtn "btn-danger" "Publication Failed"
+            viewBtn "btn-danger"  [ text "Publication Failed" ]
 
         _ ->
             if project.private == 1 then
-                viewBtn "btn-default" "Publication in Progress ..."
+                viewBtn "btn-default" [ text "Publication in Progress ..." ]
             else
                 text ""
 
