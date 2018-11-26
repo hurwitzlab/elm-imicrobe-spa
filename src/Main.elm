@@ -1511,8 +1511,12 @@ viewHeader page isLoading session =
                                 ]
                             ]
                         , li []
-                            [ a [ Html.Attributes.href "ftp://ftp.imicrobe.us" ]
+                            [ a [ Html.Attributes.href "ftp://ftp.imicrobe.us", target "_blank" ]
                                 [ text "Download" ]
+                            ]
+                        , li []
+                            [ a [ Html.Attributes.href "https://hurwitzlab.gitbook.io/imicrobe/", target "_blank" ]
+                                [ text "Documentation" ]
                             ]
                         , loginMenuItem
                         ]
