@@ -1453,25 +1453,11 @@ viewHeader page isLoading session =
                 [ a [ Route.href Route.Contact ]
                     [ span [ class "icon-button glyphicon glyphicon-question-sign" ] [] ]
                 ]
-
-        searchBar =
-            div [ class "pull-right", style [("padding-top", "10px")] ]
-                [ div [ class "navbar-form" ]
-                    [ div [ class "input-group" ]
-                        [ input [ class "form-control", placeholder "Search", onInput SearchBarInput, onKeyDown SearchBarKeyDown ] []
-                        , div [ class "input-group-btn" ]
-                            [ button [ class "btn btn-default", onClick SearchBarQuery ]
-                                [ i [ class "glyphicon glyphicon-search" ] []
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
     in
     div []
         [ div [ class "hidden message-banner" ] [ text "" ]
-        , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "10px")] ]
-            [ div [ class "container" ]
+        , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "8px"), ("padding-left", "3em"), ("padding-right", "4em")] ]
+            [ div [ class "container-fluid" ]
                 [ div [ class "navbar-header" ]
                     [ a [ class "navbar-brand", Html.Attributes.href "/" ] --Route.href Route.Home ] -- fix home page not rendering in some cases
                         [ img [ src "/img/nav-header.png" ] [] ]
@@ -1520,10 +1506,19 @@ viewHeader page isLoading session =
                             ]
                         , loginMenuItem
                         ]
-                    , helpButton
-                    , dashboardButton
-                    , cartButton
-                    , searchBar
+                    , ul [ class "nav navbar-nav navbar-right" ]
+                        [ helpButton
+                        , dashboardButton
+                        , cartButton
+                        ]
+                    , Html.form [ class "navbar-form navbar-right" ]
+                        [ div [ class "form-group", style [("padding-top", "10px")] ]
+                            [ input [ class "form-control", type_ "text", placeholder "Search", onInput SearchBarInput, onKeyDown SearchBarKeyDown ] []
+                            , button [ class "btn btn-default", onClick SearchBarQuery ]
+                                [ i [ class "glyphicon glyphicon-search" ] []
+                                ]
+                            ]
+                        ]
                     ]
                 ]
             ]
