@@ -1657,7 +1657,7 @@ publishDialogConfig currentUserId model =
                     , a [] [ text "documentation" ]
                     , text "."
                     ]
-                , p [] [ strong [] [ text "Important:" ], text " After a project is submitted, the project and it's associated samples can no longer be edited.  This is a final step in the project/sample creation process." ]
+                , p [] [ strong [] [ text "Important:" ], text " When submitted the project and it's associated samples can no longer be edited.  This is a final step in the project/sample creation process." ]
                 ]
 
         content =
