@@ -132,7 +132,13 @@ view model =
                     [ text (model.pageTitle) ]
                 ]
             , div [ class "row" ]
-                [ text "Please complete the form below to send us your bug reports, comments, and suggestions."
+                [ p []
+                    [ text "Please complete the form below to send us your bug reports, comments, and suggestions." ]
+                , p []
+                    [ text "If you are looking for documentation, see the "
+                    , a [ href "https://hurwitzlab.gitbook.io/imicrobe/" ] [ text "User Manual" ]
+                    , text "."
+                    ]
                 ]
             , div [ style [("padding-top", "2em")] ]
                 [ div [ class "form-group" ]
