@@ -1511,7 +1511,7 @@ viewHeader page isLoading session =
                         , dashboardButton
                         , cartButton
                         ]
-                    , Html.form [ class "navbar-form navbar-right" ]
+                    , div [ class "navbar-form navbar-right" ]
                         [ div [ class "form-group", style [("padding-top", "10px")] ]
                             [ input [ class "form-control", type_ "text", placeholder "Search", onInput SearchBarInput, onKeyDown SearchBarKeyDown ] []
                             , button [ class "btn btn-default", onClick SearchBarQuery ]
