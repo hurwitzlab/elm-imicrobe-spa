@@ -13,8 +13,9 @@ import Task exposing (Task)
 import Route
 import Table exposing (defaultCustomizations)
 import Set
-import Util exposing ((=>))
-import Config exposing (dataCommonsUrl)
+import String.Extra
+import Util exposing ((=>), dropFileName)
+import Config exposing (dataCommonsUrl, apiBaseUrl)
 import View.Widgets
 
 
@@ -24,6 +25,7 @@ import View.Widgets
 
 type alias Model =
     { pageTitle : String
+    , token : String
     , tableState : Table.State
     , filterType : String
     , files : List SampleFile
@@ -52,6 +54,7 @@ init session id =
             (\files ->
                 Task.succeed
                     { pageTitle = "Files"
+                    , token = session.token
                     , tableState = Table.initialSort "Type"
                     , filterType = "All"
                     , files = files
@@ -87,15 +90,15 @@ update msg model =
 -- VIEW --
 
 
-config : Table.Config SampleFile Msg
-config =
+config : String -> Table.Config SampleFile Msg
+config token =
     Table.customConfig
         { toId = toString << .sample_file_id
         , toMsg = SetTableState
         , columns =
             [ sampleColumn
             , Table.stringColumn "Type" (.file_type << .sample_file_type)
-            , fileColumn
+            , fileColumn token
             ]
         , customizations =
             { defaultCustomizations | tableAttrs = toTableAttrs }
@@ -124,21 +127,37 @@ sampleLink file =
         ]
 
 
-fileColumn : Table.Column SampleFile Msg
-fileColumn =
+fileColumn : String -> Table.Column SampleFile Msg
+fileColumn token =
     Table.veryCustomColumn
-        { name = "File"
-        , viewData = fileLink
+        { name = "File path (click link to download)"
+        , viewData = fileLink token
         , sorter = Table.increasingOrDecreasingBy (.file >> String.toLower)
         }
 
 
-fileLink : SampleFile -> Table.HtmlDetails Msg
-fileLink file =
-    Table.HtmlDetails []
-        [ a [ attribute "href" (dataCommonsUrl ++ file.file), target "_blank" ]
-            [ text <| file.file ]
-        ]
+fileLink : String -> SampleFile -> Table.HtmlDetails Msg
+fileLink token file =
+    let
+        path =
+            if String.startsWith "/iplant/home" file.file then
+                String.Extra.replace "/iplant/home" "" file.file
+            else
+                file.file
+
+        url =
+            if String.startsWith "/iplant/home/shared/" file.file then
+                dataCommonsUrl ++ file.file
+            else
+                apiBaseUrl ++ "/download" ++ path ++ "?token=" ++ token
+    in
+    if token /= "" || String.startsWith "/iplant/home/shared/" file.file then
+        Table.HtmlDetails []
+            [ a [ href url, target "_blank" ] [ text <| file.file ]
+            ]
+    else
+        Table.HtmlDetails []
+            [ text <| file.file ++ " (login to download)" ]
 
 
 view : Model -> Html Msg
@@ -167,7 +186,7 @@ viewFiles model =
     else
         div []
             [ viewToolbar model
-            , Table.view config model.tableState filteredFiles
+            , Table.view (config model.token) model.tableState filteredFiles
             ]
 
 
