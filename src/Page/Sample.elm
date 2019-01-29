@@ -799,6 +799,7 @@ viewFiles availableFileTypes files isEditable isBusy =
             tr []
                 [ th [] [ text "Path" ]
                 , th [] [ text "Type" ]
+                , th [] [ text "Comments" ]
                 , th [] []
                 ]
 
@@ -843,11 +844,16 @@ viewFile isEditable availableFileTypes file =
 
         makeOption { sample_file_type_id, file_type } =
             option [ value (toString sample_file_type_id), selected (file_type == file.sample_file_type.file_type) ] [ text file_type ]
+
+        comments =
+            if file.comments /= "" then
+                String.left 20 file.comments ++ "..."
+            else
+                ""
     in
     tr []
         [ td []
-            [ a [ href link, target "_blank" ] [ text file.file ]
-            ]
+            [ a [ href link, target "_blank" ] [ text file.file ] ]
         , td []
             [ if isEditable then
 --                div [ class "btn-group" ]
@@ -860,6 +866,8 @@ viewFile isEditable availableFileTypes file =
               else
                 text file.sample_file_type.file_type
             ]
+        , td [ title comments ]
+            [ text comments ]
         , td [ class "col-md-2" ]
             [ if isEditable then
                 button [ class "btn btn-default btn-xs pull-right", onClick (OpenConfirmationDialog "Are you sure you want to remove this file from the sample?" (RemoveFile file.sample_file_id)) ] [ text "Remove" ]

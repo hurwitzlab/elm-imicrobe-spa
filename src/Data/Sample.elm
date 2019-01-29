@@ -166,6 +166,7 @@ type alias SampleFile2 =
     , sample_id : Int
     , sample_file_type_id : Int
     , file : String
+    , comments : String
     , sample_file_type : SampleFileType
     }
 
@@ -466,6 +467,7 @@ decoderSampleFile2 =
         |> required "sample_id" Decode.int
         |> optional "sample_file_type_id" Decode.int 0
         |> required "file" Decode.string
+        |> optional "comments" Decode.string ""
         |> required "sample_file_type" decoderSampleFileType
 
 
