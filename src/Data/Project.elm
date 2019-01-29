@@ -54,10 +54,18 @@ type alias Domain =
     }
 
 
+--type alias Investigator =
+--    { investigator_id : Int
+--    , investigator_name : String
+--    , institution : String
+--    }
 type alias Investigator =
     { investigator_id : Int
     , investigator_name : String
     , institution : String
+    , url : String
+    , projects : List Project
+    , samples : List Sample
     }
 
 
@@ -183,13 +191,21 @@ decoderProjectGroup =
         |> optional "users" (Decode.list decoderUser2) []
 
 
-decoderInv : Decoder Investigator
-decoderInv =
+--decoderInv : Decoder Investigator
+--decoderInv =
+--    decode Investigator
+--        |> required "investigator_id" Decode.int
+--        |> required "investigator_name" Decode.string
+--        |> optional "institution" Decode.string "NA"
+decoderInvestigator : Decoder Investigator
+decoderInvestigator =
     decode Investigator
         |> required "investigator_id" Decode.int
         |> required "investigator_name" Decode.string
-        |> optional "institution" Decode.string "NA"
-
+        |> required "institution" Decode.string
+        |> optional "url" Decode.string ""
+        |> optional "projects" (Decode.list decoderProject) []
+        |> optional "samples" (Decode.list decoderSample) []
 
 decoderDomain : Decoder Domain
 decoderDomain =

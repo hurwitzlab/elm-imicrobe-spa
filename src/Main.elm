@@ -270,8 +270,8 @@ setRoute maybeRoute model =
         Just Route.Contact ->
             transition ContactLoaded (Contact.init model.session)
 
-        Just Route.Dashboard ->
-            transition DashboardLoaded (Dashboard.init model.session)
+        Just (Route.Dashboard page) ->
+            transition DashboardLoaded (Dashboard.init model.session page)
 
         Just Route.Domains ->
             transition DomainsLoaded Domains.init
@@ -1403,7 +1403,7 @@ viewHeader page isLoading session =
                         , span [ class "caret" ] []
                         ]
                     , ul [ class "dropdown-menu", style [ ( "role", "menu" ) ] ]
-                        [ li [] [ a [ Route.href Route.Dashboard ] [ text "Dashboard" ] ]
+                        [ li [] [ a [ Route.href (Route.Dashboard Nothing) ] [ text "Dashboard" ] ]
                         , li [] [ a [ Route.href Route.Profile ] [ text "Profile" ] ]
                         , li [] [ a [ Route.href Route.Logout ] [ text "Sign out" ] ]
                         ]
@@ -1444,7 +1444,7 @@ viewHeader page isLoading session =
                 text ""
             else
                 div [ class "pull-right", style [("padding-top", "21px"), ("margin-left", "2em")], title "Dashboard" ]
-                    [ a [ Route.href Route.Dashboard ]
+                    [ a [ Route.href (Route.Dashboard Nothing) ]
                         [ span [ class "icon-button glyphicon glyphicon-dashboard" ] [] ]
                     ]
 

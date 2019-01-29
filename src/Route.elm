@@ -3,7 +3,7 @@ module Route exposing (Route(..), routeToString, fromLocation, href, modifyUrl)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Navigation exposing (Location)
-import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, map, s, string, int, intParam)
+import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, map, s, string, int)
 
 
 
@@ -17,7 +17,7 @@ type Route
     | CombinedAssemblies
     | CombinedAssembly Int
     | Contact
-    | Dashboard
+    | Dashboard (Maybe String)
     | Domains
     | Domain Int
     | Files (Maybe Int)
@@ -55,9 +55,10 @@ routeMather =
         , map CombinedAssemblies (s "combined_assemblies")
         , map CombinedAssembly (s "combined_assemblies" </> int)
         , map Contact (s "contact")
-        , map Dashboard (s "dashboard")
-        , map Domains (s "domains")
+        , map (Dashboard Nothing) (s "dashboard")
+        , map (Dashboard << Just) (s "dashboard" </> string)
         , map Domain (s "domains" </> int)
+        , map Domains (s "domains")
         , map (Files Nothing) (s "files")
         , map (Files << Just) (s "files" </> int)
         , map Home (s "")
@@ -116,8 +117,11 @@ routeToString page =
                 Contact ->
                     [ "contact" ]
 
-                Dashboard ->
+                Dashboard Nothing ->
                     [ "dashboard" ]
+
+                Dashboard (Just page) ->
+                    [ "dashboard", page ]
 
                 Home ->
                     []

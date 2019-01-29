@@ -185,7 +185,7 @@ view model =
                     [ p [] [ text "You don't have any projects yet." ]
                     , p []
                         [ text "To create a project, go to the "
-                        , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                        , a [ Route.href (Route.Dashboard Nothing) ] [ text "Dashboard" ]
                         , text " and click 'New'."
                         ]
                     ]

@@ -636,7 +636,7 @@ noResultsLoggedIn userId =
             [ p [] [ text "You don't have any samples yet." ]
             , p []
                 [ text "To add a sample, go to the "
-                , a [ Route.href Route.Dashboard ] [ text "Dashboard" ]
+                , a [ Route.href (Route.Dashboard Nothing) ] [ text "Dashboard" ]
                 , text ", select 'Projects', and click 'New'."
                 ]
             ]

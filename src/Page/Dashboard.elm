@@ -72,8 +72,28 @@ type ContentType
     | Activity
 
 
-init : Session -> Task PageLoadError Model
-init session =
+init : Session -> Maybe String -> Task PageLoadError Model
+init session page =
+    let
+        _ = Debug.log "page" page
+
+        contentType =
+            case page |> Maybe.withDefault "" |> String.toLower of
+                "samples" ->
+                    Sample
+
+                "groups" ->
+                    ProjectGroup
+
+                "datastore" ->
+                    Storage
+
+                "activity" ->
+                    Activity
+
+                _ ->
+                    Project
+    in
     loadUser session.token
         |> Task.andThen
             (\user ->
@@ -86,7 +106,7 @@ init session =
                     , newProjectGroupName = ""
                     , showNewProjectGroupDialog = False
                     , showNewProjectGroupBusy = False
-                    , selectedContentType = Project
+                    , selectedContentType = contentType
                     , projectTableState = Table.initialSort "Name"
                     , sampleTableState = Table.initialSort "Name"
                     , projectGroupTableState = Table.initialSort "Name"
