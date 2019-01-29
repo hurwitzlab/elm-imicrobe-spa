@@ -866,7 +866,7 @@ viewFile isEditable availableFileTypes file =
               else
                 text file.sample_file_type.file_type
             ]
-        , td [ title comments ]
+        , td [ title file.comments ]
             [ text comments ]
         , td [ class "col-md-2" ]
             [ if isEditable then
