@@ -319,7 +319,7 @@ nameColumn =
     Table.veryCustomColumn
         { name = "Name"
         , viewData = nameLink
-        , sorter = Table.unsortable
+        , sorter = Table.increasingOrDecreasingBy .project_name
         }
 
 
