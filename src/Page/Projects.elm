@@ -210,7 +210,7 @@ view model =
                 , div [ class "panel panel-default" ]
                     [ div [ class "panel-body" ]
                         [ viewTypes model.projects
-                        , viewAccessFilter model.permFilterType
+--                        , viewAccessFilter model.permFilterType
                         ]
                     ]
                 , div [ class "container" ]
