@@ -526,7 +526,7 @@ showSearchResults model =
             , div [ class "panel panel-default" ]
                 [ div [ class "panel-body" ]
                     [ viewTypes model.samples
-                    , viewAccessFilter model.permFilterType
+--                    , viewAccessFilter model.permFilterType
                     , searchView model
                     ]
                 ]
@@ -614,7 +614,7 @@ showAll model =
             [ div [ class "panel panel-default" ]
                 [ div [ class "panel-body", classList [("disabled", model.isSearching)] ]
                     [ viewTypes model.samples
-                    , viewAccessFilter model.permFilterType
+--                    , viewAccessFilter model.permFilterType
                     , searchView model
                     ]
                 ]
