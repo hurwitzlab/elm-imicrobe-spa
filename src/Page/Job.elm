@@ -178,7 +178,7 @@ update session msg model =
                     FileBrowser.defaultConfig
 
                 outputsPath =
-                    model.username ++ "/archive/jobs/job-" ++ model.job_id
+                    model.job.owner ++ "/archive/jobs/job-" ++ model.job_id
 
                 fileBrowser =
                     FileBrowser.init session (Just { defaultConfig | showMenuBar = False, homePath = Just outputsPath })
