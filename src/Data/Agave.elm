@@ -230,7 +230,7 @@ decoderDetails =
     decode Details
         |> required "label" Decode.string
         |> optional "argument" Decode.string ""
-        |> required "description" Decode.string
+        |> optional "description" Decode.string ""
 
 
 decoderSemantics : Decoder Semantics
