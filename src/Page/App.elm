@@ -215,7 +215,7 @@ update session msg model =
             in
             { model | parameters = newParams } => Cmd.none
 
-        RunJob ->
+        RunJob -> --TODO messy, clean this up
             let
                 irodsToAgave path = -- convert IRODS paths to Agave paths
                     if String.contains "/iplant/home" path then
@@ -226,10 +226,38 @@ update session msg model =
                 jobInputs =
                     DictList.toList model.inputs
                         |> List.map (\(k, v) -> (k, irodsToAgave v))
-                        |> List.map (\(k, v) -> Agave.JobInput k v)
+                        |> List.map (\(k, v) -> Agave.JobInput k (String.split ";" v))
+
+                encodeParam id val =
+                    case List.filter (\p -> p.id == id) model.agaveApp.parameters of
+                        [ param ] ->
+                            case param.value.type_ of
+                                "number" ->
+                                    Agave.NumberValue (String.toFloat val |> Result.withDefault 0)
+
+                                "bool" ->
+                                    if val == "true" then
+                                        Agave.BoolValue True
+                                    else
+                                        Agave.BoolValue False
+
+                                "flag" ->
+                                    if val == "true" then
+                                        Agave.BoolValue True
+                                    else
+                                        Agave.BoolValue False
+
+                                "enumeration" ->
+                                    Agave.ArrayValue (String.split ";" val)
+
+                                _ ->
+                                    Agave.StringValue val
+
+                        _ ->
+                            Agave.StringValue val
 
                 jobParameters =
-                    DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k v)
+                    DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k (encodeParam k v))
 
                 jobName =
                     "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?

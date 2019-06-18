@@ -61,22 +61,22 @@ type alias Semantics =
 
 type alias InputValue =
     { order : Int
-    , default : DefaultValue
+    , default : ValueType
     , required : Bool
     , visible : Bool
     }
 
 
-type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/, see DefaultValue in this file as example
+type alias ParameterValue = -- TODO change this to use variable decoding per http://folkertdev.nl/blog/elm-messy-json-value/, see ValueType in this file as example
     { order : Int
     , visible : Bool
     , type_ : String
-    , default : DefaultValue
+    , default : ValueType
     , enum_values : Maybe (List (List (String, String)))
     }
 
 
-type DefaultValue
+type ValueType
     = StringValue String
     | ArrayValue (List String)
     | BoolValue Bool -- workaround for BowtieBatch app
@@ -95,13 +95,13 @@ type alias JobRequest =
 
 type alias JobInput =
     { id : String
-    , value : String
+    , value : List String
     }
 
 
 type alias JobParameter =
     { id : String
-    , value : String
+    , value : ValueType
     }
 
 
@@ -120,7 +120,7 @@ type alias Job =
     , endTime : String
     , status : String
     , inputs : Dict String (List String)
-    , parameters : Dict String String
+    , parameters : Dict String ValueType
     }
 
 
@@ -246,7 +246,7 @@ decoderInputValue : Decoder InputValue
 decoderInputValue =
     decode InputValue
         |> required "order" Decode.int
-        |> optional "default" decoderDefaultValue (StringValue "")
+        |> optional "default" decoderValueType (StringValue "")
         |> optional "required" Decode.bool True
         |> optional "visible" Decode.bool True
 
@@ -257,12 +257,12 @@ decoderParameterValue =
         |> required "order" Decode.int
         |> optional "visible" Decode.bool True
         |> required "type" Decode.string
-        |> optional "default" decoderDefaultValue (StringValue "")
+        |> optional "default" decoderValueType (StringValue "")
         |> optional "enum_values" (Decode.nullable (Decode.list (Decode.keyValuePairs Decode.string))) Nothing
 
 
-decoderDefaultValue : Decoder DefaultValue
-decoderDefaultValue =
+decoderValueType : Decoder ValueType
+decoderValueType =
     Decode.oneOf
         [ Decode.map StringValue Decode.string
         , Decode.map ArrayValue (Decode.list Decode.string)
@@ -295,7 +295,7 @@ decoderJob =
         |> optional "endTime" Decode.string ""
         |> optional "status" Decode.string ""
         |> optional "inputs" (Decode.dict (Decode.list Decode.string)) Dict.empty
-        |> optional "parameters" (Decode.dict (Decode.oneOf [Decode.string, Decode.map toString Decode.bool, Decode.map toString Decode.float])) Dict.empty
+        |> optional "parameters" (Decode.dict decoderValueType) Dict.empty
 
 
 decoderJobOutput : Decoder JobOutput
@@ -367,9 +367,9 @@ encodeJobRequest request =
         , "appId" => Encode.string request.app_id
         , "archive" => Encode.bool request.archive
 --        , "inputs" => Encode.list (List.map encodeJobInput request.inputs)
-        , "inputs" => Encode.object (List.map (\i -> (i.id, (Encode.string i.value))) request.inputs)
---        , "parameters" => Encode.list (List.map encodeJobParameter request.parameters)
-        , "parameters" => Encode.object (List.map (\p-> (p.id, (Encode.string p.value))) request.parameters)
+        , "inputs" => Encode.object (List.map (\i -> (i.id, (Encode.list (List.map Encode.string i.value)))) request.inputs)
+        , "parameters" => Encode.object (List.map encodeJobParameter request.parameters)
+--        , "parameters" => Encode.object (List.map (\p-> (p.id, (Encode.string p.value))) request.parameters)
         , "notifications" => Encode.list (List.map encodeNotification request.notifications)
         ]
 
@@ -377,13 +377,28 @@ encodeJobRequest request =
 encodeJobInput : JobInput -> Encode.Value
 encodeJobInput input =
     Encode.object
-        [ input.id => Encode.string input.value ]
+        [ input.id => Encode.list (List.map Encode.string input.value) ]
 
 
-encodeJobParameter : JobParameter -> Encode.Value
+encodeJobParameter : JobParameter -> (String, Encode.Value)
 encodeJobParameter param =
-    Encode.object
-        [ param.id => Encode.string param.value ]
+    ( param.id, encodeValueType param.value )
+
+
+encodeValueType : ValueType -> Encode.Value
+encodeValueType value =
+    case value of
+        StringValue s ->
+            Encode.string s
+
+        ArrayValue l ->
+            Encode.list (List.map Encode.string l)
+
+        BoolValue b ->
+            Encode.bool b
+
+        NumberValue n ->
+            Encode.float n
 
 
 encodeNotification : Notification -> Encode.Value

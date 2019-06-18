@@ -483,7 +483,7 @@ viewInput (id, values) =
         ]
 
 
-viewParameters : Dict String String -> Html msg
+viewParameters : Dict String Agave.ValueType -> Html msg
 viewParameters params =
     let
         count =
@@ -507,11 +507,29 @@ viewParameters params =
         ]
 
 
-viewParameter : (String, String) -> Html msg
+viewParameter : (String, Agave.ValueType) -> Html msg
 viewParameter (id, value) =
+    let
+        valueStr =
+            case value of --TODO move to separate function
+                Agave.StringValue s ->
+                    s
+
+                Agave.BoolValue b ->
+                    if b then
+                        "True"
+                    else
+                        "False"
+
+                Agave.NumberValue n ->
+                    toString n
+
+                Agave.ArrayValue l ->
+                    String.join ";" l
+    in
     tr []
         [ th [] [ text id ]
-        , td [] [ text value ]
+        , td [] [ text valueStr ]
         ]
 
 
