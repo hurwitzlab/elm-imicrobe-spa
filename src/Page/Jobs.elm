@@ -83,6 +83,9 @@ update session msg model =
             { model | jobs = jobs, jobsLoaded = True } => Cmd.none
 
         LoadJobsCompleted (Err error) ->
+            let
+                _ = Debug.log "LoadJobsCompleted" (toString error)
+            in
             model => redirectLoadError error
 
 
