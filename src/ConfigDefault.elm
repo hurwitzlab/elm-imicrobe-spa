@@ -2,6 +2,11 @@ module Config exposing (..)
 
 
 
+alertBannerText : Maybe String
+alertBannerText =
+    Nothing
+
+
 -- Backend REST API
 apiBaseUrl : String
 apiBaseUrl =
@@ -22,6 +27,7 @@ agaveBaseUrl =
 oauthClientId : String
 oauthClientId =
     ""
+
 
 -- OAuth2 URL
 oauthUrl : String

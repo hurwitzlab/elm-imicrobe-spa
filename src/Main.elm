@@ -61,6 +61,7 @@ import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
 import View.FileBrowser as FileBrowser
 import Events exposing (onKeyDown)
+import Config exposing (alertBannerText)
 
 
 
@@ -1455,7 +1456,12 @@ viewHeader page isLoading session =
                 ]
     in
     div []
-        [ div [ class "hidden message-banner" ] [ text "" ]
+        [ case alertBannerText of
+            Just val ->
+                div [ class "message-banner" ] [ text val ]
+
+            Nothing ->
+                text ""
         , nav [ class "navbar navbar-default navbar-static-top", style [("padding-top", "8px"), ("padding-left", "3em"), ("padding-right", "4em")] ]
             [ div [ class "container-fluid" ]
                 [ div [ class "navbar-header" ]
