@@ -451,7 +451,7 @@ viewStatus status =
         _ -> text status
 
 
-viewInputs : Dict String (List String) -> Html msg
+viewInputs : Dict String Agave.JobInputValue -> Html msg
 viewInputs inputs =
     let
         count =
@@ -475,11 +475,20 @@ viewInputs inputs =
         ]
 
 
-viewInput : (String, List String) -> Html msg
-viewInput (id, values) =
+viewInput : (String, Agave.JobInputValue) -> Html msg
+viewInput (id, val) =
+    let
+        valList =
+            case val of
+                Agave.JobInputString s ->
+                    [ s ]
+
+                Agave.JobInputArray a ->
+                    a
+    in
     tr []
         [ th [] [ text id ]
-        , td [] [ text (String.join "; " values) ]
+        , td [] [ text (String.join "; " valList) ]
         ]
 
 

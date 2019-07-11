@@ -119,9 +119,14 @@ type alias Job =
     , startTime : String
     , endTime : String
     , status : String
-    , inputs : Dict String (List String)
+    , inputs : Dict String JobInputValue
     , parameters : Dict String ValueType
     }
+
+
+type JobInputValue
+    = JobInputString String
+    | JobInputArray (List String)
 
 
 type alias JobStatus =
@@ -294,8 +299,16 @@ decoderJob =
         |> optional "startTime" Decode.string ""
         |> optional "endTime" Decode.string ""
         |> optional "status" Decode.string ""
-        |> optional "inputs" (Decode.dict (Decode.list Decode.string)) Dict.empty
+        |> optional "inputs" (Decode.dict decoderJobInput) Dict.empty
         |> optional "parameters" (Decode.dict decoderValueType) Dict.empty
+
+
+decoderJobInput : Decoder JobInputValue
+decoderJobInput =
+    Decode.oneOf
+        [ Decode.map JobInputString Decode.string
+        , Decode.map JobInputArray (Decode.list Decode.string)
+        ]
 
 
 decoderJobOutput : Decoder JobOutput
