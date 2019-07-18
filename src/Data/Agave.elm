@@ -3,7 +3,6 @@ module Data.Agave exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline as Pipeline exposing (decode, optional, required)
 import Json.Encode as Encode exposing (Value)
-import Util exposing ((=>))
 import Dict exposing (Dict)
 
 
@@ -366,31 +365,31 @@ decoderPermission =
 encodeProfile : Profile -> Value
 encodeProfile profile =
     Encode.object
-        [ "email" => Encode.string profile.email
-        , "first_name" => Encode.string profile.first_name
-        , "last_name" => Encode.string profile.last_name
-        , "username" => Encode.string profile.username
+        [ ( "email", Encode.string profile.email )
+        , ( "first_name", Encode.string profile.first_name )
+        , ( "last_name", Encode.string profile.last_name )
+        , ( "username", Encode.string profile.username )
         ]
 
 
 encodeJobRequest : JobRequest -> Encode.Value
 encodeJobRequest request =
     Encode.object
-        [ "name" => Encode.string request.name
-        , "appId" => Encode.string request.app_id
-        , "archive" => Encode.bool request.archive
---        , "inputs" => Encode.list (List.map encodeJobInput request.inputs)
-        , "inputs" => Encode.object (List.map (\i -> (i.id, (Encode.list (List.map Encode.string i.value)))) request.inputs)
-        , "parameters" => Encode.object (List.map encodeJobParameter request.parameters)
---        , "parameters" => Encode.object (List.map (\p-> (p.id, (Encode.string p.value))) request.parameters)
-        , "notifications" => Encode.list (List.map encodeNotification request.notifications)
+        [ ( "name", Encode.string request.name )
+        , ( "appId", Encode.string request.app_id )
+        , ( "archive", Encode.bool request.archive )
+--        , ( "inputs", Encode.list (List.map encodeJobInput request.inputs) )
+        , ( "inputs", Encode.object (List.map (\i -> (i.id, (Encode.list (List.map Encode.string i.value)))) request.inputs) )
+        , ( "parameters", Encode.object (List.map encodeJobParameter request.parameters) )
+--        , ( "parameters", Encode.object (List.map (\p-> (p.id, (Encode.string p.value))) request.parameters) )
+        , ( "notifications", Encode.list (List.map encodeNotification request.notifications) )
         ]
 
 
 encodeJobInput : JobInput -> Encode.Value
 encodeJobInput input =
     Encode.object
-        [ input.id => Encode.list (List.map Encode.string input.value) ]
+        [ ( input.id, Encode.list (List.map Encode.string input.value) ) ]
 
 
 encodeJobParameter : JobParameter -> (String, Encode.Value)
@@ -417,6 +416,6 @@ encodeValueType value =
 encodeNotification : Notification -> Encode.Value
 encodeNotification notification =
     Encode.object
-        [ "url" => Encode.string notification.url
-        , "event" => Encode.string notification.event
+        [ ( "url", Encode.string notification.url )
+        , ( "event", Encode.string notification.event )
         ]
