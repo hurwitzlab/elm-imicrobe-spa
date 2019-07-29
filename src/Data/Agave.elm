@@ -115,8 +115,8 @@ type alias Job =
     , name : String
     , owner : String
     , app_id : String
-    , startTime : String
-    , endTime : String
+    , created : String -- time string in CT time zone
+    , ended : String -- time string in CT time zone
     , status : String
     , inputs : Dict String JobInputValue
     , parameters : Dict String ValueType
@@ -295,8 +295,8 @@ decoderJob =
         |> required "name" Decode.string
         |> optional "owner" Decode.string ""
         |> required "appId" Decode.string
-        |> optional "startTime" Decode.string ""
-        |> optional "endTime" Decode.string ""
+        |> optional "created" Decode.string ""
+        |> optional "ended" Decode.string ""
         |> optional "status" Decode.string ""
         |> optional "inputs" (Decode.dict decoderJobInput) Dict.empty
         |> optional "parameters" (Decode.dict decoderValueType) Dict.empty

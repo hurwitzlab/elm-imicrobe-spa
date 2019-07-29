@@ -185,8 +185,8 @@ startColumn : Table.Column Job Msg
 startColumn =
     Table.customColumn
         { name = "Start"
-        , viewData = .startTime
-        , sorter = Table.decreasingOrIncreasingBy .startTime
+        , viewData = .created
+        , sorter = Table.decreasingOrIncreasingBy .created
         }
 
 
@@ -194,6 +194,6 @@ endColumn : Table.Column Job Msg
 endColumn =
     Table.customColumn
         { name = "End"
-        , viewData = .endTime
-        , sorter = Table.decreasingOrIncreasingBy .endTime
+        , viewData = .ended
+        , sorter = Table.decreasingOrIncreasingBy .ended
         }

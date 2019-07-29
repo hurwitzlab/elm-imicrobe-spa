@@ -291,11 +291,10 @@ update session msg model =
                         else
                             False
                 in
-                case doPoll of
-                    True ->
-                        { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt handleJob loadJob
-                    False ->
-                        { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
+                if doPoll then
+                    { model | loadingJob = True, startTime = Just startTime, lastPollTime = Just time } => Task.attempt handleJob loadJob
+                else
+                    { model | startTime = Just startTime, lastPollTime = Just time } => Cmd.none
             else
                 model => Cmd.none
 
@@ -396,11 +395,11 @@ viewJob model =
             ]
         , tr []
             [ th [] [ text "Start Time" ]
-            , td [] [ text model.job.startTime ]
+            , td [] [ text model.job.created ]
             ]
         , tr []
             [ th [] [ text "End Time" ]
-            , td [] [ text model.job.endTime ]
+            , td [] [ text model.job.ended ]
             ]
         , tr []
             [ th [ class "top" ] [ text "Status" ]
