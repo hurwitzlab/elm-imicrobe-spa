@@ -1,6 +1,6 @@
 module Page.Project exposing (Model, Msg(..), PublishMsg(..), ExternalMsg(..), init, update, view)
 
-import Data.Project exposing (Project, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup, User)
+import Data.Project exposing (Project, ProjectFile, Investigator, Domain, Assembly, CombinedAssembly, Sample, Publication, ProjectGroup, User)
 import Data.ProjectGroup
 import Data.Sample
 import Data.Investigator
@@ -32,7 +32,8 @@ import View.TagsDropdown
 import View.Tags
 import View.Investigator
 import View.Widgets
-import Util exposing ((=>), capitalize, pluralize)
+import Util exposing ((=>), capitalize, pluralize, isUrl)
+import Config exposing (dataCommonsUrl)
 
 
 
@@ -942,7 +943,10 @@ view model =
                     ]
                 ]
             , viewProject model.project model.isEditable
+            , br [] []
+            , viewFiles model.project.project_files
             , viewPublications model.project.publications model.isEditable
+            , br [] []
             , viewSamples model.cart model.project.samples model.isEditable
             , if not model.isEditable then
                 viewAssemblies model
@@ -1154,6 +1158,61 @@ viewProjectGroup : ProjectGroup -> Html msg
 viewProjectGroup group =
     a [ Route.href (Route.ProjectGroup group.project_group_id) ]
         [ text group.group_name ]
+
+
+viewFiles : List ProjectFile -> Html Msg
+viewFiles files =
+    let
+        numFiles =
+            List.length files
+
+        label =
+            if numFiles == 0 then
+                text ""
+            else
+                span [ class "badge" ]
+                    [ text (toString numFiles)
+                    ]
+
+        cols =
+            tr []
+                [ th [] [ text "Path" ]
+                , th [] [ text "Type" ]
+                , th [] [ text "Description" ]
+                ]
+    in
+    div []
+        [ h2 []
+            [ text "Files "
+            , label
+            ]
+        , div [ class "scrollable" ]
+            [ if numFiles == 0 then
+                text "None"
+              else
+                table [ class "table table-condensed" ]
+                    [ tbody [] (cols :: (List.sortBy .file files |> List.map viewFile)) ]
+            ]
+        ]
+
+
+viewFile : ProjectFile -> Html Msg
+viewFile file =
+    let
+        link =
+            if isUrl file.file then
+                file.file
+            else
+                dataCommonsUrl ++ file.file
+    in
+    tr []
+        [ td []
+            [ a [ href link, target "_blank" ] [ text file.file ] ]
+        , td []
+            [ text file.project_file_type.type_ ]
+        , td []
+            [ text file.description ]
+        ]
 
 
 viewPublications : List Publication -> Bool -> Html Msg

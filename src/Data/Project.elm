@@ -18,6 +18,7 @@ type alias Project =
     , meta_file : String
     , assembly_file : String
     , peptide_file : String
+    , project_files : List ProjectFile
     , num_samples : String
     , domains : List Domain
     , institution : String
@@ -37,6 +38,20 @@ type alias Project =
     , ebi_submitter_id : Maybe Int
     , ebi_submission_date : Maybe String
     , ebi_accn : Maybe String
+    }
+
+
+type alias ProjectFile =
+    { profile_file_id : Int
+    , project_file_type : ProjectFileType
+    , file : String
+    , description : String
+    }
+
+
+type alias ProjectFileType =
+    { profile_file_type_id : Int
+    , type_ : String
     }
 
 
@@ -153,6 +168,7 @@ decoder =
         |> optional "meta_file" Decode.string "NA"
         |> optional "assembly_file" Decode.string "NA"
         |> optional "peptide_file" Decode.string "NA"
+        |> optional "project_files" (Decode.list decoderProjectFile) []
         |> optional "num_samples" Decode.string ""
         |> optional "domains" (Decode.list decoderDomain) []
         |> optional "institution" Decode.string ""
@@ -172,6 +188,22 @@ decoder =
         |> optional "ebi_submitter_id" (Decode.nullable Decode.int) Nothing
         |> optional "ebi_submission_date" (Decode.nullable Decode.string) Nothing
         |> optional "ebi_accn" (Decode.nullable Decode.string) Nothing
+
+
+decoderProjectFile : Decoder ProjectFile
+decoderProjectFile =
+    decode ProjectFile
+        |> required "project_file_id" Decode.int
+        |> required "project_file_type" decoderProjectFileType
+        |> required "file" Decode.string
+        |> optional "description" Decode.string ""
+
+
+decoderProjectFileType : Decoder ProjectFileType
+decoderProjectFileType =
+    decode ProjectFileType
+        |> required "project_file_type_id" Decode.int
+        |> required "type" Decode.string
 
 
 decoderProjectGroup : Decoder ProjectGroup
