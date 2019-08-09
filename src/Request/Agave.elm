@@ -267,14 +267,15 @@ stopJob token id =
             agaveBaseUrl ++ "/jobs/v2/" ++ id
 
         headers =
-            [( "Authorization", token), ("Content-type", "application/x-www-form-urlencoded")]
+            [( "Authorization", token) ]
 
         body =
-            "action=stop"
+            Encode.object
+                [ "action" => Encode.string "stop" ]
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withStringBody "" body
+        |> HttpBuilder.withJsonBody body
         |> HttpBuilder.withExpect Http.expectString
         |> HttpBuilder.toRequest
 
