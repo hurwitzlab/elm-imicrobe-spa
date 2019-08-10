@@ -435,7 +435,6 @@ viewStatus status =
                 ]
     in
     case String.toUpper status of
-        "BLOCKED" -> progressBar 0
         "CREATED" -> progressBar 10
         "PENDING" -> progressBar 20
         "PROCESSING_INPUTS" -> progressBar 30
@@ -444,6 +443,7 @@ viewStatus status =
         "SUBMITTING" -> progressBar 50
         "STAGING_JOB" -> progressBar 55
         "QUEUED" -> progressBar 60
+        "BLOCKED" -> progressBar 60
         "RUNNING" -> progressBar 70
         "CLEANING_UP" -> progressBar 80
         "ARCHIVING" -> progressBar 90
