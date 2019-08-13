@@ -93,6 +93,6 @@ launchJob token request =
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withJsonBody (encodeJobRequest request)
+        |> HttpBuilder.withJsonBody (encodeJobRequest request [])
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobStatus))
         |> HttpBuilder.toRequest

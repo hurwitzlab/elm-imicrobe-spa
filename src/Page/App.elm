@@ -22,6 +22,7 @@ import Task exposing (Task)
 import View.Cart as Cart
 import View.Spinner exposing (spinner)
 import View.FileBrowser as FileBrowser
+import Dict exposing (Dict)
 import DictList exposing (DictList)
 import List.Extra
 import String.Extra
@@ -41,6 +42,7 @@ type alias Model =
     , agaveApp : Agave.App
     , inputs : DictList String String
     , parameters : DictList String String
+    , settings : Dict String String
     , cart : Cart.Model
     , cartLoaded : Bool
     , selectedCartId : Maybe Int
@@ -85,11 +87,14 @@ init session id =
 
                 Agave.NumberValue num -> toString num
 
-        inputs app =
+        defaultInputs app =
             app.inputs |> List.map (\input -> (input.id, (default input.value.default))) |> DictList.fromList
 
-        params app =
+        defaultParams app =
             app.parameters |> List.map (\param -> (param.id, default param.value.default)) |> DictList.fromList
+
+        defaultSettings app =
+            [ ("batchQueue", app.defaultQueue), ("maxRunTime", app.defaultMaxRunTime) ] |> Dict.fromList
 
         cart =
             Cart.init session.cart Cart.Selectable
@@ -114,8 +119,9 @@ init session id =
                             , app_id = id
                             , app = app
                             , agaveApp = agaveApp
-                            , inputs = (inputs agaveApp)
-                            , parameters = (params agaveApp)
+                            , inputs = defaultInputs agaveApp
+                            , parameters = defaultParams agaveApp
+                            , settings = defaultSettings agaveApp
                             , cart = cart
                             , cartLoaded = False
                             , selectedCartId = Nothing -- Current
@@ -135,13 +141,22 @@ init session id =
         |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
+defaultBatchQueue =
+    "normal"
+
+
+defaultMaxRunTime =
+    "12:00:00"
+
+
 
 -- UPDATE --
 
 
 type Msg
-    = SetInput InputSource String String --FIXME change source (1st arg) to union type
+    = SetInput InputSource String String
     | SetParameter String String
+    | SetSetting String String
     | RunJob
     | RunJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
     | ShareJobCompleted (Result Http.Error (Request.Agave.Response Agave.JobStatus))
@@ -215,6 +230,12 @@ update session msg model =
             in
             { model | parameters = newParams } => Cmd.none
 
+        SetSetting id value ->
+            let
+                newSettings = Dict.insert id value model.settings
+            in
+            { model | settings = newSettings } => Cmd.none
+
         RunJob -> --TODO messy, clean this up
             let
                 irodsToAgave path = -- convert IRODS paths to Agave paths
@@ -257,7 +278,8 @@ update session msg model =
                             Agave.StringValue val
 
                 jobParameters =
-                    DictList.toList model.parameters |> List.map (\(k, v) -> Agave.JobParameter k (encodeParam k v))
+                    DictList.toList model.parameters
+                        |> List.map (\(k, v) -> Agave.JobParameter k (encodeParam k v))
 
                 jobName =
                     "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
@@ -266,13 +288,16 @@ update session msg model =
                     Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
 
                 launchAgave =
-                    Request.Agave.launchJob session.token jobRequest |> Http.send RunJobCompleted
+                    Request.Agave.launchJob session.token jobRequest (Dict.toList model.settings)
+                        |> Http.send RunJobCompleted
 
                 launchPlanB =
-                    Request.PlanB.launchJob session.token jobRequest |> Http.send RunJobCompleted
+                    Request.PlanB.launchJob session.token jobRequest
+                        |> Http.send RunJobCompleted
 
                 sendAppRun =
-                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString) |> Http.send AppRunCompleted
+                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString)
+                        |> Http.send AppRunCompleted
 
                 launchApp =
                     if isPlanB then
@@ -566,6 +591,8 @@ viewApp model =
     , inputs
     , h3 [] [ text "Parameters" ]
     , parameters
+    , h3 [] [ text "Settings" ]
+    , viewSettings model.settings
     ]
 
 
@@ -615,11 +642,11 @@ viewAppInput input =
 
 
 viewAppParameter : (Agave.AppParameter, String) -> Html Msg
-viewAppParameter input =
+viewAppParameter parameter =
     let
-        param = Tuple.first input
+        param = Tuple.first parameter
 
-        val = Tuple.second input
+        val = Tuple.second parameter
 
         id = param.id
 
@@ -659,18 +686,47 @@ viewAppParameter input =
 
         -- Hide parameters with ID's that start with double-underscore (requested by Ken/Josh)
         hidden =
-            case (not param.value.visible) || String.startsWith "__" param.id of
-                True ->
-                    [ style [("display", "none")] ]
-
-                False ->
-                    []
+            if (not param.value.visible) || String.startsWith "__" param.id then
+                [ style [("display", "none")] ]
+            else
+                []
     in
     tr hidden
     [ th [ class "col-md-3" ] [ text param.details.label ]
     , td [ class "nowrap" ] [ interface ]
     , td [] [ text param.details.description ]
     ]
+
+
+viewSettings : Dict String String -> Html Msg
+viewSettings settings =
+    let
+        batchQueue =
+            settings |> Dict.get "batchQueue" |> Maybe.withDefault defaultBatchQueue
+
+        maxRunTime =
+            settings |> Dict.get "maxRunTime" |> Maybe.withDefault defaultMaxRunTime
+    in
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ th [ class "col-md-3" ] [ text "Queue" ]
+                , td [ class "nowrap" ]
+                    [ select [ onInput (SetSetting "batchQueue") ]
+                        [ option [ value "normal", selected (batchQueue == "normal") ] [ text "normal" ]
+                        , option [ value "skx-normal", selected (batchQueue == "skx-normal") ] [ text "high memory" ]
+                        ]
+                    ]
+                , td [] [ text "The queue for the job (note that the high memory queue is often much slower)" ]
+                ]
+            , tr []
+                [ th [ class "col-md-3" ] [ text "Time limit" ]
+                , td [ class "nowrap" ]
+                    [ Html.input [ class "form-control", type_ "text", size 10, value maxRunTime, onInput (SetSetting "maxRunTime") ] [] ]
+                , td [] [ text "The maximum run time allowed in HH:MM:SS" ]
+                ]
+            ]
+        ]
 
 
 runDialogConfig : Model -> Dialog.Config Msg
@@ -688,17 +744,16 @@ runDialogConfig model =
                         ]
 
         footer =
-            case model.dialogError of
-                Nothing -> Just (div [] [ text " " ])
-
-                _ ->
-                    Just
-                        (button
-                            [ class "btn btn-default"
-                            , onClick CloseRunDialog
-                            ]
-                            [ text "OK" ]
-                        )
+            if model.dialogError == Nothing then
+                Just (div [] [ text " " ])
+            else
+                Just
+                    (button
+                        [ class "btn btn-default"
+                        , onClick CloseRunDialog
+                        ]
+                        [ text "OK" ]
+                    )
     in
     { closeMessage = Nothing
     , containerClass = Nothing

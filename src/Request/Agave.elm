@@ -224,8 +224,8 @@ getJobOutput username token id path =
     getFile token jobPath
 
 
-launchJob : String -> JobRequest -> Http.Request (Response JobStatus)
-launchJob token request =
+launchJob : String -> JobRequest -> List (String, String) -> Http.Request (Response JobStatus)
+launchJob token request settings =
     let
         url =
             agaveBaseUrl ++ "/jobs/v2"
@@ -235,7 +235,7 @@ launchJob token request =
     in
     HttpBuilder.post url
         |> HttpBuilder.withHeaders headers
-        |> HttpBuilder.withJsonBody (encodeJobRequest request)
+        |> HttpBuilder.withJsonBody (encodeJobRequest request settings)
         |> HttpBuilder.withExpect (Http.expectJson (responseDecoder Agave.decoderJobStatus))
         |> HttpBuilder.toRequest
 

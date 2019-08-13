@@ -20,9 +20,12 @@ type alias App =
     { name : String
     , helpURI : String
     , shortDescription : String
+    , longDescription : String
     , version : String
     , tags : List String
     , isPublic : Bool
+    , defaultMaxRunTime : String
+    , defaultQueue : String
     , inputs : List AppInput
     , parameters : List AppParameter
     }
@@ -205,9 +208,12 @@ decoderApp =
         |> required "name" Decode.string
         |> required "helpURI" Decode.string
         |> required "shortDescription" Decode.string
+        |> optional "longDescription" Decode.string ""
         |> required "version" Decode.string
         |> optional "tags" (Decode.list Decode.string) []
         |> optional "isPublic" Decode.bool False
+        |> optional "defaultMaxRunTime" Decode.string ""
+        |> optional "defaultQueue" Decode.string ""
         |> required "inputs" (Decode.list decoderAppInput)
         |> required "parameters" (Decode.list decoderAppParameter)
 
@@ -372,10 +378,10 @@ encodeProfile profile =
         ]
 
 
-encodeJobRequest : JobRequest -> Encode.Value
-encodeJobRequest request =
+encodeJobRequest : JobRequest -> List (String, String) -> Encode.Value
+encodeJobRequest request settings =
     Encode.object
-        [ ( "name", Encode.string request.name )
+        ([ ( "name", Encode.string request.name )
         , ( "appId", Encode.string request.app_id )
         , ( "archive", Encode.bool request.archive )
 --        , ( "inputs", Encode.list (List.map encodeJobInput request.inputs) )
@@ -384,6 +390,8 @@ encodeJobRequest request =
 --        , ( "parameters", Encode.object (List.map (\p-> (p.id, (Encode.string p.value))) request.parameters) )
         , ( "notifications", Encode.list (List.map encodeNotification request.notifications) )
         ]
+        ++ (settings |> List.map (Tuple.mapSecond Encode.string))
+        )
 
 
 encodeJobInput : JobInput -> Encode.Value
