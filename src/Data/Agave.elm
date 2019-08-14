@@ -121,6 +121,8 @@ type alias Job =
     , created : String -- time string in CT time zone
     , ended : String -- time string in CT time zone
     , status : String
+    , maxHours : Int
+    , remoteQueue : String
     , inputs : Dict String JobInputValue
     , parameters : Dict String ValueType
     }
@@ -304,6 +306,8 @@ decoderJob =
         |> optional "created" Decode.string ""
         |> optional "ended" Decode.string ""
         |> optional "status" Decode.string ""
+        |> optional "maxHours" Decode.int 0
+        |> optional "remoteQueue" Decode.string ""
         |> optional "inputs" (Decode.dict decoderJobInput) Dict.empty
         |> optional "parameters" (Decode.dict decoderValueType) Dict.empty
 

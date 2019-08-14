@@ -357,6 +357,7 @@ view model =
             , viewJob model
             , viewInputs model.job.inputs
             , viewParameters model.job.parameters
+            , viewSettings model.job
             , viewHistory model
             , viewOutputs model
             , viewResults model
@@ -539,6 +540,27 @@ viewParameter (id, value) =
     tr []
         [ th [] [ text id ]
         , td [] [ text valueStr ]
+        ]
+
+
+viewSettings : Agave.Job -> Html Msg
+viewSettings job =
+    div []
+        [ h2 [] [ text "Settings" ]
+        , table [ class "table" ]
+            [ colgroup []
+                [ col [ class "col-md-3" ] [] ]
+            , tbody []
+                [ tr []
+                    [ th [ class "" ] [ text "Queue" ]
+                    , td [] [ text job.remoteQueue ]
+                    ]
+                , tr []
+                    [ th [ class "" ] [ text "Time limit" ]
+                    , td [] [ text (toString job.maxHours) ]
+                    ]
+                ]
+            ]
         ]
 
 
