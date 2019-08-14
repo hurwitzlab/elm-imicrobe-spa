@@ -3,14 +3,14 @@ module Route exposing (Route(..), routeToString, fromLocation, href, modifyUrl)
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Navigation exposing (Location)
-import UrlParser as Url exposing ((</>), (<?>), Parser, oneOf, parseHash, map, s, string, int, intParam)
+import UrlParser exposing ((</>), (<?>), Parser, oneOf, parseHash, map, s, string, int, intParam)
 
 
 
 type Route
     = Home
     | Apps
-    | App Int
+    | App String
     | Assemblies
     | Assembly Int
     | Cart (Maybe Int)
@@ -47,7 +47,7 @@ routeMather : Parser (Route -> a) a
 routeMather =
     oneOf
         [ map Apps (s "apps")
-        , map App (s "apps" </> int)
+        , map App (s "apps" </> string)
         , map Assemblies (s "assemblies")
         , map Assembly (s "assemblies" </> int)
         , map (Cart Nothing) (s "cart") -- Note: tried to use a query param (<?>) but won't work for some reason (Not found error)
@@ -92,8 +92,8 @@ routeToString page =
                 Apps ->
                     [ "apps" ]
 
-                App id ->
-                    [ "apps", toString id ]
+                App term ->
+                    [ "apps", term ]
 
                 Assemblies ->
                     [ "assemblies" ]

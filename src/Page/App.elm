@@ -58,12 +58,18 @@ type alias Model =
     }
 
 
-init : Session -> Int -> Task PageLoadError Model
-init session id =
+init : Session -> String -> Task PageLoadError Model
+init session term =
     let
-        -- Load page - Perform tasks to load the resources of a page
         loadApp =
-            Request.App.get id |> Http.toTask
+            (case String.toInt term of
+                Ok val ->
+                    Request.App.get val
+
+                Err _ ->
+                    Request.App.getByName term
+            ) |> Http.toTask
+
 
         loadAppFromAgave name =
             Request.Agave.getApp session.token name |> Http.toTask |> Task.map .result
@@ -116,7 +122,7 @@ init session id =
                     (\agaveApp ->
                         Task.succeed
                             { pageTitle = "App"
-                            , app_id = id
+                            , app_id = app.app_id
                             , app = app
                             , agaveApp = agaveApp
                             , inputs = defaultInputs agaveApp

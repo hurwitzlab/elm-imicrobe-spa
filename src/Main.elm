@@ -86,7 +86,7 @@ type alias Model =
 type Page
     = Blank
     | Apps Apps.Model
-    | App Int App.Model
+    | App String App.Model
     | Assemblies Assemblies.Model
     | Assembly Int Assembly.Model
     | Cart (Maybe Int) Cart.Model
@@ -130,7 +130,7 @@ type PageState
 
 
 type Msg
-    = AppLoaded Int (Result PageLoadError App.Model)
+    = AppLoaded String (Result PageLoadError App.Model)
     | AppMsg App.Msg
     | AppsLoaded (Result PageLoadError Apps.Model)
     | AppsMsg Apps.Msg

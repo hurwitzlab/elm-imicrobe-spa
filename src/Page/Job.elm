@@ -387,7 +387,7 @@ viewJob model =
             ]
         , tr []
             [ th [] [ text "App" ]
-            , td [] [ a [ Route.href (Route.App model.app.app_id) ] [ text model.job.app_id ] ]
+            , td [] [ a [ Route.href (Route.App (toString model.app.app_id)) ] [ text model.job.app_id ] ]
             ]
         , tr []
             [ th [] [ text "Owner" ]

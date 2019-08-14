@@ -101,7 +101,7 @@ nameColumn =
 nameLink : Data.App.App -> Table.HtmlDetails Msg
 nameLink app =
     Table.HtmlDetails []
-        [ a [ Route.href (Route.App app.app_id) ]
+        [ a [ Route.href (Route.App (toString app.app_id)) ]
             [ text app.app_name ]
         ]
 
