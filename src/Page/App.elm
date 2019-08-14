@@ -232,13 +232,15 @@ update session msg model =
 
         SetParameter id value ->
             let
-                newParams = DictList.insert id value model.parameters
+                newParams =
+                    DictList.insert id value model.parameters
             in
             { model | parameters = newParams } => Cmd.none
 
         SetSetting id value ->
             let
-                newSettings = Dict.insert id value model.settings
+                newSettings =
+                    Dict.insert id value model.settings
             in
             { model | settings = newSettings } => Cmd.none
 
@@ -293,23 +295,25 @@ update session msg model =
                 jobRequest =
                     Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
 
+                jobSettings =
+                    Dict.toList model.settings
+
                 launchAgave =
-                    Request.Agave.launchJob session.token jobRequest (Dict.toList model.settings)
-                        |> Http.send RunJobCompleted
+                    Request.Agave.launchJob session.token jobRequest jobSettings
 
                 launchPlanB =
                     Request.PlanB.launchJob session.token jobRequest
-                        |> Http.send RunJobCompleted
 
                 sendAppRun =
-                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest |> toString)
+                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest jobSettings |> toString)
                         |> Http.send AppRunCompleted
 
                 launchApp =
-                    if isPlanB then
+                    (if isPlanB then
                         launchPlanB
                     else
                         launchAgave
+                    ) |> Http.send RunJobCompleted
             in
             { model | showRunDialog = True } => Cmd.batch [ launchApp, sendAppRun ]
 
