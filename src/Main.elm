@@ -1645,7 +1645,7 @@ init flags location =
                     state |> Maybe.withDefault ""
 
                 newSession =
-                    { session | token = toString token, expiresIn = expiresIn, url = url }
+                    { session | token = OAuth.showToken token, expiresIn = expiresIn, url = url }
 
                 recordLogin =
                     Request.User.recordLogin newSession.token
