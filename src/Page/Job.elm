@@ -59,7 +59,7 @@ init session id =
             Request.PlanB.getJob session.token id |> Http.toTask |> Task.map .result
 
         loadJob =
-            if String.startsWith "planb" id then
+            if isPlanB id then
                 loadJobFromPlanB
             else
                 loadJobFromAgave
@@ -101,6 +101,11 @@ init session id =
         |> Task.mapError (Error.handleLoadErrorWithLogin (isLoggedIn session))
 
 
+isPlanB : String -> Bool
+isPlanB id =
+    String.startsWith "planb" id
+
+
 
 -- UPDATE --
 
@@ -132,7 +137,7 @@ update session msg model =
             Request.PlanB.getJob session.token model.job.id |> Http.toTask |> Task.map .result
 
         loadJob =
-            if String.startsWith "planb" model.job_id then
+            if isPlanB model.job_id then
                 loadJobFromPlanB
             else
                 loadJobFromAgave
@@ -147,7 +152,7 @@ update session msg model =
                     Request.PlanB.getJobHistory session.token model.job_id |> Http.toTask |> Task.map .result
 
                 loadHistory =
-                    if String.startsWith "planb" model.job_id then
+                    if isPlanB model.job_id then
                         loadHistoryFromPlanB
                     else
                        loadHistoryFromAgave
@@ -208,15 +213,13 @@ update session msg model =
 
                 -- Gets a single file or every file in a directory if path ends in "/"
                 loadResultData path =
-                    case String.endsWith "/" path of
-                        False ->
-                            loadOutput path
-
-                        True ->
-                            -- Get contents of every file in the path
-                            loadOutputs path
-                                |> Task.andThen
-                                    (\outputs -> outputs |> List.map loadFile |> Task.sequence |> Task.map List.concat)
+                    if String.endsWith "/" path then
+                        -- Get contents of every file in the path
+                        loadOutputs path
+                            |> Task.andThen
+                                (\outputs -> outputs |> List.map loadFile |> Task.sequence |> Task.map List.concat)
+                    else
+                        loadOutput path
 
                 loadResults =
                     model.app.app_results |> List.map (loadResultData << .path) |> Task.sequence |> Task.map List.concat
@@ -357,7 +360,10 @@ view model =
             , viewJob model
             , viewInputs model.job.inputs
             , viewParameters model.job.parameters
-            , viewSettings model.job
+            , if not (isPlanB model.job.id) then
+                viewSettings model.job
+              else
+                text ""
             , viewHistory model
             , viewOutputs model
             , viewResults model

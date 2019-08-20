@@ -78,10 +78,10 @@ init session term =
             Request.PlanB.getApp session.token name |> Http.toTask |> Task.map .result
 
         loadAppFromProvider app =
-            case app.provider_name of
-                "plan-b" -> loadAppFromPlanB
-
-                _ -> loadAppFromAgave
+            if isPlanB app.provider_name then
+                loadAppFromPlanB
+            else
+                loadAppFromAgave
 
         default val =
             case val of
@@ -155,6 +155,11 @@ defaultMaxRunTime =
     "12:00:00"
 
 
+isPlanB : String -> Bool
+isPlanB id =
+    String.startsWith "plan-b" id
+
+
 
 -- UPDATE --
 
@@ -182,10 +187,6 @@ type Msg
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
-    let
-        isPlanB =
-            model.app.provider_name == "plan-b"
-    in
     case msg of
         SetInput source id value ->
             let
@@ -309,7 +310,7 @@ update session msg model =
                         |> Http.send AppRunCompleted
 
                 launchApp =
-                    (if isPlanB then
+                    (if isPlanB model.app.provider_name then
                         launchPlanB
                     else
                         launchAgave
@@ -324,7 +325,7 @@ update session msg model =
             in
             model =>
                 ((Route.modifyUrl (Route.Job response.result.id)
-                    :: (if not isPlanB then [ shareJob ] else [])
+                    :: (if not (isPlanB model.app.provider_name) then [ shareJob ] else [])
                 ) |> Cmd.batch)
 
         RunJobCompleted (Err error) ->
@@ -601,8 +602,13 @@ viewApp model =
     , inputs
     , h3 [] [ text "Parameters" ]
     , parameters
-    , h3 [] [ text "Settings" ]
-    , viewSettings model.settings
+    , if not (isPlanB model.app.provider_name) then
+        div []
+            [ h3 [] [ text "Settings" ]
+            , viewSettings model.settings
+            ]
+      else
+        text ""
     ]
 
 
