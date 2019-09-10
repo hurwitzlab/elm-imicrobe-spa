@@ -28,7 +28,7 @@ import Page.Contact as Contact
 import Page.Dashboard as Dashboard
 import Page.Domain as Domain
 import Page.Domains as Domains
-import Page.Error as Error exposing (PageLoadError, redirectLoadError)
+import Page.Error as Error exposing (PageLoadError)
 import Page.Files as Files
 import Page.Home as Home
 import Page.Investigator as Investigator
@@ -57,6 +57,7 @@ import Request.User
 import Ports
 import Task exposing (Task)
 import Time exposing (Time)
+import Delay
 import Util exposing ((=>))
 import View.Page as Page exposing (ActivePage)
 import View.FileBrowser as FileBrowser
@@ -435,8 +436,8 @@ updatePage page msg model =
         AppLoaded id (Ok subModel) ->
             { model | pageState = Loaded (App id subModel) } => scrollToTop
 
-        AppLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+        AppLoaded _ (Err error) ->
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         AppMsg subMsg ->
             case page of
@@ -552,7 +553,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Dashboard subModel) } => scrollToTop
 
         DashboardLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         DashboardMsg subMsg ->
             case page of
@@ -634,7 +635,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Jobs subModel) } => scrollToTop
 
         JobsLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         JobsMsg subMsg ->
             case page of
@@ -648,7 +649,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Job id subModel) } => scrollToTop
 
         JobLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         JobMsg subMsg ->
             case page of
@@ -708,7 +709,7 @@ updatePage page msg model =
             { model | session = newSession } => Cmd.batch [ Session.store newSession, Navigation.modifyUrl session.url ]
 
         LoginRecorded (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         MapLoaded lat lng (Ok subModel) ->
             { model | pageState = Loaded (Map lat lng subModel) } => scrollToTop
@@ -728,7 +729,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Profile subModel) } => scrollToTop
 
         ProfileLoaded (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         ProfileMsg subMsg ->
             case page of
@@ -777,7 +778,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Project id subModel) } => scrollToTop
 
         ProjectLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         ProjectMsg subMsg ->
             case page of
@@ -837,7 +838,7 @@ updatePage page msg model =
             { model | pageState = Loaded (Sample id subModel) } => scrollToTop
 
         SampleLoaded id (Err error) ->
-            { model | pageState = Loaded (Error error) } => redirectLoadError error
+            { model | pageState = Loaded (Error error) } => redirectAuthError error
 
         SampleMsg subMsg ->
             case page of
@@ -1173,6 +1174,14 @@ updatePage page msg model =
                 _ ->
                     -- Disregard incoming messages that arrived for the wrong page
                     model => Cmd.none
+
+
+redirectAuthError : PageLoadError -> Cmd Msg
+redirectAuthError error =
+    if Error.statusCode error == Just 401 then
+        Delay.after 5000 Time.millisecond Authorize -- redirect to Login page
+    else
+        Cmd.none
 
 
 

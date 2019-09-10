@@ -1,11 +1,11 @@
-module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, handleLoadErrorWithLogin, redirectLoadError, errorString, errorMessage, view)
+module Page.Error exposing (PageLoadError, pageLoadError, handleLoadError, handleLoadErrorWithLogin, redirectLoadError, statusCode, errorString, errorMessage, view)
 
 {-| The page that renders when there was an error trying to load another page,
 for example a Page Not Found error.
 -}
 
 import Html exposing (Html, div, h1, img, main_, a, p, text)
-import Html.Attributes exposing (alt, class, id, tabindex)
+import Html.Attributes exposing (alt, class, id, tabindex, href)
 import View.Page as Page exposing (ActivePage)
 import Route
 import Http
@@ -55,6 +55,16 @@ redirectLoadError (PageLoadError model) =
         _ -> Cmd.none
 
 
+statusCode : PageLoadError -> Maybe Int
+statusCode (PageLoadError model) =
+    case model.error of
+        Http.BadStatus response ->
+            Just response.status.code
+
+        _ ->
+            Nothing
+
+
 errorString : Http.Error -> String
 errorString error =
     case error of
@@ -100,6 +110,17 @@ errorMessage model =
     case model.error of
         Http.BadStatus response ->
             case response.status.code of
+                401 ->
+                    div []
+                        [ p [] [ text "Access to this part of the site requires a CyVerse account." ]
+                        , p []
+                            [ text "If you do not have an account, please sign up at the "
+                            , a [ href "https://user.cyverse.org/" ] [ text "CyVerse User Portal" ]
+                            , text "."
+                            ]
+                        , p [] [ text "You will be redirected to the CyVerse login page in a few seconds ..." ]
+                        ]
+
                 403 ->
                     div []
                         [ p []
