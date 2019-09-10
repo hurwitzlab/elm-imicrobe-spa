@@ -597,7 +597,9 @@ view model =
                 viewMap model.showMap
               else
                 text ""
+            , br [] []
             , viewAttributes model model.isEditable
+            , br [] []
             , viewFiles model.sample.available_file_types model.sample.sample_files model.isEditable model.filesBusy
             , viewAssemblies model.sample.assemblies
             , viewCombinedAssemblies model.sample.combined_assemblies
@@ -605,6 +607,7 @@ view model =
                 viewProteins model
               else
                 text ""
+            , br [] []
             , if not model.isEditable then
                 viewCentrifugeResults model
               else
@@ -935,6 +938,7 @@ viewAssemblies assemblies =
                 , label
                 ]
             , body
+            , br [] []
             ]
 
 
@@ -977,6 +981,7 @@ viewCombinedAssemblies assemblies =
                 , label
                 ]
             , body
+            , br [] []
             ]
 
 
@@ -1554,5 +1559,6 @@ viewCentrifugeResults model =
                 ]
             , div [ style [("padding-bottom","0.5em")] ] [ text "As determined by ", a [ href "https://ccb.jhu.edu/software/centrifuge/manual.shtml", target "_blank" ] [ text "Centrifuge"] ]
             , div [ class "scrollable" ] [ body ]
+            , br [] []
             ]
         ]

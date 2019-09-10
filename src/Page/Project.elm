@@ -948,10 +948,12 @@ view model =
             , viewPublications model.project.publications model.isEditable
             , br [] []
             , viewSamples model.cart model.project.samples model.isEditable
+            , br [] []
             , if not model.isEditable then
                 viewAssemblies model
               else
                 text ""
+            , br [] []
             , if not model.isEditable then
                 viewCombinedAssemblies model
               else

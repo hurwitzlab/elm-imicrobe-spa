@@ -66,7 +66,9 @@ view model =
                     ]
                 ]
             , viewInvestigator model.investigator
+            , br [] []
             , viewProjects model.investigator.projects
+            , br [] []
             , viewSamples model.investigator.samples
             ]
         ]
