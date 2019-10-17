@@ -8,7 +8,7 @@
     "blueimp-canvas-to-blob": "^3.14.0",
     "blueimp-file-upload": "^9.22.0",
     "blueimp-load-image": "^2.19.0",
-    "bootstrap": "^3.3.7",
+    "bootstrap": "^3.4.1",
     "bootstrap-loader": "^2.1.0",
     "bootstrap-sass": "^3.3.7",
     "css-loader": "^0.28.11",
@@ -19,7 +19,7 @@
     "file-loader": "^0.11.2",
     "google-maps": "^3.3.0",
     "imports-loader": "^0.7.1",
-    "jquery": "^3.3.1",
+    "jquery": "^3.4.1",
     "jquery-ui": "^1.12.1",
     "jstree": "^3.3.5",
     "less": "^2.7.2",
@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "webpack": "^3.12.0",
-    "webpack-dev-server": "^2.11.3"
+    "webpack-dev-server": "^2.11.5"
   },
   "scripts": {
     "start": "webpack-dev-server --hot --inline",

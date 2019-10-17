@@ -332,8 +332,8 @@ getFilePermission token path =
         |> HttpBuilder.toRequest
 
 
-setFilePermission : String -> String -> String -> String -> Http.Request EmptyResponse
-setFilePermission token username permission path =
+setFilePermission : String -> String -> String -> Bool -> String -> Http.Request EmptyResponse
+setFilePermission token username permission recursive path =
         let
         url =
             agaveBaseUrl ++ "/files/v2/pems/system/data.iplantcollaborative.org/" ++ (removeTrailingSlash path)
@@ -345,7 +345,7 @@ setFilePermission token username permission path =
             Encode.object
                 [ "username" => Encode.string username
                 , "permission" => Encode.string permission
-                , "recursive" => Encode.bool True
+                , "recursive" => Encode.bool recursive
                 ]
     in
     HttpBuilder.post url

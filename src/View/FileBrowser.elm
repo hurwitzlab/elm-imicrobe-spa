@@ -440,13 +440,22 @@ updateInternal session msg model =
                          _ ->
                              "READ"
 
+                shareHomeDir =
+                    if String.startsWith model.homePath firstSelected then
+                        Request.Agave.setFilePermission session.token username "READ" False model.homePath |> Http.toTask
+                    else
+                        Task.succeed (Request.Agave.EmptyResponse "")
+
                 shareFile =
-                    Request.Agave.setFilePermission session.token username agavePerm firstSelected |> Http.toTask
+                    Request.Agave.setFilePermission session.token username agavePerm True firstSelected |> Http.toTask
+
+                shareTasks =
+                    shareHomeDir |> Task.andThen (\_ -> shareFile)
             in
             if noChange then
                 model => Cmd.none
             else
-                newModel => Task.attempt ShareWithUserCompleted shareFile
+                newModel => Task.attempt ShareWithUserCompleted shareTasks
 
         ShareWithUserCompleted (Ok _) ->
             let
