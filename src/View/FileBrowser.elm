@@ -741,7 +741,7 @@ shareDialogConfig path permissions currentUserName dropdownState isBusy errorMsg
             else
                 div []
                     [ text "Who has access"
-                    , div [ class "scrollable", style [ ("max-height","30vh") ] ]
+                    , div [ class "scrollable", style [ ("max-height","30vh"), ("min-height","30vh") ] ]
                         [ viewPermissions currentUserName permissions ]
                     , addPanel
                     ]
