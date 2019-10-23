@@ -221,16 +221,21 @@ app.ports.createSimPlot.subscribe(function(args) {
         console.log("Plot type:", dataType, filepath);
 
         if (dataType == "matrix") { // similarity matrix
+            element.append("<h3>Similarity Heatmap</h3>");
             simplots.symmetricalHeatmap(elementId, data);
+            element.append("<hr style='border:1px dashed #E0E0E0'>");
+            element.append("<h3>Similarity Edge Boundary Graph</h3>");
             simplots.edgeboundary(elementId, data);
-            simplots.pcoaPlot(elementId, data, { padding: 0, width: 600, height: 400 } );
+            element.append("<hr style='border:1px dashed #E0E0E0'>");
+            element.append("<h3>Similarity PCoA Plot</h3>");
+            simplots.pcoaPlot(elementId, data);
         }
         else if (dataType == "centrifuge") { // centrifuge format
             simplots.bubblePlot(elementId, data);
         }
         else if (dataType == "blast-tab") { // blast tabular format
             var basename = filepath.split('/').reverse()[0];
-            element.append("<div>" + basename + ": Frequency of HSPs by sample and depth (m)</div>")
+            element.append("<h3>" + basename + ": Frequency of HSPs by sample and depth (m)</h3>")
             simplots.heatmap(elementId, data);
         }
 
