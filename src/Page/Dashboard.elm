@@ -899,6 +899,7 @@ viewInfo model =
     div [ class "info-panel" ] [ info ]
 
 
+--TODO move into FileBrowser.elm, dup'ed in Job.elm
 viewFileInfo : String -> FileResult -> Html Msg
 viewFileInfo token file =
     let
