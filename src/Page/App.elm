@@ -518,7 +518,8 @@ view model =
                     [ viewApp model
                     , div [ class "center" ]
                         [ hr [] []
-                        , button [ class "btn btn-primary btn-lg", onClick RunJob ] [ text "Run" ]
+                        , button [ class "btn btn-primary btn-lg", style [ ("min-width","15em"), ("margin-top","2em"), ("margin-bottom","5em") ], onClick RunJob ]
+                            [ text "Run" ]
                         ]
                     ]
     in
