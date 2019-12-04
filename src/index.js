@@ -22,10 +22,13 @@ require.context("../plugins/landing-page", true, /^\.\/.*\.(jpg|png|html|css)/);
 
 // Load config file
 var config = require('../config.json');
-
 const COOKIE_NAME = config.cookieName;
 
-// Start up Elm app
+
+/*
+ * Start up Elm app
+ */
+
 var Elm = require('./Main.elm');
 var mountNode = document.getElementById('main');
 var app = Elm.Main.embed(mountNode, {
@@ -38,23 +41,18 @@ var app = Elm.Main.embed(mountNode, {
  * Initialize Google Maps and define ports
  */
 
-var GoogleMapsLoader = require("google-maps");
-GoogleMapsLoader.KEY = config.googleApiKey;
-var Google;
-GoogleMapsLoader.load(function(google) {
-    Google = google;
-});
-
 app.ports.loadMap.subscribe(function(model) {
     var mapDiv = document.getElementsByTagName('gmap')[0];
+    if (!mapDiv)
+        throw("loadMap: map div not found");
 
-    var myLatlng = new Google.maps.LatLng(model.lat, model.lng);
+    var myLatlng = new google.maps.LatLng(model.lat, model.lng);
     var mapOptions = {
         zoom: 8,
         center: myLatlng
     };
 
-    var gmap = new Google.maps.Map(mapDiv, mapOptions);
+    var gmap = new google.maps.Map(mapDiv, mapOptions);
 
     var marker = new google.maps.Marker({
         position: myLatlng,
@@ -66,7 +64,7 @@ app.ports.loadMap.subscribe(function(model) {
 });
 
 app.ports.setCenter.subscribe(function(model) {
-    var myLatlng = new Google.maps.LatLng(model.center.lat, model.center.lng);
+    var myLatlng = new google.maps.LatLng(model.center.lat, model.center.lng);
     model.gmap.setCenter(myLatlng);
 });
 
