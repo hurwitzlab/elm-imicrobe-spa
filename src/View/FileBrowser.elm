@@ -664,7 +664,7 @@ sizeColumn : Table.Column FileResult Msg
 sizeColumn =
     Table.veryCustomColumn
         { name = "Size"
-        , viewData = (\file -> Table.HtmlDetails [] [ if (file.length > 0) then (text (Filesize.format file.length)) else text "" ])
+        , viewData = (\file -> Table.HtmlDetails [ class "nowrap" ] [ if (file.length > 0) then (text (Filesize.format file.length)) else text "" ])
         , sorter = Table.increasingOrDecreasingBy .length
         }
 
