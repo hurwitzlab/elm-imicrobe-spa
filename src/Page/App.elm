@@ -246,84 +246,87 @@ update session msg model =
             { model | settings = newSettings } => Cmd.none
 
         RunJob -> --TODO messy, clean this up
-            let
-                irodsToAgave path = -- convert IRODS paths to Agave paths
-                    if String.contains "/iplant/home" path then
-                        String.Extra.replace "/iplant/home" "" path -- replace all instances (multiple paths separated by semicolon)
-                    else
-                        path
+            if Agave.validInputs model.agaveApp (DictList.toDict model.inputs) then
+                let
+                    irodsToAgave path = -- convert IRODS paths to Agave paths
+                        if String.contains "/iplant/home" path then
+                            String.Extra.replace "/iplant/home" "" path -- replace all instances (multiple paths separated by semicolon)
+                        else
+                            path
 
-                jobInputs =
-                    DictList.toList model.inputs
-                        |> List.map (\(k, v) -> (k, irodsToAgave v))
-                        |> List.map (\(k, v) -> Agave.JobInput k (String.split ";" v))
+                    jobInputs =
+                        DictList.toList model.inputs
+                            |> List.map (\(k, v) -> (k, irodsToAgave v))
+                            |> List.map (\(k, v) -> Agave.JobInput k (String.split ";" v))
 
-                encodeParam id val =
-                    case List.filter (\p -> p.id == id) model.agaveApp.parameters of
-                        [ param ] ->
-                            case param.value.type_ of
-                                "number" ->
-                                    Agave.NumberValue (String.toFloat val |> Result.withDefault 0)
+                    encodeParam id val =
+                        case List.filter (\p -> p.id == id) model.agaveApp.parameters of
+                            [ param ] ->
+                                case param.value.type_ of
+                                    "number" ->
+                                        Agave.NumberValue (String.toFloat val |> Result.withDefault 0)
 
-                                "bool" ->
-                                    if val == "true" then
-                                        Agave.BoolValue True
-                                    else
-                                        Agave.BoolValue False
+                                    "bool" ->
+                                        if val == "true" then
+                                            Agave.BoolValue True
+                                        else
+                                            Agave.BoolValue False
 
-                                "flag" ->
-                                    if val == "true" then
-                                        Agave.BoolValue True
-                                    else
-                                        Agave.BoolValue False
+                                    "flag" ->
+                                        if val == "true" then
+                                            Agave.BoolValue True
+                                        else
+                                            Agave.BoolValue False
 
-                                "enumeration" ->
-                                    Agave.ArrayValue (String.split ";" val)
+                                    "enumeration" ->
+                                        Agave.ArrayValue (String.split ";" val)
 
-                                _ ->
-                                    Agave.StringValue val
+                                    _ ->
+                                        Agave.StringValue val
 
-                        _ ->
-                            Agave.StringValue val
+                            _ ->
+                                Agave.StringValue val
 
-                jobParameters =
-                    DictList.toList model.parameters
-                        |> List.map (\(k, v) -> Agave.JobParameter k (encodeParam k v))
+                    jobParameters =
+                        DictList.toList model.parameters
+                            |> List.map (\(k, v) -> Agave.JobParameter k (encodeParam k v))
 
-                jobName =
-                    "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
+                    jobName =
+                        "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
 
-                jobRequest =
-                    { name = jobName
-                    , app_id = model.app.app_name
-                    , archive = True
-                    , archiveOnAppError = True
-                    , inputs = jobInputs
-                    , parameters = jobParameters
-                    , notifications = []
-                    }
+                    jobRequest =
+                        { name = jobName
+                        , app_id = model.app.app_name
+                        , archive = True
+                        , archiveOnAppError = True
+                        , inputs = jobInputs
+                        , parameters = jobParameters
+                        , notifications = []
+                        }
 
-                jobSettings =
-                    Dict.toList model.settings
+                    jobSettings =
+                        Dict.toList model.settings
 
-                launchAgave =
-                    Request.Agave.launchJob session.token jobRequest jobSettings
+                    launchAgave =
+                        Request.Agave.launchJob session.token jobRequest jobSettings
 
-                launchPlanB =
-                    Request.PlanB.launchJob session.token jobRequest
+                    launchPlanB =
+                        Request.PlanB.launchJob session.token jobRequest
 
-                sendAppRun =
-                    Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest jobSettings |> toString)
-                        |> Http.send AppRunCompleted
+                    sendAppRun =
+                        Request.App.run session.token model.app_id (Agave.encodeJobRequest jobRequest jobSettings |> toString)
+                            |> Http.send AppRunCompleted
 
-                launchApp =
-                    (if isPlanB model.app.provider_name then
-                        launchPlanB
-                    else
-                        launchAgave
-                    ) |> Http.send RunJobCompleted
-            in
-            { model | showRunDialog = True } => Cmd.batch [ launchApp, sendAppRun ]
+                    launchApp =
+                        (if isPlanB model.app.provider_name then
+                            launchPlanB
+                        else
+                            launchAgave
+                        ) |> Http.send RunJobCompleted
+                in
+                { model | showRunDialog = True } => Cmd.batch [ launchApp, sendAppRun ]
+            else
+                ( { model | showRunDialog = True, dialogError = Just "Please enter the required inputs (see asterisk)." }, Cmd.none )
 
         RunJobCompleted (Ok response) ->
             let
