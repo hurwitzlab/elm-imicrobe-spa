@@ -89,6 +89,7 @@ type alias JobRequest =
     { name : String
     , app_id : String
     , archive : Bool
+    , archiveOnAppError : Bool
     , inputs : List JobInput
     , parameters : List JobParameter
     , notifications : List Notification
@@ -121,6 +122,7 @@ type alias Job =
     , created : String -- time string in CT time zone
     , ended : String -- time string in CT time zone
     , status : String
+    , lastStatusMessage : String
     , maxHours : Int
     , remoteQueue : String
     , inputs : Dict String JobInputValue
@@ -306,6 +308,7 @@ decoderJob =
         |> optional "created" Decode.string ""
         |> optional "ended" Decode.string ""
         |> optional "status" Decode.string ""
+        |> optional "lastStatusMessage" Decode.string ""
         |> optional "maxHours" Decode.int 0
         |> optional "remoteQueue" Decode.string ""
         |> optional "inputs" (Decode.dict decoderJobInput) Dict.empty
@@ -388,6 +391,7 @@ encodeJobRequest request settings =
         ([ ( "name", Encode.string request.name )
         , ( "appId", Encode.string request.app_id )
         , ( "archive", Encode.bool request.archive )
+        , ( "archiveOnAppError", Encode.bool request.archiveOnAppError )
 --        , ( "inputs", Encode.list (List.map encodeJobInput request.inputs) )
         , ( "inputs", Encode.object (List.map (\i -> (i.id, (Encode.list (List.map Encode.string i.value)))) request.inputs) )
         , ( "parameters", Encode.object (List.map encodeJobParameter request.parameters) )

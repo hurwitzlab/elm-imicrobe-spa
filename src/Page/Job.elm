@@ -384,52 +384,63 @@ view model =
 
 viewJob : Model -> Html Msg
 viewJob model =
-    table [ class "table" ]
-        [ colgroup []
-            [ col [ class "col-md-1" ] []
-            , col [ class "col-md-4" ] []
-            ]
-        , tr []
-            [ th [] [ text "ID" ]
-            , td [] [ text model.job.id ]
-            ]
-        , tr []
-            [ th [] [ text "Name" ]
-            , td [] [ text model.job.name ]
-            ]
-        , tr []
-            [ th [] [ text "App" ]
-            , td [] [ a [ Route.href (Route.App (toString model.app.app_id)) ] [ text model.job.app_id ] ]
-            ]
-        , tr []
-            [ th [] [ text "Owner" ]
-            , td [] [ text model.job.owner ]
-            ]
-        , tr []
-            [ th [] [ text "Start Time" ]
-            , td [] [ text model.job.created ]
-            ]
-        , tr []
-            [ th [] [ text "End Time" ]
-            , td [] [ text model.job.ended ]
-            ]
-        , tr []
-            [ th [ class "top" ] [ text "Status" ]
-            , td []
-                [ viewStatus model.job.status
-                , if isRunning model.job then
-                    button [ class "btn btn-default btn-xs", style [("float","left")], onClick CancelJob ] [ text "Cancel" ]
-                else
-                    text ""
+    div []
+        [ table [ class "table" ]
+            [ colgroup []
+                [ col [ class "col-md-1" ] []
+                , col [ class "col-md-4" ] []
                 ]
-            , td [] []
+            , tr []
+                [ th [] [ text "ID" ]
+                , td [] [ text model.job.id ]
+                ]
+            , tr []
+                [ th [] [ text "Name" ]
+                , td [] [ text model.job.name ]
+                ]
+            , tr []
+                [ th [] [ text "App" ]
+                , td [] [ a [ Route.href (Route.App (toString model.app.app_id)) ] [ text model.job.app_id ] ]
+                ]
+            , tr []
+                [ th [] [ text "Owner" ]
+                , td [] [ text model.job.owner ]
+                ]
+            , tr []
+                [ th [] [ text "Start Time" ]
+                , td [] [ text model.job.created ]
+                ]
+            , tr []
+                [ th [] [ text "End Time" ]
+                , td [] [ text model.job.ended ]
+                ]
+            , tr []
+                [ th [ class "top" ] [ text "Status" ]
+                , td []
+                    [ viewStatus model.job.status
+                    , if isRunning model.job then
+                        button [ class "btn btn-default btn-xs", style [("float","left")], onClick CancelJob ] [ text "Cancel" ]
+                      else
+                        text ""
+                    ]
+                , td [] []
+                ]
             ]
+        , if isFailed model.job then
+            div [ class "alert alert-danger" ] [ text model.job.lastStatusMessage ]
+          else
+            text ""
         ]
 
 
 isRunning : Agave.Job -> Bool
 isRunning job =
     job.status /= "FINISHED" && job.status /= "FAILED" && job.status /= "STOPPED"
+
+
+isFailed : Agave.Job -> Bool
+isFailed job =
+    job.status == "FAILED" || job.status == "STOPPED"
 
 
 viewStatus : String -> Html msg

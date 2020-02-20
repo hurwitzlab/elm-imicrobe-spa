@@ -294,7 +294,14 @@ update session msg model =
                     "iMicrobe " ++ model.app.app_name --FIXME should be a user-inputted value?
 
                 jobRequest =
-                    Agave.JobRequest jobName model.app.app_name True jobInputs jobParameters []
+                    { name = jobName
+                    , app_id = model.app.app_name
+                    , archive = True
+                    , archiveOnAppError = True
+                    , inputs = jobInputs
+                    , parameters = jobParameters
+                    , notifications = []
+                    }
 
                 jobSettings =
                     Dict.toList model.settings
