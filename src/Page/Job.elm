@@ -426,7 +426,7 @@ viewJob model =
                 , td [] []
                 ]
             ]
-        , if isFailed model.job then
+        , if isFailed model.job && model.job.lastStatusMessage /= "" then
             div [ class "alert alert-danger" ] [ text model.job.lastStatusMessage ]
           else
             text ""
