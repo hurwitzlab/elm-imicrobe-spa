@@ -257,7 +257,7 @@ update session msg model =
                     jobInputs =
                         DictList.toList model.inputs
                             |> List.map (\(k, v) -> (k, irodsToAgave v))
-                            |> List.map (\(k, v) -> Agave.JobInput k (String.split ";" v))
+                            |> List.map (\(k, v) -> Agave.JobInput k (if v == "" then [] else String.split ";" v))
 
                     encodeParam id val =
                         case List.filter (\p -> p.id == id) model.agaveApp.parameters of
