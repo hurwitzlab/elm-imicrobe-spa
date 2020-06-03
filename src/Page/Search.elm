@@ -215,6 +215,12 @@ nameLink result =
                 "sample" ->
                     Route.Sample result.id
 
+                "assembly" ->
+                    Route.Assembly result.id
+
+                "combined_assembly" ->
+                    Route.CombinedAssembly result.id
+
                 _ ->
                     Route.Home
 
