@@ -29,7 +29,7 @@
     "sim-plots": "git+https://github.com/hurwitzlab/sim-plots.git",
     "style-loader": "^0.18.2",
     "url-loader": "^0.5.9",
-    "url-parse": "^1.4.3"
+    "url-parse": "^1.5.0"
   },
   "devDependencies": {
     "webpack": "^3.12.0",
