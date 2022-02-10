@@ -23,7 +23,7 @@
     "jstree": "^3.3.5",
     "less": "^2.7.2",
     "less-loader": "^4.1.0",
-    "node-sass": "^4.9.3",
+    "node-sass": "^7.0.0",
     "resolve-url-loader": "^2.3.0",
     "sass-loader": "^6.0.7",
     "sim-plots": "git+https://github.com/hurwitzlab/sim-plots.git",
