@@ -19,7 +19,7 @@
     "file-loader": "^0.11.2",
     "imports-loader": "^0.7.1",
     "jquery": "^3.4.1",
-    "jquery-ui": "^1.12.1",
+    "jquery-ui": "^1.13.2",
     "jstree": "^3.3.5",
     "less": "^2.7.2",
     "less-loader": "^4.1.0",
